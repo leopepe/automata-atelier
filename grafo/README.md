@@ -125,18 +125,19 @@ cargo run --example goap_robot_delivery  # GOAP: warehouse delivery with robot c
 
 ## Performance highlights
 
-All figures from `cargo bench` (Criterion, 100 samples, release profile, macOS/Rust 1.94.1).
+All figures from `cargo bench` (Criterion 0.5, 100 samples, release profile, macOS/Rust 1.94.1, last measured 2026-05-01).
 
 | Scenario | Result |
 |---|---|
-| Sparse DAG search (10k nodes, fan=4) | **5.25 µs** |
-| Selective filter (rare attribute) | **13 ns** — Dijkstra exits at first failing node |
-| `shortest_path_cost` vs `shortest_path` on a 10k-hop path | **6.4× faster** |
-| Attribute count scaling (1 → 20 attrs) | **flat at ~13 ns** — O(1) `HashSet` lookup |
-| Construction, 100k-node sparse DAG | **7.4 ms** with Rayon + FxHashMap |
-| 512 parallel queries via Rayon | **945 µs** — scales with available cores |
+| Sparse DAG search (10k nodes, fan=4) | **4.78 µs** |
+| Selective filter (rare attribute) | **~10 ns** — Dijkstra exits at first failing node |
+| `shortest_path_cost` vs `shortest_path` on a 100k-hop path | **1.25× faster** (519 µs vs 648 µs) |
+| Attribute count scaling (1 → 20 attrs per node) | **flat at ~10 ns** — O(1) `FxHashSet` lookup |
+| Construction, 1k-node sparse DAG | **89 µs** (~78% faster than pre-optimization baseline) |
+| Construction, 500k-node sparse DAG | **43 ms** with Rayon + FxHashMap |
+| 512 parallel queries via Rayon | **914 µs** — scales with available cores |
 
-Full benchmark results are in [`docs/benchmarks-2026-04-20.md`](docs/benchmarks-2026-04-20.md).
+Canonical summary with full tables and trade-offs: [`docs/performance.md`](docs/performance.md). Per-change deltas live in dated [`docs/perf-comparison-YYYY-MM-DD.md`](docs/perf-comparison-2026-05-01.md) snapshots; the first full sweep is in [`docs/benchmarks-2026-04-20.md`](docs/benchmarks-2026-04-20.md).
 
 ## Contributing
 
