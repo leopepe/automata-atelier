@@ -31,6 +31,10 @@ The crates have deliberately clean separation; preserve it when adding code:
 
 If a change feels like it should live in a lower layer, that's almost always the wrong direction — push it up, not down.
 
+## Working with git and GitHub
+
+Any time you author a commit, open or update a pull request, or otherwise produce text that lands in this repo's git or GitHub history, follow the rules in `docs/CLAUDE.md` under **Commits and pull requests**: Conventional Commits 1.0.0 for every commit message and PR title, and the template at `.github/PULL_REQUEST_TEMPLATE.md` for PR bodies. These apply uniformly — there is no informal-commit exception for quick fixes, doc tweaks, or AI-authored changes.
+
 ## Pending work
 
 `docs/todo.md` tracks deferred design notes captured during sessions. Read it before proposing changes that may overlap with already-tracked work, so what you do composes with what's already planned.

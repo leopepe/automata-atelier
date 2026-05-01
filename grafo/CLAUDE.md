@@ -77,6 +77,7 @@ Every `cargo bench` invocation has a paired `cargo flamegraph` invocation — tw
 3. **Save raw logs** to `docs/bench-<label>.txt` and **save flamegraphs** to `docs/flamegraph-<label>.svg` so future runs have something to diff against.
 4. **Write a comparison summary** as `docs/perf-comparison-YYYY-MM-DD.md` listing wins, regressions, and trade-offs. Reference the matching `docs/flamegraph-<label>.svg` files so the criterion numbers and CPU profile are linked in one document.
 5. **Iterate subsets** during development with `cargo bench --bench performance -- <filter>` (e.g. `search/filter_cost`) — full runs take ~10 minutes. Pair each iteration run with a scoped flamegraph: `cargo flamegraph --bench performance -o docs/flamegraph-<label>.svg -- --bench --profile-time 10 <filter>`.
+6. **Refresh `docs/performance.md`** if any headline number in its tables moved. The dated `perf-comparison-YYYY-MM-DD.md` files are immutable historical snapshots; `performance.md` is the canonical "current state" document linked from `grafo/README.md` and the workspace `README.md`. Update its `Last measured` line, the absolute numbers in `## At a glance` / `## Construction` / `## Search` / `## Concurrent queries`, and the `## History` table.
 
 ### Flamegraphs
 

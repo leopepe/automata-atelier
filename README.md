@@ -101,6 +101,22 @@ cargo run -p uncharles -- --config uncharles/configs/deploy.yaml --execute --pre
 
 More example configs live in [`uncharles/configs/`](uncharles/configs/).
 
+## Performance
+
+`grafo` is the hot path under everything else, so its numbers govern what the planners and automatons above it can promise. Last measured 2026-05-01 on macOS / Rust 1.94.1 (Criterion 0.5, release profile, 100 samples):
+
+| Workload | Result |
+|---|---|
+| Selective filter on a 5k-node sparse DAG | **~10 ns** — Dijkstra exits at first failing node |
+| `shortest_path_cost` on a 10k-node fan=4 DAG | **4.78 µs** |
+| `shortest_path_cost` on a 100k-node chain (worst-case path length) | **648 µs** |
+| Construction, 1k-node sparse DAG | **89 µs** (~78% faster than the pre-optimization baseline) |
+| Construction, 500k-node sparse DAG with Rayon | **43 ms** |
+| 512 parallel queries via Rayon over a shared `Arc<Graph>` | **914 µs** — scales near-linearly with cores |
+| Attribute count 1 → 20 per node (filter throughput) | **flat at ~10 ns** — O(1) `FxHashSet` lookup |
+
+Canonical summary with full tables, trade-offs, and history: [`grafo/docs/performance.md`](grafo/docs/performance.md). `goap-planner` and `uncharles` have no benchmarks yet — they ride on grafo's numbers for the search hot path; planner-side and runtime-side timings will be added when there's a real workload driving the requirement.
+
 ## Building and testing
 
 The workspace uses Rust edition 2024.
@@ -112,11 +128,12 @@ cargo fmt --all
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-Performance benchmarks for `grafo` (the hot path under everything else) live in [`grafo/benches/`](grafo/benches/) and run via `cargo bench -p grafo`.
+Performance benchmarks for `grafo` live in [`grafo/benches/`](grafo/benches/) and run via `cargo bench -p grafo`. Pair every bench session with a flamegraph (see [`grafo/CLAUDE.md`](grafo/CLAUDE.md)).
 
 ## Where to look next
 
-- [`grafo/README.md`](grafo/README.md) — full graph library docs, performance numbers, and standalone examples.
+- [`grafo/README.md`](grafo/README.md) — full graph library docs and standalone examples.
+- [`grafo/docs/performance.md`](grafo/docs/performance.md) — current benchmark summary and history.
 - [`goap-planner/examples/`](goap-planner/examples/) — runnable planner scenarios (`deploy`, `release`, `refactor`, `validate`, `watch`, `dependency`).
 - [`uncharles/configs/`](uncharles/configs/) — YAML configs showing sensor/action/goal patterns.
 - [`docs/todo.md`](docs/todo.md) — deferred design notes and pending work.

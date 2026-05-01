@@ -47,6 +47,41 @@ After a behaviour or interface change, update each that applies:
 
 For renames and removals, prefer atomic changes (rename/remove + update every caller + update every doc) over deprecation shims. The workspace is small enough that grep-and-replace is the right tool.
 
+## Commits and pull requests
+
+Every commit message and PR title follows the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/#specification) specification. Pull requests use the template at `.github/PULL_REQUEST_TEMPLATE.md` — fill it in, don't delete sections.
+
+### Format
+
+```
+<type>[optional scope][!]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+- **type** (required): one of `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+- **scope** (optional but encouraged): the crate or area touched — e.g. `grafo`, `goap-planner`, `uncharles`, `ci`, `docs`.
+- **description** (required): imperative mood, lowercase, no trailing period, ideally under 72 characters.
+- **body** (optional): explain the *why*, not the *what*. Separate from the subject by one blank line. Wrap at ~72 chars.
+- **footers** (optional): `BREAKING CHANGE: <impact>` for breaking changes; issue refs such as `Refs #123` or `Closes #123`.
+
+Breaking changes are flagged two ways together: a `!` after the type/scope (`feat(grafo)!: ...`) **and** a `BREAKING CHANGE:` footer describing the impact. One without the other is not enough.
+
+### Examples
+
+- `feat(uncharles): add podcast download pipeline config and e2e test`
+- `fix(grafo): handle empty graph in Dijkstra search`
+- `docs(goap-planner): document State/Action invariants`
+- `refactor(grafo)!: rename Graph::nodes to Graph::node_count`
+
+### Pull requests
+
+- The PR title is the future squash-merge commit subject — it must already conform; don't rely on editing the merge commit afterward.
+- The PR body uses `.github/PULL_REQUEST_TEMPLATE.md`. Tick the test-plan items only after they actually pass.
+- One logical change per PR. If you're tempted to write `feat: do X and refactor Y`, that's two PRs.
+
 ## When in doubt
 
 If a change is non-trivial and the right-sized test, lint posture, or documentation update is unclear, prefer the more thorough option. The cost of an extra test or a fuller docstring is minutes; the cost of a regression or a stale doc compounds.
