@@ -1,0 +1,230 @@
+# Podcast download pipeline. End-to-end happy path:
+#
+#   discover new episodes from a feed list  →  download them  →  verify
+#   each file is real audio  →  notify the user  →  commit the cycle
+#
+# One uncharles invocation processes one cycle. Cold-start (no new
+# episodes) exits at iteration 1 with `idle` already true. Wrap in
+# `while true; do uncharles ...; sleep 600; done` to poll periodically.
+#
+# Run with:
+#
+#   uncharles --config podcast.yaml --execute --interval-ms 1000
+#
+# The cmds below use POSIX shell builtins so the config is hermetically
+# testable (no network, no external binaries). Each comment names the
+# production tool to substitute (curl / yt-dlp / ffprobe / etc.) — the
+# pipeline shape, costs, and on_failure routing stay the same when you
+# swap real implementations in.
+#
+# Sidecar state on disk (relative to cwd):
+#   .uncharles/state/podcast/feeds.txt          # one feed URL per line (production)
+#   .uncharles/state/podcast/fixture-guids.txt  # one GUID per line (smoke / test)
+#   .uncharles/state/podcast/pending/<slug>     # pending download (file content = GUID)
+#   .uncharles/state/podcast/downloaded.txt     # GUIDs already archived
+#   .uncharles/state/podcast/last-cycle.txt     # most recent notification summary
+#   .uncharles/library/podcast/<slug>.mp3       # downloaded files
+#
+# Failure routing: `download_episodes` can fail on transient network
+# errors. Its `on_failure` clause flags `download_failed`, making the
+# cheaper `await_download_retry` eligible — the planner reroutes through
+# it on the next iteration. Same pattern as merge_gate's
+# `await_manual_rebase`.
+
+sensors:
+  # Sensor order matters here: `new_episodes_available` has the side
+  # effect of populating `pending/`, and `idle` reads that directory.
+  # Discovery must run first so cold-start invocations don't see an
+  # empty `pending/`, conclude `idle = true`, and exit before the
+  # pipeline gets a chance to do anything.
+
+  # `new_episodes_available` — refresh feeds and stage GUIDs that aren't
+  # in `downloaded.txt` as files in `pending/`.
+  #
+  # Production: replace the `cp $FIXTURE` line with a curl+xmllint loop:
+  #
+  #   while IFS= read -r feed; do
+  #     curl -fsSL "$feed" | xmllint --xpath '//item/guid/text()' - >> "$STATE/.tmp"
+  #   done < "$STATE/feeds.txt"
+  #
+  # Hermetic version reads `fixture-guids.txt` so the e2e test runs
+  # without network. Both paths converge on the same `$STATE/.tmp` of
+  # newline-separated GUIDs.
+  - name: new_episodes_available
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast
+        FIXTURE="$STATE/fixture-guids.txt"
+        mkdir -p "$STATE/pending"
+        [ -f "$FIXTURE" ] || exit 1
+        touch "$STATE/downloaded.txt"
+        cp "$FIXTURE" "$STATE/.tmp"
+        while IFS= read -r guid; do
+          [ -z "$guid" ] && continue
+          slug=$(printf '%s' "$guid" | tr '/:' '__')
+          if ! grep -qFx "$guid" "$STATE/downloaded.txt"; then
+            printf '%s' "$guid" > "$STATE/pending/$slug"
+          fi
+        done < "$STATE/.tmp"
+        rm -f "$STATE/.tmp"
+        [ "$(find "$STATE/pending" -maxdepth 1 -type f 2>/dev/null | wc -l)" -gt 0 ]
+
+  # `idle` — pending/ is empty (no work in flight). When true at sense
+  # time, the planner returns an empty plan and uncharles exits at
+  # iteration 1. After a full cycle, `commit_cycle` clears pending/ and
+  # the next iteration's sensor flips this to true → exit cleanly.
+  - name: idle
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast
+        mkdir -p "$STATE/pending"
+        [ "$(find "$STATE/pending" -maxdepth 1 -type f 2>/dev/null | wc -l)" -eq 0 ]
+
+  # `episodes_downloaded` — every staged GUID has a matching mp3 in
+  # `library/podcast/` with non-zero size. Sensor lets a partially-
+  # downloaded cycle resume cleanly: re-running uncharles after an
+  # interrupt detects which files already exist and skips them.
+  - name: episodes_downloaded
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast
+        LIB=.uncharles/library/podcast
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] || exit 1
+        done
+
+actions:
+  # Download every pending episode. Idempotent: skips files that already
+  # exist with non-zero size. Production: replace the `printf` line with
+  #
+  #   yt-dlp -x --audio-format mp3 -o "$LIB/$slug.%(ext)s" "$(cat "$entry")"
+  #
+  # On failure, sets `download_failed`; the planner picks
+  # `await_download_retry` on the next iteration.
+  - name: download_episodes
+    cost: 5.0
+    requires: [new_episodes_available]
+    adds: [episodes_downloaded]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast
+        LIB=.uncharles/library/podcast
+        mkdir -p "$LIB"
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] && continue
+          printf 'stub-mp3-%s' "$slug" > "$LIB/$slug.mp3"
+        done
+    on_failure:
+      add: [download_failed]
+
+  # Recovery alternative. Cheaper than `download_episodes` so once
+  # `download_failed` is set, Dijkstra prefers this path. Backs off
+  # briefly, retries the same GUIDs (skipping any that completed). The
+  # optimistic `+episodes_downloaded` is corrected by the sensor next
+  # iteration if files are still missing — same await pattern as
+  # release_watch's `await_deploy`.
+  - name: await_download_retry
+    cost: 1.0
+    requires: [download_failed]
+    adds: [episodes_downloaded]
+    cmd:
+      - sh
+      - -c
+      - |
+        sleep 1
+        STATE=.uncharles/state/podcast
+        LIB=.uncharles/library/podcast
+        mkdir -p "$LIB"
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] && continue
+          printf 'stub-mp3-%s' "$slug" > "$LIB/$slug.mp3"
+        done
+
+  # Verify each downloaded file is real audio. Production: replace the
+  # size check with
+  #
+  #   ffprobe -loglevel error -show_streams "$LIB/$slug.mp3" >/dev/null 2>&1
+  #
+  # Action failure (any file invalid) terminates the loop with
+  # `ActionFailed` — there's no on_failure here because corrupt
+  # downloads warrant human attention, not silent retry.
+  - name: verify_episodes
+    cost: 2.0
+    requires: [episodes_downloaded]
+    adds: [episodes_verified]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast
+        LIB=.uncharles/library/podcast
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] || exit 1
+        done
+
+  # Notify the user. Writes a per-cycle summary to `last-cycle.txt`
+  # (parseable, tail-able) and best-effort echoes to the controlling
+  # terminal via /dev/tty. uncharles silences action stdout, so
+  # /dev/tty is the only direct channel to an interactive console;
+  # the redirect quietly fails in non-tty contexts (CI, pipes) without
+  # affecting the action's exit code.
+  - name: notify_user
+    cost: 1.0
+    requires: [episodes_verified]
+    adds: [user_notified]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast
+        LOG="$STATE/last-cycle.txt"
+        {
+          echo "[uncharles/podcast] new episodes available:"
+          for entry in "$STATE/pending"/*; do
+            [ -f "$entry" ] || continue
+            echo "  - $(basename "$entry")"
+          done
+        } > "$LOG"
+        if [ -w /dev/tty ]; then
+          cat "$LOG" > /dev/tty 2>/dev/null || true
+        fi
+        exit 0
+
+  # Commit the cycle: append GUIDs to downloaded.txt, clear pending/.
+  # The optimistic `+idle` is confirmed by the sensor at the top of the
+  # next iteration (pending/ now empty → idle = true → goal satisfied
+  # → exit 0).
+  - name: commit_cycle
+    cost: 1.0
+    requires: [user_notified]
+    adds: [idle]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          guid=$(cat "$entry")
+          echo "$guid" >> "$STATE/downloaded.txt"
+          rm -f "$entry"
+        done
+
+goal:
+  requires: [idle]

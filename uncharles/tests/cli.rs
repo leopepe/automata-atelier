@@ -234,6 +234,117 @@ fn release_watch_dry_run_emits_expected_schema() {
 }
 
 #[test]
+fn execute_loop_drives_podcast_pipeline_end_to_end() {
+    // Hermetic e2e for podcast.yaml. Pre-stages a fixture-guids.txt with
+    // two GUIDs in a fresh temp dir, runs uncharles, and asserts the full
+    // happy path: discover → download → verify → notify → commit. Each
+    // step has a distinct artifact (file in library/, line in
+    // downloaded.txt, content in last-cycle.txt) so a regression in any
+    // stage trips a specific assertion rather than a vague "failed".
+    use std::fs;
+
+    let work_dir = std::env::temp_dir().join(format!(
+        "uncharles-podcast-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0),
+    ));
+    let _ = fs::remove_dir_all(&work_dir);
+    fs::create_dir_all(&work_dir).unwrap();
+
+    let state = work_dir.join(".uncharles/state/podcast");
+    fs::create_dir_all(&state).unwrap();
+    fs::write(state.join("fixture-guids.txt"), "ep-001\nep-002\n").unwrap();
+    fs::write(state.join("downloaded.txt"), "").unwrap();
+
+    let output = Command::new(binary())
+        .current_dir(&work_dir)
+        .arg("--config")
+        .arg(config_path("podcast.yaml"))
+        .arg("--execute")
+        .output()
+        .expect("failed to spawn uncharles");
+
+    assert!(
+        output.status.success(),
+        "expected exit 0, got {:?}\nstdout={}\nstderr={}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let last_line = stdout.lines().last().expect("expected NDJSON output");
+    let final_event: serde_json::Value =
+        serde_json::from_str(last_line).expect("final line must be JSON");
+    assert_eq!(final_event["outcome"], "goal_satisfied");
+
+    // Pipeline ran the four happy-path actions in order. The recovery
+    // alternative (await_download_retry) must NOT have fired on a clean
+    // run — its presence here would mean the cheap path failed
+    // unexpectedly.
+    let executed: Vec<String> = stdout
+        .lines()
+        .filter_map(|line| {
+            let v: serde_json::Value = serde_json::from_str(line).ok()?;
+            if v["event"] == "executed" && v["result"]["success"] == true {
+                Some(v["result"]["name"].as_str()?.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(
+        executed,
+        vec![
+            "download_episodes".to_string(),
+            "verify_episodes".to_string(),
+            "notify_user".to_string(),
+            "commit_cycle".to_string(),
+        ],
+        "expected the four-action happy path; got {executed:?}",
+    );
+
+    let lib = work_dir.join(".uncharles/library/podcast");
+    assert!(
+        lib.join("ep-001.mp3").exists(),
+        "ep-001.mp3 missing from library — download_episodes regression",
+    );
+    assert!(
+        lib.join("ep-002.mp3").exists(),
+        "ep-002.mp3 missing from library — download_episodes regression",
+    );
+
+    let downloaded = fs::read_to_string(state.join("downloaded.txt")).unwrap();
+    assert!(
+        downloaded.contains("ep-001") && downloaded.contains("ep-002"),
+        "downloaded.txt missing GUIDs — commit_cycle regression: {downloaded:?}",
+    );
+
+    let pending = state.join("pending");
+    let pending_count = fs::read_dir(&pending).map(|d| d.count()).unwrap_or(0);
+    assert_eq!(
+        pending_count, 0,
+        "pending/ should be empty after commit — commit_cycle regression",
+    );
+
+    let last_cycle = fs::read_to_string(state.join("last-cycle.txt"))
+        .expect("last-cycle.txt missing — notify_user regression");
+    assert!(
+        last_cycle.contains("new episodes available"),
+        "notification log missing banner: {last_cycle:?}",
+    );
+    assert!(
+        last_cycle.contains("ep-001") && last_cycle.contains("ep-002"),
+        "notification log missing episode entries: {last_cycle:?}",
+    );
+
+    let _ = fs::remove_dir_all(&work_dir);
+}
+
+#[test]
 fn execute_loop_recovers_via_action_on_failure() {
     // smoke_recover.yaml exercises the `on_failure` path: try_fast's cmd
     // exits 1, the on_failure clause flips state, and try_slow takes over.
