@@ -1,0 +1,321 @@
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Config {
+    #[serde(default)]
+    pub sensors: Vec<SensorSpec>,
+    pub actions: Vec<ActionSpec>,
+    pub goal: GoalSpec,
+}
+
+/// Declarative sensor: a shell command whose exit status drives state mutation.
+///
+/// If `on_success`/`on_failure` are omitted, the default is:
+/// - exit 0 → add the fact named after the sensor
+/// - non-zero → remove the fact named after the sensor
+///
+/// Override either side to model richer outcomes (e.g. a build sensor that
+/// adds `tests_failing` on failure rather than just removing `tests_passing`).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SensorSpec {
+    pub name: String,
+    pub cmd: Vec<String>,
+    #[serde(default)]
+    pub on_success: Option<Effects>,
+    #[serde(default)]
+    pub on_failure: Option<Effects>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Effects {
+    #[serde(default)]
+    pub add: Vec<String>,
+    #[serde(default)]
+    pub remove: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ActionSpec {
+    pub name: String,
+    pub cost: f64,
+    #[serde(default)]
+    pub requires: Vec<String>,
+    #[serde(default)]
+    pub adds: Vec<String>,
+    #[serde(default)]
+    pub removes: Vec<String>,
+    /// Command the runtime executes for this action in `--execute` mode.
+    /// Optional: actions without `cmd` are valid in one-shot planning mode
+    /// (where the planner only computes a sequence of names) but cause
+    /// [`crate::run::RunError::ActionMissingCmd`] if the loop tries to run
+    /// them.
+    #[serde(default)]
+    pub cmd: Option<Vec<String>>,
+    /// State mutation applied when the action's `cmd` exits non-zero.
+    ///
+    /// Default (omitted): non-zero exit terminates the loop with
+    /// [`crate::run::LoopOutcome::ActionFailed`]. With `on_failure` set:
+    /// the listed adds/removes are applied to state, the loop sleeps for
+    /// `--interval-ms` and replans from the new state on the next
+    /// iteration. The action's own `adds`/`removes` are *not* applied —
+    /// those describe the success-path contract the planner assumes.
+    ///
+    /// Use this to express recoverable failure: the action that tried
+    /// the cheap path declares what state to leave behind for the
+    /// planner to route around (`add: [needs_human]`, `remove: [path_a]`),
+    /// and an alternative action picks up from there.
+    #[serde(default)]
+    pub on_failure: Option<Effects>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GoalSpec {
+    #[serde(default)]
+    pub requires: Vec<String>,
+    #[serde(default)]
+    pub forbids: Vec<String>,
+}
+
+impl SensorSpec {
+    pub fn effects_for(&self, success: bool) -> Effects {
+        if success {
+            self.on_success.clone().unwrap_or_else(|| Effects {
+                add: vec![self.name.clone()],
+                remove: Vec::new(),
+            })
+        } else {
+            self.on_failure.clone().unwrap_or_else(|| Effects {
+                add: Vec::new(),
+                remove: vec![self.name.clone()],
+            })
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---------------------------------------------------------------------
+    // SensorSpec::effects_for — default and custom mappings
+    // ---------------------------------------------------------------------
+
+    #[test]
+    fn default_effects_add_named_fact_on_success() {
+        let spec = SensorSpec {
+            name: "ready".into(),
+            cmd: vec!["true".into()],
+            on_success: None,
+            on_failure: None,
+        };
+        let effects = spec.effects_for(true);
+        assert_eq!(effects.add, vec!["ready"]);
+        assert!(effects.remove.is_empty());
+    }
+
+    #[test]
+    fn default_effects_remove_named_fact_on_failure() {
+        let spec = SensorSpec {
+            name: "ready".into(),
+            cmd: vec!["false".into()],
+            on_success: None,
+            on_failure: None,
+        };
+        let effects = spec.effects_for(false);
+        assert!(effects.add.is_empty());
+        assert_eq!(effects.remove, vec!["ready"]);
+    }
+
+    #[test]
+    fn custom_on_success_overrides_default() {
+        let spec = SensorSpec {
+            name: "ready".into(),
+            cmd: vec!["true".into()],
+            on_success: Some(Effects {
+                add: vec!["ok".into(), "warm".into()],
+                remove: vec!["cold".into()],
+            }),
+            on_failure: None,
+        };
+        let effects = spec.effects_for(true);
+        assert_eq!(effects.add, vec!["ok", "warm"]);
+        assert_eq!(effects.remove, vec!["cold"]);
+    }
+
+    // ---------------------------------------------------------------------
+    // YAML deserialisation — round-trips, defaults, and rejection
+    // ---------------------------------------------------------------------
+
+    #[test]
+    fn parses_minimal_config() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: noop
+                cost: 1.0
+                cmd: ["true"]
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(config.sensors.len(), 0);
+        assert_eq!(config.actions.len(), 1);
+        assert_eq!(config.actions[0].name, "noop");
+        assert_eq!(config.actions[0].cost, 1.0);
+        assert_eq!(config.goal.requires, vec!["done"]);
+        assert!(config.goal.forbids.is_empty());
+    }
+
+    #[test]
+    fn parses_sensor_with_explicit_on_success_and_on_failure() {
+        let yaml = r#"
+            sensors:
+              - name: build
+                cmd: ["cargo", "build"]
+                on_success:
+                  add: [built]
+                  remove: [build_failing]
+                on_failure:
+                  add: [build_failing]
+                  remove: [built]
+            actions: []
+            goal:
+              requires: [built]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        let s = &config.sensors[0];
+        assert_eq!(s.name, "build");
+        assert_eq!(s.cmd, vec!["cargo", "build"]);
+        let success = s.on_success.as_ref().unwrap();
+        assert_eq!(success.add, vec!["built"]);
+        assert_eq!(success.remove, vec!["build_failing"]);
+        let failure = s.on_failure.as_ref().unwrap();
+        assert_eq!(failure.add, vec!["build_failing"]);
+        assert_eq!(failure.remove, vec!["built"]);
+    }
+
+    #[test]
+    fn parses_action_with_on_failure_clause() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: try_fast
+                cost: 1.0
+                requires: [available]
+                adds: [done]
+                cmd: ["false"]
+                on_failure:
+                  add: [needs_human]
+                  remove: [available]
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        let on_failure = config.actions[0].on_failure.as_ref().unwrap();
+        assert_eq!(on_failure.add, vec!["needs_human"]);
+        assert_eq!(on_failure.remove, vec!["available"]);
+    }
+
+    #[test]
+    fn action_on_failure_defaults_to_none() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: noop
+                cost: 1.0
+                cmd: ["true"]
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.actions[0].on_failure.is_none());
+    }
+
+    #[test]
+    fn parses_action_without_cmd_for_pure_planning() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: imaginary
+                cost: 2.5
+                requires: [a]
+                adds: [b]
+            goal:
+              requires: [b]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        let a = &config.actions[0];
+        assert_eq!(a.name, "imaginary");
+        assert_eq!(a.cost, 2.5);
+        assert_eq!(a.requires, vec!["a"]);
+        assert_eq!(a.adds, vec!["b"]);
+        assert!(a.removes.is_empty());
+        assert!(a.cmd.is_none());
+    }
+
+    #[test]
+    fn rejects_unknown_top_level_field() {
+        // deny_unknown_fields catches typos in the schema.
+        let yaml = r#"
+            sensors: []
+            actions: []
+            goal:
+              requires: [done]
+            unrelated_field: 42
+        "#;
+        let err = serde_yaml::from_str::<Config>(yaml).unwrap_err();
+        assert!(
+            err.to_string().contains("unrelated_field"),
+            "expected error about unknown field, got: {err}"
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_field_in_sensor() {
+        let yaml = r#"
+            sensors:
+              - name: s
+                cmd: ["true"]
+                bogus: 1
+            actions: []
+            goal:
+              requires: [done]
+        "#;
+        let err = serde_yaml::from_str::<Config>(yaml).unwrap_err();
+        assert!(err.to_string().contains("bogus"));
+    }
+
+    #[test]
+    fn empty_effects_struct_is_valid_and_suppresses_default() {
+        // {} is a useful pattern: "this sensor observed something but
+        // produces no state effect".
+        let yaml = r#"
+            sensors:
+              - name: noisy
+                cmd: ["true"]
+                on_success: {}
+            actions: []
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        let success = config.sensors[0].on_success.as_ref().unwrap();
+        assert!(success.add.is_empty());
+        assert!(success.remove.is_empty());
+    }
+
+    #[test]
+    fn requires_goal_section() {
+        let yaml = r#"
+            sensors: []
+            actions: []
+        "#;
+        let err = serde_yaml::from_str::<Config>(yaml).unwrap_err();
+        assert!(err.to_string().to_lowercase().contains("goal"));
+    }
+}

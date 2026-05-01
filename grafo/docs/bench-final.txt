@@ -1,0 +1,617 @@
+   Compiling grafo v0.1.0 (/Users/pepe/Workspace/rust/grafo)
+    Finished `bench` profile [optimized] target(s) in 1.05s
+     Running benches/performance.rs (target/release/deps/performance-8d7439fab0b11751)
+Gnuplot not found, using plotters backend
+Benchmarking construction/chain/1000
+Benchmarking construction/chain/1000: Warming up for 3.0000 s
+Benchmarking construction/chain/1000: Collecting 100 samples in estimated 5.0379 s (106k iterations)
+Benchmarking construction/chain/1000: Analyzing
+construction/chain/1000 time:   [46.433 µs 46.609 µs 46.808 µs]
+                        change: [-77.999% -77.868% -77.737%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 14 outliers among 100 measurements (14.00%)
+  2 (2.00%) low mild
+  3 (3.00%) high mild
+  9 (9.00%) high severe
+Benchmarking construction/sparse_dag_fan4/1000
+Benchmarking construction/sparse_dag_fan4/1000: Warming up for 3.0000 s
+Benchmarking construction/sparse_dag_fan4/1000: Collecting 100 samples in estimated 5.3954 s (61k iterations)
+Benchmarking construction/sparse_dag_fan4/1000: Analyzing
+construction/sparse_dag_fan4/1000
+                        time:   [88.971 µs 89.379 µs 89.798 µs]
+                        change: [-69.774% -69.627% -69.488%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high severe
+Benchmarking construction/chain/5000
+Benchmarking construction/chain/5000: Warming up for 3.0000 s
+Benchmarking construction/chain/5000: Collecting 100 samples in estimated 6.1065 s (25k iterations)
+Benchmarking construction/chain/5000: Analyzing
+construction/chain/5000 time:   [238.34 µs 239.03 µs 239.76 µs]
+                        change: [-52.058% -51.847% -51.655%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) low mild
+  2 (2.00%) high mild
+Benchmarking construction/sparse_dag_fan4/5000
+Benchmarking construction/sparse_dag_fan4/5000: Warming up for 3.0000 s
+Benchmarking construction/sparse_dag_fan4/5000: Collecting 100 samples in estimated 6.3161 s (10k iterations)
+Benchmarking construction/sparse_dag_fan4/5000: Analyzing
+construction/sparse_dag_fan4/5000
+                        time:   [612.83 µs 615.79 µs 618.78 µs]
+                        change: [+0.9558% +1.6239% +2.3520%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking construction/chain/10000
+Benchmarking construction/chain/10000: Warming up for 3.0000 s
+Benchmarking construction/chain/10000: Collecting 100 samples in estimated 7.3949 s (15k iterations)
+Benchmarking construction/chain/10000: Analyzing
+construction/chain/10000
+                        time:   [485.38 µs 487.11 µs 489.03 µs]
+                        change: [-34.256% -33.975% -33.720%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low mild
+  7 (7.00%) high mild
+  1 (1.00%) high severe
+Benchmarking construction/sparse_dag_fan4/10000
+Benchmarking construction/sparse_dag_fan4/10000: Warming up for 3.0000 s
+Benchmarking construction/sparse_dag_fan4/10000: Collecting 100 samples in estimated 9.6407 s (10k iterations)
+Benchmarking construction/sparse_dag_fan4/10000: Analyzing
+construction/sparse_dag_fan4/10000
+                        time:   [947.36 µs 950.46 µs 954.04 µs]
+                        change: [-1.0492% -0.6146% -0.1807%] (p = 0.01 < 0.05)
+                        Change within noise threshold.
+Found 9 outliers among 100 measurements (9.00%)
+  6 (6.00%) high mild
+  3 (3.00%) high severe
+Benchmarking construction/chain/50000
+Benchmarking construction/chain/50000: Warming up for 3.0000 s
+Benchmarking construction/chain/50000: Collecting 100 samples in estimated 5.1492 s (1800 iterations)
+Benchmarking construction/chain/50000: Analyzing
+construction/chain/50000
+                        time:   [2.7172 ms 2.7253 ms 2.7348 ms]
+                        change: [-0.2013% +0.2158% +0.6302%] (p = 0.33 > 0.05)
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) high mild
+  3 (3.00%) high severe
+Benchmarking construction/sparse_dag_fan4/50000
+Benchmarking construction/sparse_dag_fan4/50000: Warming up for 3.0000 s
+Benchmarking construction/sparse_dag_fan4/50000: Collecting 100 samples in estimated 5.2510 s (1300 iterations)
+Benchmarking construction/sparse_dag_fan4/50000: Analyzing
+construction/sparse_dag_fan4/50000
+                        time:   [4.0631 ms 4.0752 ms 4.0876 ms]
+                        change: [+1.7222% +2.1346% +2.5270%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking construction/chain/100000
+Benchmarking construction/chain/100000: Warming up for 3.0000 s
+Benchmarking construction/chain/100000: Collecting 100 samples in estimated 5.3905 s (1000 iterations)
+Benchmarking construction/chain/100000: Analyzing
+construction/chain/100000
+                        time:   [5.3304 ms 5.3527 ms 5.3786 ms]
+                        change: [+3.3793% +3.9138% +4.4697%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 8 outliers among 100 measurements (8.00%)
+  2 (2.00%) high mild
+  6 (6.00%) high severe
+Benchmarking construction/sparse_dag_fan4/100000
+Benchmarking construction/sparse_dag_fan4/100000: Warming up for 3.0000 s
+Benchmarking construction/sparse_dag_fan4/100000: Collecting 100 samples in estimated 5.6845 s (700 iterations)
+Benchmarking construction/sparse_dag_fan4/100000: Analyzing
+construction/sparse_dag_fan4/100000
+                        time:   [8.3516 ms 8.3878 ms 8.4250 ms]
+                        change: [+4.1373% +4.7609% +5.4005%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+Benchmarking search/no_filter/chain/1000
+Benchmarking search/no_filter/chain/1000: Warming up for 3.0000 s
+Benchmarking search/no_filter/chain/1000: Collecting 100 samples in estimated 5.0037 s (773k iterations)
+Benchmarking search/no_filter/chain/1000: Analyzing
+search/no_filter/chain/1000
+                        time:   [6.4093 µs 6.4273 µs 6.4481 µs]
+                        change: [+25.597% +26.546% +27.512%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 15 outliers among 100 measurements (15.00%)
+  2 (2.00%) low mild
+  10 (10.00%) high mild
+  3 (3.00%) high severe
+Benchmarking search/no_filter/chain/10000
+Benchmarking search/no_filter/chain/10000: Warming up for 3.0000 s
+Benchmarking search/no_filter/chain/10000: Collecting 100 samples in estimated 5.1394 s (76k iterations)
+Benchmarking search/no_filter/chain/10000: Analyzing
+search/no_filter/chain/10000
+                        time:   [67.518 µs 67.709 µs 67.902 µs]
+                        change: [+31.195% +31.745% +32.337%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking search/no_filter/chain/100000
+Benchmarking search/no_filter/chain/100000: Warming up for 3.0000 s
+Benchmarking search/no_filter/chain/100000: Collecting 100 samples in estimated 6.5757 s (10k iterations)
+Benchmarking search/no_filter/chain/100000: Analyzing
+search/no_filter/chain/100000
+                        time:   [645.98 µs 647.68 µs 649.53 µs]
+                        change: [+29.546% +30.180% +30.811%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+Benchmarking search/no_filter/sparse_dag_fan4/1000
+Benchmarking search/no_filter/sparse_dag_fan4/1000: Warming up for 3.0000 s
+Benchmarking search/no_filter/sparse_dag_fan4/1000: Collecting 100 samples in estimated 5.0021 s (9.1M iterations)
+Benchmarking search/no_filter/sparse_dag_fan4/1000: Analyzing
+search/no_filter/sparse_dag_fan4/1000
+                        time:   [545.70 ns 550.94 ns 556.42 ns]
+                        change: [-3.5883% -2.6835% -1.7372%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking search/no_filter/sparse_dag_fan4/10000
+Benchmarking search/no_filter/sparse_dag_fan4/10000: Warming up for 3.0000 s
+Benchmarking search/no_filter/sparse_dag_fan4/10000: Collecting 100 samples in estimated 5.0132 s (1.1M iterations)
+Benchmarking search/no_filter/sparse_dag_fan4/10000: Analyzing
+search/no_filter/sparse_dag_fan4/10000
+                        time:   [4.7602 µs 4.7785 µs 4.7988 µs]
+                        change: [-3.7133% -3.3667% -2.9897%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+Benchmarking search/no_filter/sparse_dag_fan4/50000
+Benchmarking search/no_filter/sparse_dag_fan4/50000: Warming up for 3.0000 s
+Benchmarking search/no_filter/sparse_dag_fan4/50000: Collecting 100 samples in estimated 5.0114 s (697k iterations)
+Benchmarking search/no_filter/sparse_dag_fan4/50000: Analyzing
+search/no_filter/sparse_dag_fan4/50000
+                        time:   [7.1754 µs 7.2042 µs 7.2381 µs]
+                        change: [-13.772% -13.293% -12.815%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+Benchmarking search/no_filter/sparse_dag_fan16/1000
+Benchmarking search/no_filter/sparse_dag_fan16/1000: Warming up for 3.0000 s
+Benchmarking search/no_filter/sparse_dag_fan16/1000: Collecting 100 samples in estimated 5.0010 s (7.1M iterations)
+Benchmarking search/no_filter/sparse_dag_fan16/1000: Analyzing
+search/no_filter/sparse_dag_fan16/1000
+                        time:   [694.46 ns 697.31 ns 700.36 ns]
+                        change: [-3.5378% -2.9588% -2.3789%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking search/no_filter/sparse_dag_fan16/10000
+Benchmarking search/no_filter/sparse_dag_fan16/10000: Warming up for 3.0000 s
+Benchmarking search/no_filter/sparse_dag_fan16/10000: Collecting 100 samples in estimated 5.0106 s (853k iterations)
+Benchmarking search/no_filter/sparse_dag_fan16/10000: Analyzing
+search/no_filter/sparse_dag_fan16/10000
+                        time:   [5.8470 µs 5.8618 µs 5.8770 µs]
+                        change: [-1.4606% -1.0360% -0.5870%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking search/no_filter/sparse_dag_fan16/50000
+Benchmarking search/no_filter/sparse_dag_fan16/50000: Warming up for 3.0000 s
+Benchmarking search/no_filter/sparse_dag_fan16/50000: Collecting 100 samples in estimated 5.0727 s (293k iterations)
+Benchmarking search/no_filter/sparse_dag_fan16/50000: Analyzing
+search/no_filter/sparse_dag_fan16/50000
+                        time:   [17.316 µs 17.366 µs 17.422 µs]
+                        change: [-7.3133% -7.0478% -6.7505%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low severe
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+Benchmarking search/no_filter/layered/20x10
+Benchmarking search/no_filter/layered/20x10: Warming up for 3.0000 s
+Benchmarking search/no_filter/layered/20x10: Collecting 100 samples in estimated 5.0066 s (1.1M iterations)
+Benchmarking search/no_filter/layered/20x10: Analyzing
+search/no_filter/layered/20x10
+                        time:   [4.7444 µs 4.7532 µs 4.7634 µs]
+                        change: [-3.0110% -2.6819% -2.3462%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking search/no_filter/layered/50x20
+Benchmarking search/no_filter/layered/50x20: Warming up for 3.0000 s
+Benchmarking search/no_filter/layered/50x20: Collecting 100 samples in estimated 5.1220 s (136k iterations)
+Benchmarking search/no_filter/layered/50x20: Analyzing
+search/no_filter/layered/50x20
+                        time:   [37.354 µs 37.462 µs 37.577 µs]
+                        change: [-1.4369% -1.0755% -0.7269%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking search/no_filter/layered/100x30
+Benchmarking search/no_filter/layered/100x30: Warming up for 3.0000 s
+Benchmarking search/no_filter/layered/100x30: Collecting 100 samples in estimated 5.7384 s (30k iterations)
+Benchmarking search/no_filter/layered/100x30: Analyzing
+search/no_filter/layered/100x30
+                        time:   [196.09 µs 199.84 µs 203.23 µs]
+                        change: [+0.8759% +2.4943% +4.1509%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking search/filter_cost/no_filter
+Benchmarking search/filter_cost/no_filter: Warming up for 3.0000 s
+Benchmarking search/filter_cost/no_filter: Collecting 100 samples in estimated 5.0221 s (944k iterations)
+Benchmarking search/filter_cost/no_filter: Analyzing
+search/filter_cost/no_filter
+                        time:   [5.2693 µs 5.2820 µs 5.2956 µs]
+                        change: [-0.4786% -0.0807% +0.2980%] (p = 0.69 > 0.05)
+                        No change in performance detected.
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low severe
+  2 (2.00%) low mild
+  6 (6.00%) high mild
+Benchmarking search/filter_cost/pass_all_closure
+Benchmarking search/filter_cost/pass_all_closure: Warming up for 3.0000 s
+Benchmarking search/filter_cost/pass_all_closure: Collecting 100 samples in estimated 5.0135 s (960k iterations)
+Benchmarking search/filter_cost/pass_all_closure: Analyzing
+search/filter_cost/pass_all_closure
+                        time:   [5.1994 µs 5.2119 µs 5.2262 µs]
+                        change: [-3.1418% -2.7828% -2.3858%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) low mild
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking search/filter_cost/simple_one_attr
+Benchmarking search/filter_cost/simple_one_attr: Warming up for 3.0000 s
+Benchmarking search/filter_cost/simple_one_attr: Collecting 100 samples in estimated 5.0000 s (479M iterations)
+Benchmarking search/filter_cost/simple_one_attr: Analyzing
+search/filter_cost/simple_one_attr
+                        time:   [10.399 ns 10.441 ns 10.485 ns]
+                        change: [-29.376% -29.115% -28.826%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+Benchmarking search/filter_cost/compound_and
+Benchmarking search/filter_cost/compound_and: Warming up for 3.0000 s
+Benchmarking search/filter_cost/compound_and: Collecting 100 samples in estimated 5.0000 s (483M iterations)
+Benchmarking search/filter_cost/compound_and: Analyzing
+search/filter_cost/compound_and
+                        time:   [10.338 ns 10.376 ns 10.410 ns]
+                        change: [-29.796% -29.478% -29.191%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) low mild
+Benchmarking search/filter_cost/strict_rare_attr
+Benchmarking search/filter_cost/strict_rare_attr: Warming up for 3.0000 s
+Benchmarking search/filter_cost/strict_rare_attr: Collecting 100 samples in estimated 5.0000 s (486M iterations)
+Benchmarking search/filter_cost/strict_rare_attr: Analyzing
+search/filter_cost/strict_rare_attr
+                        time:   [10.229 ns 10.258 ns 10.286 ns]
+                        change: [-31.536% -31.287% -31.061%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 12 outliers among 100 measurements (12.00%)
+  3 (3.00%) low severe
+  1 (1.00%) low mild
+  6 (6.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking search/attr_count_scaling/attrs_per_node/1
+Benchmarking search/attr_count_scaling/attrs_per_node/1: Warming up for 3.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/1: Collecting 100 samples in estimated 5.0000 s (485M iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/1: Analyzing
+search/attr_count_scaling/attrs_per_node/1
+                        time:   [10.283 ns 10.311 ns 10.339 ns]
+                        change: [-30.283% -30.077% -29.852%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking search/attr_count_scaling/attrs_per_node/5
+Benchmarking search/attr_count_scaling/attrs_per_node/5: Warming up for 3.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/5: Collecting 100 samples in estimated 5.0000 s (487M iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/5: Analyzing
+search/attr_count_scaling/attrs_per_node/5
+                        time:   [10.293 ns 10.320 ns 10.348 ns]
+                        change: [-33.527% -33.293% -33.057%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking search/attr_count_scaling/attrs_per_node/10
+Benchmarking search/attr_count_scaling/attrs_per_node/10: Warming up for 3.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/10: Collecting 100 samples in estimated 5.0000 s (483M iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/10: Analyzing
+search/attr_count_scaling/attrs_per_node/10
+                        time:   [10.275 ns 10.309 ns 10.344 ns]
+                        change: [-29.814% -29.614% -29.410%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking search/attr_count_scaling/attrs_per_node/20
+Benchmarking search/attr_count_scaling/attrs_per_node/20: Warming up for 3.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/20: Collecting 100 samples in estimated 5.0000 s (486M iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/20: Analyzing
+search/attr_count_scaling/attrs_per_node/20
+                        time:   [10.255 ns 10.287 ns 10.320 ns]
+                        change: [-29.938% -29.712% -29.478%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking search/attr_count_scaling/attrs_per_node/50
+Benchmarking search/attr_count_scaling/attrs_per_node/50: Warming up for 3.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/50: Collecting 100 samples in estimated 5.0014 s (2.0M iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/50: Analyzing
+search/attr_count_scaling/attrs_per_node/50
+                        time:   [2.4757 µs 2.4855 µs 2.4966 µs]
+                        change: [-23.241% -22.894% -22.524%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+
+Benchmarking search/path_reconstruction/full_path/10
+Benchmarking search/path_reconstruction/full_path/10: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/full_path/10: Collecting 100 samples in estimated 5.0001 s (33M iterations)
+Benchmarking search/path_reconstruction/full_path/10: Analyzing
+search/path_reconstruction/full_path/10
+                        time:   [152.25 ns 153.24 ns 154.29 ns]
+                        change: [-3.6477% -3.0591% -2.4637%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Benchmarking search/path_reconstruction/cost_only/10
+Benchmarking search/path_reconstruction/cost_only/10: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/cost_only/10: Collecting 100 samples in estimated 5.0003 s (72M iterations)
+Benchmarking search/path_reconstruction/cost_only/10: Analyzing
+search/path_reconstruction/cost_only/10
+                        time:   [69.189 ns 69.903 ns 70.665 ns]
+                        change: [-17.578% -16.652% -15.661%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking search/path_reconstruction/full_path/100
+Benchmarking search/path_reconstruction/full_path/100: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/full_path/100: Collecting 100 samples in estimated 5.0018 s (6.2M iterations)
+Benchmarking search/path_reconstruction/full_path/100: Analyzing
+search/path_reconstruction/full_path/100
+                        time:   [797.31 ns 799.71 ns 802.46 ns]
+                        change: [+16.253% +16.733% +17.193%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+Benchmarking search/path_reconstruction/cost_only/100
+Benchmarking search/path_reconstruction/cost_only/100: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/cost_only/100: Collecting 100 samples in estimated 5.0006 s (9.3M iterations)
+Benchmarking search/path_reconstruction/cost_only/100: Analyzing
+search/path_reconstruction/cost_only/100
+                        time:   [533.73 ns 534.68 ns 535.72 ns]
+                        change: [+21.105% +23.526% +26.218%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) low mild
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking search/path_reconstruction/full_path/1000
+Benchmarking search/path_reconstruction/full_path/1000: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/full_path/1000: Collecting 100 samples in estimated 5.0089 s (783k iterations)
+Benchmarking search/path_reconstruction/full_path/1000: Analyzing
+search/path_reconstruction/full_path/1000
+                        time:   [6.3420 µs 6.3646 µs 6.3880 µs]
+                        change: [+30.273% +31.338% +32.393%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking search/path_reconstruction/cost_only/1000
+Benchmarking search/path_reconstruction/cost_only/1000: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/cost_only/1000: Collecting 100 samples in estimated 5.0032 s (1000k iterations)
+Benchmarking search/path_reconstruction/cost_only/1000: Analyzing
+search/path_reconstruction/cost_only/1000
+                        time:   [4.9708 µs 4.9836 µs 4.9968 µs]
+                        change: [+30.101% +32.735% +35.617%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high mild
+Benchmarking search/path_reconstruction/full_path/10000
+Benchmarking search/path_reconstruction/full_path/10000: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/full_path/10000: Collecting 100 samples in estimated 5.0963 s (76k iterations)
+Benchmarking search/path_reconstruction/full_path/10000: Analyzing
+search/path_reconstruction/full_path/10000
+                        time:   [67.522 µs 67.740 µs 67.956 µs]
+                        change: [+30.480% +31.307% +32.121%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking search/path_reconstruction/cost_only/10000
+Benchmarking search/path_reconstruction/cost_only/10000: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/cost_only/10000: Collecting 100 samples in estimated 5.2429 s (101k iterations)
+Benchmarking search/path_reconstruction/cost_only/10000: Analyzing
+search/path_reconstruction/cost_only/10000
+                        time:   [51.611 µs 51.780 µs 51.965 µs]
+                        change: [+34.416% +38.152% +42.300%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 6 outliers among 100 measurements (6.00%)
+  3 (3.00%) low mild
+  3 (3.00%) high mild
+Benchmarking search/path_reconstruction/full_path/100000
+Benchmarking search/path_reconstruction/full_path/100000: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/full_path/100000: Collecting 100 samples in estimated 6.6077 s (10k iterations)
+Benchmarking search/path_reconstruction/full_path/100000: Analyzing
+search/path_reconstruction/full_path/100000
+                        time:   [645.74 µs 647.60 µs 649.61 µs]
+                        change: [+30.287% +30.910% +31.499%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking search/path_reconstruction/cost_only/100000
+Benchmarking search/path_reconstruction/cost_only/100000: Warming up for 3.0000 s
+Benchmarking search/path_reconstruction/cost_only/100000: Collecting 100 samples in estimated 5.3279 s (10k iterations)
+Benchmarking search/path_reconstruction/cost_only/100000: Analyzing
+search/path_reconstruction/cost_only/100000
+                        time:   [519.36 µs 520.41 µs 521.54 µs]
+                        change: [+35.527% +38.862% +42.549%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high severe
+
+Benchmarking search/fanout_scaling/fan_out/1
+Benchmarking search/fanout_scaling/fan_out/1: Warming up for 3.0000 s
+Benchmarking search/fanout_scaling/fan_out/1: Collecting 100 samples in estimated 5.0086 s (2.4M iterations)
+Benchmarking search/fanout_scaling/fan_out/1: Analyzing
+search/fanout_scaling/fan_out/1
+                        time:   [2.0558 µs 2.0859 µs 2.1282 µs]
+                        change: [-4.0880% -3.4646% -2.6191%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+  3 (3.00%) high severe
+Benchmarking search/fanout_scaling/fan_out/2
+Benchmarking search/fanout_scaling/fan_out/2: Warming up for 3.0000 s
+Benchmarking search/fanout_scaling/fan_out/2: Collecting 100 samples in estimated 5.0002 s (1.6M iterations)
+Benchmarking search/fanout_scaling/fan_out/2: Analyzing
+search/fanout_scaling/fan_out/2
+                        time:   [3.1127 µs 3.1226 µs 3.1347 µs]
+                        change: [-2.5322% -1.9777% -1.4381%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 10 outliers among 100 measurements (10.00%)
+  1 (1.00%) low mild
+  6 (6.00%) high mild
+  3 (3.00%) high severe
+Benchmarking search/fanout_scaling/fan_out/4
+Benchmarking search/fanout_scaling/fan_out/4: Warming up for 3.0000 s
+Benchmarking search/fanout_scaling/fan_out/4: Collecting 100 samples in estimated 5.0144 s (1.0M iterations)
+Benchmarking search/fanout_scaling/fan_out/4: Analyzing
+search/fanout_scaling/fan_out/4
+                        time:   [4.7667 µs 4.7745 µs 4.7824 µs]
+                        change: [-2.5585% -2.2027% -1.8590%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+  3 (3.00%) high severe
+Benchmarking search/fanout_scaling/fan_out/8
+Benchmarking search/fanout_scaling/fan_out/8: Warming up for 3.0000 s
+Benchmarking search/fanout_scaling/fan_out/8: Collecting 100 samples in estimated 5.0098 s (1.7M iterations)
+Benchmarking search/fanout_scaling/fan_out/8: Analyzing
+search/fanout_scaling/fan_out/8
+                        time:   [2.9041 µs 2.9110 µs 2.9185 µs]
+                        change: [-5.1520% -4.8404% -4.5096%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low severe
+  1 (1.00%) low mild
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+Benchmarking search/fanout_scaling/fan_out/16
+Benchmarking search/fanout_scaling/fan_out/16: Warming up for 3.0000 s
+Benchmarking search/fanout_scaling/fan_out/16: Collecting 100 samples in estimated 5.0027 s (858k iterations)
+Benchmarking search/fanout_scaling/fan_out/16: Analyzing
+search/fanout_scaling/fan_out/16
+                        time:   [5.7830 µs 5.8031 µs 5.8229 µs]
+                        change: [-3.0260% -2.6595% -2.3030%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking search/fanout_scaling/fan_out/32
+Benchmarking search/fanout_scaling/fan_out/32: Warming up for 3.0000 s
+Benchmarking search/fanout_scaling/fan_out/32: Collecting 100 samples in estimated 5.0241 s (404k iterations)
+Benchmarking search/fanout_scaling/fan_out/32: Analyzing
+search/fanout_scaling/fan_out/32
+                        time:   [12.335 µs 12.361 µs 12.391 µs]
+                        change: [-3.0259% -2.7070% -2.3787%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+
+Benchmarking construction/parallel_sort/sparse_dag_fan4/10000
+Benchmarking construction/parallel_sort/sparse_dag_fan4/10000: Warming up for 3.0000 s
+Benchmarking construction/parallel_sort/sparse_dag_fan4/10000: Collecting 100 samples in estimated 9.6356 s (10k iterations)
+Benchmarking construction/parallel_sort/sparse_dag_fan4/10000: Analyzing
+construction/parallel_sort/sparse_dag_fan4/10000
+                        time:   [949.84 µs 952.53 µs 955.69 µs]
+                        change: [-0.4302% +0.1791% +0.7334%] (p = 0.55 > 0.05)
+                        No change in performance detected.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low severe
+  1 (1.00%) low mild
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+Benchmarking construction/parallel_sort/sparse_dag_fan4/100000
+Benchmarking construction/parallel_sort/sparse_dag_fan4/100000: Warming up for 3.0000 s
+Benchmarking construction/parallel_sort/sparse_dag_fan4/100000: Collecting 100 samples in estimated 5.7436 s (700 iterations)
+Benchmarking construction/parallel_sort/sparse_dag_fan4/100000: Analyzing
+construction/parallel_sort/sparse_dag_fan4/100000
+                        time:   [8.0942 ms 8.1409 ms 8.1893 ms]
+                        change: [+2.3838% +3.0558% +3.7358%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking construction/parallel_sort/sparse_dag_fan4/500000
+Benchmarking construction/parallel_sort/sparse_dag_fan4/500000: Warming up for 3.0000 s
+Benchmarking construction/parallel_sort/sparse_dag_fan4/500000: Collecting 100 samples in estimated 8.6425 s (200 iterations)
+Benchmarking construction/parallel_sort/sparse_dag_fan4/500000: Analyzing
+construction/parallel_sort/sparse_dag_fan4/500000
+                        time:   [43.197 ms 43.344 ms 43.510 ms]
+                        change: [+2.7955% +3.3896% +4.0034%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 12 outliers among 100 measurements (12.00%)
+  5 (5.00%) low mild
+  5 (5.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking concurrent_queries/sequential_64
+Benchmarking concurrent_queries/sequential_64: Warming up for 3.0000 s
+Benchmarking concurrent_queries/sequential_64: Collecting 100 samples in estimated 5.2186 s (25k iterations)
+Benchmarking concurrent_queries/sequential_64: Analyzing
+concurrent_queries/sequential_64
+                        time:   [200.83 µs 201.99 µs 203.44 µs]
+                        change: [-8.4420% -7.1731% -5.8386%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 6 outliers among 100 measurements (6.00%)
+  3 (3.00%) high mild
+  3 (3.00%) high severe
+Benchmarking concurrent_queries/parallel_64_rayon
+Benchmarking concurrent_queries/parallel_64_rayon: Warming up for 3.0000 s
+Benchmarking concurrent_queries/parallel_64_rayon: Collecting 100 samples in estimated 5.2771 s (35k iterations)
+Benchmarking concurrent_queries/parallel_64_rayon: Analyzing
+concurrent_queries/parallel_64_rayon
+                        time:   [148.55 µs 149.03 µs 149.51 µs]
+                        change: [-2.3023% -1.7822% -1.2320%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+Benchmarking concurrent_queries/parallel_rayon/8
+Benchmarking concurrent_queries/parallel_rayon/8: Warming up for 3.0000 s
+Benchmarking concurrent_queries/parallel_rayon/8: Collecting 100 samples in estimated 5.0077 s (111k iterations)
+Benchmarking concurrent_queries/parallel_rayon/8: Analyzing
+concurrent_queries/parallel_rayon/8
+                        time:   [44.878 µs 45.087 µs 45.298 µs]
+                        change: [-3.1205% -2.2096% -1.3372%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low severe
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking concurrent_queries/parallel_rayon/32
+Benchmarking concurrent_queries/parallel_rayon/32: Warming up for 3.0000 s
+Benchmarking concurrent_queries/parallel_rayon/32: Collecting 100 samples in estimated 5.2379 s (56k iterations)
+Benchmarking concurrent_queries/parallel_rayon/32: Analyzing
+concurrent_queries/parallel_rayon/32
+                        time:   [93.974 µs 94.258 µs 94.562 µs]
+                        change: [-2.6195% -2.1191% -1.5614%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 7 outliers among 100 measurements (7.00%)
+  2 (2.00%) low mild
+  5 (5.00%) high mild
+Benchmarking concurrent_queries/parallel_rayon/128
+Benchmarking concurrent_queries/parallel_rayon/128: Warming up for 3.0000 s
+Benchmarking concurrent_queries/parallel_rayon/128: Collecting 100 samples in estimated 5.2891 s (20k iterations)
+Benchmarking concurrent_queries/parallel_rayon/128: Analyzing
+concurrent_queries/parallel_rayon/128
+                        time:   [261.35 µs 262.49 µs 263.95 µs]
+                        change: [-0.2298% +0.3034% +0.9155%] (p = 0.31 > 0.05)
+                        No change in performance detected.
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+  4 (4.00%) high severe
+Benchmarking concurrent_queries/parallel_rayon/512
+Benchmarking concurrent_queries/parallel_rayon/512: Warming up for 3.0000 s
+Benchmarking concurrent_queries/parallel_rayon/512: Collecting 100 samples in estimated 9.1956 s (10k iterations)
+Benchmarking concurrent_queries/parallel_rayon/512: Analyzing
+concurrent_queries/parallel_rayon/512
+                        time:   [911.46 µs 913.67 µs 915.85 µs]
+                        change: [-1.2139% -0.9852% -0.7564%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+

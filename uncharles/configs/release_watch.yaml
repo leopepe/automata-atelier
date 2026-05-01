@@ -1,0 +1,123 @@
+# Long-lived watcher: detect a new commit on `origin/main`, trigger the
+# `deploy` GitHub Actions workflow for that SHA, wait for it to succeed,
+# run black-box integration tests against the deployed HTTP API, and
+# archive evidence. Run from the target repo with:
+#
+#   uncharles --config release_watch.yaml --execute --interval-ms 15000
+#
+# uncharles exits after each completed cycle (one commit, end-to-end) or
+# at iteration 1 if there's no new commit. To watch indefinitely, wrap in
+# `while true; do uncharles ...; sleep 30; done` — the steady state is
+# cheap (one git fetch + a few filesystem checks per outer tick).
+#
+# Sidecar state on disk (created lazily by the actions):
+#   .uncharles/state/last_seen_sha   — last commit fully processed
+#   .uncharles/state/in_flight_sha   — SHA of the deploy currently in flight
+#   .uncharles/evidence/<sha>/       — archived per-run evidence
+#
+# Prereqs in the target repo:
+#   - `gh` authenticated, with a workflow named `deploy.yml`
+#   - `.uncharles/scripts/run-integration.sh` exists and exits 0 on full pass
+#   - `.uncharles/scripts/collect-evidence.sh` exists, archives evidence,
+#     advances last_seen_sha, and removes in_flight_sha
+
+sensors:
+  # `idle` — no work to do (origin/main matches last_seen_sha and no deploy
+  # is in flight). When true, the goal is already satisfied and uncharles
+  # exits at iteration 1. The wrapper re-invokes after a delay.
+  - name: idle
+    cmd:
+      - sh
+      - -c
+      - |
+        git fetch origin --quiet 2>/dev/null || exit 1
+        remote=$(git rev-parse origin/main 2>/dev/null) || exit 1
+        last=$(cat .uncharles/state/last_seen_sha 2>/dev/null || echo "")
+        [ -f .uncharles/state/in_flight_sha ] && exit 1
+        [ "$remote" = "$last" ]
+
+  # `new_commit_available` — origin/main differs from last_seen_sha and we
+  # haven't already triggered a deploy for it. Mutually exclusive with
+  # `deploy_in_flight` so the planner doesn't try to re-trigger.
+  - name: new_commit_available
+    cmd:
+      - sh
+      - -c
+      - |
+        remote=$(git rev-parse origin/main 2>/dev/null) || exit 1
+        last=$(cat .uncharles/state/last_seen_sha 2>/dev/null || echo "")
+        [ "$remote" != "$last" ] && [ ! -f .uncharles/state/in_flight_sha ]
+
+  # `deploy_in_flight` — we have an SHA recorded as the current target.
+  # Set so the planner picks the await/test/collect path instead of trigger.
+  - name: deploy_in_flight
+    cmd: ["test", "-f", ".uncharles/state/in_flight_sha"]
+
+  # `deploy_succeeded` — gh reports a successful run for the in-flight SHA.
+  # `gh run list` returns an empty array when no successful run exists, so
+  # the `[ -n "$id" ]` check turns presence into the exit code.
+  - name: deploy_succeeded
+    cmd:
+      - sh
+      - -c
+      - |
+        sha=$(cat .uncharles/state/in_flight_sha 2>/dev/null) || exit 1
+        id=$(gh run list --workflow=deploy.yml --commit="$sha" \
+             --status=success --limit=1 --json databaseId \
+             -q '.[0].databaseId' 2>/dev/null)
+        [ -n "$id" ]
+
+actions:
+  # Record the target SHA and dispatch the workflow. Subsequent iterations
+  # see deploy_in_flight=true and the planner picks await_deploy next.
+  - name: trigger_deploy
+    cost: 5.0
+    requires: [new_commit_available]
+    adds: [deploy_in_flight]
+    cmd:
+      - sh
+      - -c
+      - |
+        set -e
+        mkdir -p .uncharles/state
+        sha=$(git rev-parse origin/main)
+        echo "$sha" > .uncharles/state/in_flight_sha
+        gh workflow run deploy.yml --ref "$sha"
+
+  # Pacing step. The sensor decides whether `deploy_succeeded` is real;
+  # the optimistic effect here is corrected by the next iteration's sensor
+  # if gh hasn't flipped to success yet, and the planner re-plans this
+  # same action. Cadence is governed by `--interval-ms`.
+  - name: await_deploy
+    cost: 1.0
+    requires: [deploy_in_flight]
+    adds: [deploy_succeeded]
+    cmd: ["true"]
+
+  # Black-box tests against the live API. User-supplied script, expected to
+  # exit 0 on full pass. uncharles captures stderr on failure.
+  - name: run_integration_tests
+    cost: 4.0
+    requires: [deploy_succeeded]
+    adds: [tests_pass]
+    cmd: [".uncharles/scripts/run-integration.sh"]
+
+  # Archive logs and test results, advance last_seen_sha, clear
+  # in_flight_sha. The optimistic `+idle` lets the planner see a path to
+  # the goal; the sensor at the top of the next iteration confirms by
+  # observing the now-quiet on-disk state. `tests_pass` is removed
+  # explicitly because no sensor de-asserts it — without that, a fact
+  # left over from this cycle would let the next cycle's planner skip
+  # the integration tests.
+  - name: collect_evidence
+    cost: 1.0
+    requires: [tests_pass]
+    adds: [evidence_collected, idle]
+    removes: [tests_pass]
+    cmd: [".uncharles/scripts/collect-evidence.sh"]
+
+# Goal is `idle`: either we found nothing to do (cold start, exit at
+# iteration 1) or we completed a full cycle (collect_evidence flipped idle
+# via its effects).
+goal:
+  requires: [idle]

@@ -1,0 +1,59 @@
+# Pre-merge validation: figure out what's left before this repo can ship.
+# Sensors observe the working tree; actions describe the steps; goal is
+# `shippable`. Run from the goap-planner crate directory for a real demo.
+
+sensors:
+  - name: code_present
+    cmd: ["test", "-f", "Cargo.toml"]
+
+  - name: formatted
+    cmd: ["cargo", "fmt", "--check", "--quiet"]
+
+  # Tests existing != tests passing — kept conservative so this works in any
+  # repo state. Replace with `cargo test --quiet` for real use.
+  - name: tested
+    cmd: ["true"]
+    on_success:
+      add: []         # we don't claim tests pass without running them
+    on_failure:
+      remove: [tested]
+
+actions:
+  - name: format
+    cost: 1.0
+    requires: [code_present]
+    adds: [formatted]
+    cmd: ["cargo", "fmt"]
+
+  - name: lint
+    cost: 2.0
+    requires: [formatted]
+    adds: [linted]
+    cmd: ["cargo", "clippy", "--quiet"]
+
+  - name: type_check
+    cost: 3.0
+    requires: [linted]
+    adds: [type_checked]
+    cmd: ["cargo", "check", "--quiet"]
+
+  - name: run_tests
+    cost: 5.0
+    requires: [type_checked]
+    adds: [tested]
+    cmd: ["cargo", "test", "--quiet"]
+
+  - name: build
+    cost: 4.0
+    requires: [tested]
+    adds: [built]
+    cmd: ["cargo", "build", "--release"]
+
+  - name: ship
+    cost: 1.0
+    requires: [built]
+    adds: [shippable]
+    cmd: ["cargo", "publish", "--dry-run"]
+
+goal:
+  requires: [shippable]

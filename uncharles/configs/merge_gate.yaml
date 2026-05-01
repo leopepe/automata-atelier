@@ -1,0 +1,190 @@
+# Pre-merge gate: drive an open PR to `merged` by satisfying four
+# prerequisite checks in parallel, then merging when all are true.
+#
+# Run from the target repo with the PR number in env:
+#
+#   PR_NUMBER=42 uncharles --config merge_gate.yaml --execute --interval-ms 10000
+#
+# uncharles exits at iteration 1 if the PR is already merged. Otherwise the
+# planner picks the prep order based on cost (Dijkstra emits cheap-first):
+# resolve_threads → rebase_branch → rerun_ci → request_review → merge_pr.
+# Costs reflect real-world expense — minutes for a CI rerun, seconds for a
+# rebase, instant for a single API call. The one structural ordering rule
+# is `request_review.requires: [ci_green]`: we don't ping reviewers on a
+# red PR. Drop that requirement if your team's workflow disagrees.
+#
+# Prep actions are idempotent: each cmd checks live gh state and no-ops
+# if the work is already done or in flight. That's why the loop can
+# re-plan `rerun_ci` every iteration while waiting for CI without
+# spamming /retest comments — the planner doesn't know about idempotency
+# (cost-10 still gets re-planned), so the action itself enforces it.
+#
+# Failure routing: `rebase_branch` can fail on a real conflict. Its
+# `on_failure` clause sets `auto_rebase_failed`, which makes the cheaper
+# `await_manual_rebase` action eligible — the planner then naturally
+# routes through it on subsequent iterations, posts a help comment on
+# the PR, and waits for the sensor `branch_up_to_date` to flip true once
+# a human resolves the conflict.
+#
+# Prereqs in the target repo:
+#   - `gh` authenticated against the repo
+#   - `PR_NUMBER` set in env
+#   - optional: `REVIEWERS=team/foo,user/bar` to override the default
+#   - `.uncharles/scripts/resolve-threads.sh` exists (your team's policy)
+#   - `.uncharles/scripts/sense-no-unresolved-threads.sh` exists
+
+sensors:
+  # `pr_merged` — goal state. When set, planner returns an empty plan and
+  # uncharles exits at iteration 1.
+  - name: pr_merged
+    cmd:
+      - sh
+      - -c
+      - |
+        s=$(gh pr view "$PR_NUMBER" --json state -q '.state' 2>/dev/null) || exit 1
+        [ "$s" = "MERGED" ]
+
+  # `pr_open` — precondition for every prep. If the PR is closed without
+  # merge, no prep applies and the planner returns NoPlan → exit 1.
+  - name: pr_open
+    cmd:
+      - sh
+      - -c
+      - |
+        s=$(gh pr view "$PR_NUMBER" --json state -q '.state' 2>/dev/null) || exit 1
+        [ "$s" = "OPEN" ]
+
+  # `ci_green` — `gh pr checks` exits non-zero when any check is pending
+  # or failed, so the success path is the boolean we want.
+  - name: ci_green
+    cmd:
+      - sh
+      - -c
+      - 'gh pr checks "$PR_NUMBER" >/dev/null 2>&1'
+
+  # `reviewer_approved` — at least one APPROVED review and no changes
+  # requested. `reviewDecision` is null when no review is required at all;
+  # we treat that as not-yet-approved so the gate stays explicit.
+  - name: reviewer_approved
+    cmd:
+      - sh
+      - -c
+      - |
+        d=$(gh pr view "$PR_NUMBER" --json reviewDecision -q '.reviewDecision' 2>/dev/null) || exit 1
+        [ "$d" = "APPROVED" ]
+
+  # `branch_up_to_date` — the PR branch is not behind base and has no
+  # conflicts. Anything that blocks merge for non-branch-state reasons
+  # (waiting on review, etc.) is captured by the other sensors.
+  - name: branch_up_to_date
+    cmd:
+      - sh
+      - -c
+      - |
+        s=$(gh pr view "$PR_NUMBER" --json mergeStateStatus -q '.mergeStateStatus' 2>/dev/null) || exit 1
+        case "$s" in BEHIND|DIRTY|UNKNOWN) exit 1 ;; esac
+        exit 0
+
+  # `no_unresolved_threads` — user-supplied probe. The exact "what counts
+  # as unresolved" varies by team, so this lives in a sidecar script.
+  - name: no_unresolved_threads
+    cmd: [".uncharles/scripts/sense-no-unresolved-threads.sh"]
+
+actions:
+  # Cheapest prep. No precondition besides `pr_open`; runs in parallel
+  # with everything else. Idempotency is the script's responsibility.
+  - name: resolve_threads
+    cost: 1.0
+    requires: [pr_open]
+    adds: [no_unresolved_threads]
+    cmd: [".uncharles/scripts/resolve-threads.sh"]
+
+  # Cheap prep. **Gated on `ci_green`** — the one structural ordering
+  # rule in this gate. Drop the `ci_green` precondition if your team is
+  # fine pinging reviewers on a red PR. Idempotent: skips if any review
+  # request or APPROVED review already exists.
+  - name: request_review
+    cost: 1.0
+    requires: [pr_open, ci_green]
+    adds: [reviewer_approved]
+    cmd:
+      - sh
+      - -c
+      - |
+        existing=$(gh pr view "$PR_NUMBER" --json reviewRequests,reviews \
+          -q '(.reviewRequests | length) + ([.reviews[] | select(.state == "APPROVED")] | length)' \
+          2>/dev/null || echo 0)
+        [ "$existing" -gt 0 ] && exit 0
+        gh pr edit "$PR_NUMBER" --add-reviewer "${REVIEWERS:-team/eng}"
+
+  # Mid-cost prep. `gh pr update-branch` rebases server-side when there
+  # are no conflicts; on conflict the action fails. The `on_failure`
+  # clause flags `auto_rebase_failed`, which the planner uses to route
+  # through `await_manual_rebase` instead of retrying this action.
+  - name: rebase_branch
+    cost: 3.0
+    requires: [pr_open]
+    adds: [branch_up_to_date]
+    cmd:
+      - sh
+      - -c
+      - 'gh pr update-branch "$PR_NUMBER"'
+    on_failure:
+      add: [auto_rebase_failed]
+
+  # Recovery alternative: only eligible after `rebase_branch` has failed
+  # (`auto_rebase_failed` set by its on_failure clause). Cheaper than
+  # `rebase_branch` so once the failure marker is present, the planner
+  # prefers this path. The cmd posts a help comment on the PR (idempotent:
+  # checks for an existing one before posting), then exits 0; the
+  # optimistic `+branch_up_to_date` is corrected by the sensor next
+  # iteration if the human hasn't resolved yet, and the loop re-plans
+  # this same action — same await pattern as `await_deploy` in
+  # `release_watch.yaml`.
+  - name: await_manual_rebase
+    cost: 1.0
+    requires: [pr_open, auto_rebase_failed]
+    adds: [branch_up_to_date]
+    cmd:
+      - sh
+      - -c
+      - |
+        marker='[uncharles] manual rebase needed'
+        existing=$(gh pr view "$PR_NUMBER" --json comments \
+          -q "[.comments[] | select(.body | contains(\"$marker\"))] | length" \
+          2>/dev/null || echo 0)
+        [ "$existing" -gt 0 ] && exit 0
+        gh pr comment "$PR_NUMBER" --body "$marker: \`gh pr update-branch\` failed; please rebase locally and force-push." >/dev/null
+
+  # Most expensive prep. Idempotent: skips if any check is already
+  # pending. The loop re-plans `rerun_ci` every iteration while CI is in
+  # flight (cost 10 doesn't change that — cost is a planner abstraction,
+  # not a duration); the cmd's skip logic keeps it from spamming the PR.
+  - name: rerun_ci
+    cost: 10.0
+    requires: [pr_open]
+    adds: [ci_green]
+    cmd:
+      - sh
+      - -c
+      - |
+        if gh pr checks "$PR_NUMBER" 2>&1 | grep -qiE '(pending|queued|in_progress)'; then
+          exit 0
+        fi
+        gh pr comment "$PR_NUMBER" --body "/retest" >/dev/null
+
+  # The multi-requirement join. Five preconditions (`pr_open` plus the
+  # four prep facts) — the planner cannot schedule this until every one
+  # is satisfied. `--auto` lets gh hold the merge until branch protection
+  # is happy; the `pr_merged` sensor polls for completion.
+  - name: merge_pr
+    cost: 1.0
+    requires: [pr_open, ci_green, reviewer_approved, branch_up_to_date, no_unresolved_threads]
+    adds: [pr_merged]
+    cmd:
+      - sh
+      - -c
+      - 'gh pr merge "$PR_NUMBER" --squash --auto'
+
+goal:
+  requires: [pr_merged]

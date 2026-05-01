@@ -1,0 +1,31 @@
+# Side-effect-free config used to smoke-test the execute loop.
+# Every action's `cmd` is `true` so the loop drives forward without
+# touching the system. Sensors are also `true`, so each one adds its
+# named fact on every iteration — combined with action effects, this
+# walks the planner from {start} to {finished} in a few steps.
+
+sensors:
+  - name: heartbeat
+    cmd: ["true"]
+
+actions:
+  - name: do_a
+    cost: 1.0
+    requires: [heartbeat]
+    adds: [a_done]
+    cmd: ["true"]
+
+  - name: do_b
+    cost: 1.0
+    requires: [a_done]
+    adds: [b_done]
+    cmd: ["true"]
+
+  - name: do_c
+    cost: 1.0
+    requires: [b_done]
+    adds: [finished]
+    cmd: ["true"]
+
+goal:
+  requires: [finished]

@@ -1,0 +1,22 @@
+# Verifies that uncharles stops on action failure and surfaces stderr.
+# `do_a` deliberately exits non-zero.
+
+sensors:
+  - name: heartbeat
+    cmd: ["true"]
+
+actions:
+  - name: do_a
+    cost: 1.0
+    requires: [heartbeat]
+    adds: [a_done]
+    cmd: ["sh", "-c", "echo 'simulated failure on stderr' >&2; exit 7"]
+
+  - name: do_b
+    cost: 1.0
+    requires: [a_done]
+    adds: [finished]
+    cmd: ["true"]
+
+goal:
+  requires: [finished]

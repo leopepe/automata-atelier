@@ -1,0 +1,10 @@
+# Automata Atelier — a workshop for graph-search-driven automatons.
+# See README.md for the project's pitch and architecture.
+
+[workspace]
+resolver = "3"
+members = [
+    "grafo",
+    "goap-planner",
+    "uncharles",
+]

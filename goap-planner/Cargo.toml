@@ -1,0 +1,15 @@
+[package]
+name = "goap-planner"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Goal-Oriented Action Planning over a state-space graph. The first planner in the Automata Atelier workspace."
+keywords = ["goap", "planning", "ai", "agent", "automation"]
+categories = ["algorithms", "game-development"]
+
+[dependencies]
+grafo = { path = "../grafo" }
+rustc-hash = "2"
+
+[dev-dependencies]
+serde_json = "1"

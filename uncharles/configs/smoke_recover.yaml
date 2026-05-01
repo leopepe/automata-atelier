@@ -1,0 +1,36 @@
+# Demonstrates `on_failure`: the cheap path fails, the loop absorbs it
+# via on_failure effects, and the planner replans through the alternative.
+#
+# Run with --have to seed `fast_path_available`:
+#
+#   uncharles --config smoke_recover.yaml --execute --have fast_path_available
+#
+# Iteration 1: planner picks `try_fast` (cost 1). `cmd: false` → fail. The
+# `on_failure` clause removes `fast_path_available` (locking out further
+# attempts) and adds `slow_path_unlocked`.
+# Iteration 2: planner picks `try_slow` (cost 5; the only remaining path).
+# `cmd: true` → success.
+# Iteration 3: goal satisfied, exit 0.
+
+sensors:
+  - name: heartbeat
+    cmd: ["true"]
+
+actions:
+  - name: try_fast
+    cost: 1.0
+    requires: [heartbeat, fast_path_available]
+    adds: [finished]
+    cmd: ["sh", "-c", "echo 'fast path unavailable today' >&2; exit 1"]
+    on_failure:
+      add: [slow_path_unlocked]
+      remove: [fast_path_available]
+
+  - name: try_slow
+    cost: 5.0
+    requires: [slow_path_unlocked]
+    adds: [finished]
+    cmd: ["true"]
+
+goal:
+  requires: [finished]

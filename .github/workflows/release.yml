@@ -1,0 +1,74 @@
+# Publishes the workspace crates to crates.io.
+#
+# Manual trigger only — this workflow is intentionally not wired to tag pushes
+# yet. Before flipping it on for real publishes, you need to:
+#
+#   1. Add a `version = "x.y.z"` field to every path dependency in the
+#      workspace (currently `grafo = { path = "..." }` in goap-planner and
+#      `goap-planner = { path = "..." }` in uncharles). crates.io rejects
+#      path-only deps; they must also carry a version.
+#   2. Reserve the crate names on crates.io (grafo, goap-planner, uncharles)
+#      and confirm none collide with existing crates.
+#   3. Generate a crates.io API token scoped to publish + create new crates,
+#      and add it as the repo secret `CARGO_REGISTRY_TOKEN`.
+#   4. Run this workflow once with `dry-run=true` to verify packaging.
+#   5. Run again with `dry-run=false` to actually publish.
+#
+# Crates publish in dependency order: grafo → goap-planner → uncharles.
+# Each downstream dry-run will fail until the upstream crate exists on
+# crates.io for real, since cargo resolves the version from the registry once
+# `version` is set on the path dep. That's expected on the first release.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Run cargo publish --dry-run instead of publishing"
+        type: boolean
+        default: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    name: publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Verify token is set
+        if: ${{ inputs.dry-run == false }}
+        run: |
+          if [ -z "${{ secrets.CARGO_REGISTRY_TOKEN }}" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN secret is not set"
+            exit 1
+          fi
+
+      - name: Publish grafo
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          flags="-p grafo"
+          if [ "${{ inputs.dry-run }}" = "true" ]; then flags="$flags --dry-run"; fi
+          cargo publish $flags
+
+      - name: Publish goap-planner
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          flags="-p goap-planner"
+          if [ "${{ inputs.dry-run }}" = "true" ]; then flags="$flags --dry-run"; fi
+          cargo publish $flags
+
+      - name: Publish uncharles
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          flags="-p uncharles"
+          if [ "${{ inputs.dry-run }}" = "true" ]; then flags="$flags --dry-run"; fi
+          cargo publish $flags

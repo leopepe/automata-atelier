@@ -1,0 +1,55 @@
+# Service deployment, modelled the same way as examples/deploy.rs in the
+# goap-planner crate, but driven entirely from declarative config.
+#
+# Sensors here use cheap shell probes — replace with kubectl / docker / gh
+# CLI calls in real use. The planner doesn't care what the sensor does;
+# only its exit status matters.
+
+sensors:
+  - name: code_committed
+    cmd: ["git", "diff", "--quiet", "HEAD"]
+
+  - name: tests_pass
+    cmd: ["true"]   # placeholder — replace with `cargo test` or CI status probe
+    on_success:
+      add: []
+
+actions:
+  - name: run_tests
+    cost: 2.0
+    requires: [code_committed]
+    adds: [tests_pass]
+    cmd: ["cargo", "test"]
+
+  - name: build_image
+    cost: 5.0
+    requires: [tests_pass]
+    adds: [image_built]
+    cmd: ["docker", "build", "-t", "api:latest", "."]
+
+  - name: push_image
+    cost: 3.0
+    requires: [image_built]
+    adds: [image_pushed]
+    cmd: ["docker", "push", "api:latest"]
+
+  - name: apply_migrations
+    cost: 4.0
+    requires: [image_pushed]
+    adds: [migrations_applied]
+    cmd: ["./scripts/migrate.sh"]
+
+  - name: deploy_service
+    cost: 6.0
+    requires: [migrations_applied]
+    adds: [service_deployed]
+    cmd: ["kubectl", "rollout", "restart", "deployment/api"]
+
+  - name: run_smoke_tests
+    cost: 2.0
+    requires: [service_deployed]
+    adds: [smoke_tests_pass]
+    cmd: ["./scripts/smoke.sh"]
+
+goal:
+  requires: [smoke_tests_pass]

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Pre-commit: enforce rustfmt and clippy on the workspace.
+# Skip with `git commit --no-verify` only in genuine emergencies.
+
+set -euo pipefail
+
+# Only run if any Rust source or Cargo manifest is staged.
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(rs)$|(^|/)Cargo\.(toml|lock)$' >/dev/null; then
+    exit 0
+fi
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+echo "pre-commit: cargo fmt --all -- --check"
+if ! cargo fmt --all -- --check; then
+    echo
+    echo "✗ rustfmt found formatting issues. Run: cargo fmt --all" >&2
+    exit 1
+fi
+
+echo "pre-commit: cargo clippy --workspace --all-targets -- -D warnings"
+if ! cargo clippy --workspace --all-targets --quiet -- -D warnings; then
+    echo
+    echo "✗ clippy reported lints (treated as errors)." >&2
+    exit 1
+fi
