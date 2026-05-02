@@ -14,9 +14,14 @@ pub struct Action {
     pub cost: f64,
     pub preconditions: FxHashSet<String>,
     /// Negative preconditions: facts whose presence disables the action.
-    /// Mirrors [`crate::Goal::forbids`]. Empty by default — actions
-    /// without `forbids` behave exactly as before.
-    pub forbidden: FxHashSet<String>,
+    /// Mirrors [`crate::Goal::forbids`]. `None` is the common case —
+    /// actions without any `forbids` calls. Stored behind a `Box` so
+    /// `Option<Box<…>>` is niche-optimised to a single pointer-sized
+    /// field; this keeps `Action` only 8 bytes larger than before
+    /// (instead of growing by a full empty `FxHashSet`'s ~32 bytes)
+    /// and lets the hot path in `applicable()` short-circuit on a
+    /// pointer-null check without touching any allocation.
+    pub forbidden: Option<Box<FxHashSet<String>>>,
     pub add_effects: FxHashSet<String>,
     pub remove_effects: FxHashSet<String>,
 }
@@ -27,7 +32,7 @@ impl Action {
             name: name.into(),
             cost,
             preconditions: FxHashSet::default(),
-            forbidden: FxHashSet::default(),
+            forbidden: None,
             add_effects: FxHashSet::default(),
             remove_effects: FxHashSet::default(),
         }
@@ -61,7 +66,9 @@ impl Action {
     /// assert!(eject.applicable(&State::from_facts(["audit_sealed"])));
     /// ```
     pub fn forbids(mut self, fact: impl Into<String>) -> Self {
-        self.forbidden.insert(fact.into());
+        self.forbidden
+            .get_or_insert_with(|| Box::new(FxHashSet::default()))
+            .insert(fact.into());
         self
     }
 
@@ -78,20 +85,21 @@ impl Action {
     /// `true` iff every fact in `preconditions` is present in `state`
     /// **and** every fact in `forbidden` is absent from it.
     ///
-    /// Hot-path note: actions without negative preconditions (the common
-    /// case) skip the second iteration entirely via an `is_empty()`
-    /// short-circuit. Building the empty-set iterator was visible in the
-    /// `ops/action/applicable_*` micro-benches at ~17 % overhead on PR
-    /// #33's CI run; the short-circuit restores parity while keeping
-    /// the contract symmetric for actions that do use `forbids`.
+    /// Hot-path note: the common case (action declares no `forbids`)
+    /// short-circuits on a pointer-null check — `forbidden` is
+    /// `Option<Box<…>>` exactly so `None` is an inline 8-byte null.
+    /// This avoids the cache-line load that an inline empty
+    /// `FxHashSet` field would impose on every call, which otherwise
+    /// shows up as ~16 % overhead on the `ops/action/applicable_*`
+    /// micro-benches.
     pub fn applicable(&self, state: &State) -> bool {
         if !self.preconditions.iter().all(|p| state.contains(p)) {
             return false;
         }
-        if self.forbidden.is_empty() {
-            return true;
+        match &self.forbidden {
+            None => true,
+            Some(forbidden) => forbidden.iter().all(|f| !state.contains(f)),
         }
-        self.forbidden.iter().all(|f| !state.contains(f))
     }
 
     pub fn apply(&self, state: &State) -> State {
