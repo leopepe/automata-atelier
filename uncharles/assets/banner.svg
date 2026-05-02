@@ -38,43 +38,36 @@
   <line x1="160" y1="32" x2="160" y2="48" stroke="#1E3A5F" stroke-width="2"/>
   <circle cx="160" cy="28" r="4" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
 
-  <!-- Head: soft humanoid oval — Uncharles is described in Service Model as
-       having a recognisably humanlike face designed to put masters at ease,
-       not a tactical visor. -->
-  <ellipse cx="160" cy="80" rx="36" ry="32" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="2.5"/>
+  <!-- Head: rounded rectangle, in the classic friendly-robot-icon style —
+       boxy enough to read as mechanical, with the corners rounded just
+       enough to feel approachable. -->
+  <rect x="120" y="48" width="80" height="64" rx="10" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="2.5"/>
 
-  <!-- Subtle audio panels at the temples (small mechanical hint, so he
-       still reads as a robot rather than a person in costume) -->
-  <rect x="123" y="74" width="2.5" height="14" rx="1" fill="#1E3A5F"/>
-  <rect x="194.5" y="74" width="2.5" height="14" rx="1" fill="#1E3A5F"/>
+  <!-- Audio "ears" / antenna ports on the sides (the bolted bits on
+       classic icon robots) -->
+  <rect x="112" y="68" width="8" height="22" rx="2" fill="#1E3A5F"/>
+  <rect x="200" y="68" width="8" height="22" rx="2" fill="#1E3A5F"/>
+  <circle cx="116" cy="79" r="1.4" fill="#C77F45"/>
+  <circle cx="204" cy="79" r="1.4" fill="#C77F45"/>
 
-  <!-- Faint cheek seam (face-plate hairline) -->
-  <line x1="132" y1="92" x2="148" y2="98" stroke="#1E3A5F" stroke-width="0.6" stroke-opacity="0.35"/>
-  <line x1="172" y1="98" x2="188" y2="92" stroke="#1E3A5F" stroke-width="0.6" stroke-opacity="0.35"/>
+  <!-- Eyes: simple solid dots in the iconic-robot style — two big lit
+       eyes, no human sclera/iris/pupil. A small parchment highlight
+       per eye gives them a tiny bit of life. -->
+  <circle cx="146" cy="74" r="6.5" fill="#1E3A5F"/>
+  <circle cx="174" cy="74" r="6.5" fill="#1E3A5F"/>
+  <circle cx="146" cy="74" r="3.5" fill="#C77F45"/>
+  <circle cx="174" cy="74" r="3.5" fill="#C77F45"/>
+  <circle cx="147.5" cy="72.5" r="1" fill="#FAF6E9"/>
+  <circle cx="175.5" cy="72.5" r="1" fill="#FAF6E9"/>
 
-  <!-- Eyebrows: gentle arches, give him a warm expression -->
-  <path d="M 141 67 Q 148 64 154 68" fill="none" stroke="#1E3A5F" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.7"/>
-  <path d="M 166 68 Q 172 64 179 67" fill="none" stroke="#1E3A5F" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.7"/>
+  <!-- Mouth: a small friendly smile — just a curved line, no grille. -->
+  <path d="M 148 96 Q 160 104 172 96" fill="none" stroke="#1E3A5F" stroke-width="2" stroke-linecap="round"/>
 
-  <!-- Eyes: humanlike, with a copper iris and a small parchment highlight
-       so they read as alive rather than glowing-LED tactical -->
-  <circle cx="148" cy="78" r="5.4" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="1.4"/>
-  <circle cx="172" cy="78" r="5.4" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="1.4"/>
-  <!-- Iris -->
-  <circle cx="148" cy="78" r="3" fill="#C77F45"/>
-  <circle cx="172" cy="78" r="3" fill="#C77F45"/>
-  <!-- Pupil -->
-  <circle cx="148" cy="78" r="1.3" fill="#1E3A5F"/>
-  <circle cx="172" cy="78" r="1.3" fill="#1E3A5F"/>
-  <!-- Catchlight (parchment dot, gives the eye life) -->
-  <circle cx="149.4" cy="76.6" r="0.9" fill="#FAF6E9"/>
-  <circle cx="173.4" cy="76.6" r="0.9" fill="#FAF6E9"/>
-
-  <!-- Subtle nose ridge (just a hint of contour) -->
-  <path d="M 160 84 L 158 92 L 161 94" fill="none" stroke="#1E3A5F" stroke-width="0.9" stroke-opacity="0.55" stroke-linecap="round"/>
-
-  <!-- Gentle smile -->
-  <path d="M 150 102 Q 160 108 170 102" fill="none" stroke="#1E3A5F" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- Bolts at the corners of the face plate (icon-robot detail) -->
+  <circle cx="127" cy="55" r="1.4" fill="#1E3A5F"/>
+  <circle cx="193" cy="55" r="1.4" fill="#1E3A5F"/>
+  <circle cx="127" cy="105" r="1.4" fill="#1E3A5F"/>
+  <circle cx="193" cy="105" r="1.4" fill="#1E3A5F"/>
 
   <!-- Neck -->
   <line x1="160" y1="112" x2="160" y2="120" stroke="#1E3A5F" stroke-width="2"/>
