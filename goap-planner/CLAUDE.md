@@ -72,7 +72,7 @@ the `## Trade-offs we accept` section. The dated
 
 ## Lint, format, test
 
-Workspace-level rules apply (see `docs/CLAUDE.md`). All three must pass clean
+Workspace-level rules apply (see [`docs/coding-guidelines.md`](../docs/coding-guidelines.md)). All three must pass clean
 before any change is considered finished:
 
 ```sh
