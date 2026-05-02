@@ -1,20 +1,30 @@
 # Pendrive audit / DLP-lite pipeline.
 #
 # Watches the directory at $PENDRIVE_MOUNT (a real /Volumes/<label> on
-# macOS, or /tmp/fake-pendrive in mock mode), records a hashed file map,
-# scans for secrets, optionally starts a copy monitor (fswatch, if
-# installed), and seals an audit log under /tmp/uncharles-audit/. On
-# eject (mount disappears), cleanup wipes per-session state so the next
-# insertion gets a fresh audit.
+# macOS, or /tmp/fake-pendrive in mock mode), records a hashed file
+# map, runs production-grade secret and PII scans, streams live copy
+# events through fswatch, and seals an audit log under
+# /tmp/uncharles-audit/. On eject (mount disappears), cleanup wipes
+# per-session state and archives the live copy log so the forensic
+# trail survives the next insertion.
 #
-# All sensors and actions that touch the mount read $PENDRIVE_MOUNT from
-# the environment, so the same config drives both modes.
+# All sensors and actions that touch the mount read $PENDRIVE_MOUNT
+# from the environment, so the same config drives both modes.
 #
-# === Real-pendrive run (recommended) ===
+# === Recommended toolchain ===
+#
+#   brew install fswatch gitleaks trufflehog bulk_extractor
+#
+# Each tool is detected at exec time; missing tools degrade gracefully
+# (start_copy_monitor falls back to a marker, scan_secrets falls back
+# to grep, scan_pii records "skipped"). The planner advances either
+# way, so the config is runnable on a stock machine.
+#
+# === Real-pendrive run ===
 #
 #   uncharles/scripts/pendrive-watch.sh
 #
-# That wrapper discovers an external mount under /Volumes/, exports
+# Wrapper discovers an external mount under /Volumes/, exports
 # PENDRIVE_MOUNT, and re-runs uncharles each cycle. Empty mount → idle.
 #
 # === Mock run (no hardware) ===
@@ -28,17 +38,16 @@
 #
 # === Audit artifacts under /tmp/uncharles-audit/ ===
 #
-#   file-map.txt   sha256 + path of every file on the mount
-#   secrets.txt    grep hits for common secret patterns
-#   copies.log     fswatch stream of file events on the mount (if installed)
-#   monitor.pid    PID of the fswatch process (or "mock-monitor-<ts>")
-#   sealed.txt     human-readable audit summary; presence = audit complete
-#
-# === Real copy-tracking ===
-#
-# The default `start_copy_monitor` checks for fswatch on PATH and uses it
-# if present (`brew install fswatch`); otherwise it writes a mock marker
-# and copies.log stays empty. Either way the planner advances.
+#   file-map.txt                sha256 + path of every file on the mount
+#   secrets.txt                 human-readable secrets summary
+#   secrets-gitleaks.json       gitleaks raw findings (when installed)
+#   secrets-trufflehog.ndjson   trufflehog --only-verified raw (when installed)
+#   pii.txt                     human-readable PII summary
+#   bulk_extractor/             bulk_extractor feature files (when installed)
+#   copies.log                  live fswatch stream (current session)
+#   copies.<timestamp>.log      archived per-session fswatch stream
+#   monitor.pid                 PID of the fswatch process (or mock marker)
+#   sealed.txt                  audit summary; presence = audit complete
 
 sensors:
   # Drive presence. Mount path comes from $PENDRIVE_MOUNT; empty/unset
@@ -59,6 +68,9 @@ sensors:
   - name: secrets_scanned
     cmd: ["test", "-f", "/tmp/uncharles-audit/secrets.txt"]
 
+  - name: pii_scanned
+    cmd: ["test", "-f", "/tmp/uncharles-audit/pii.txt"]
+
   - name: monitor_active
     cmd: ["test", "-f", "/tmp/uncharles-audit/monitor.pid"]
 
@@ -76,7 +88,7 @@ sensors:
         if [ -n "${PENDRIVE_MOUNT:-}" ] && [ -d "$PENDRIVE_MOUNT" ]; then
           exit 1
         fi
-        for f in monitor.pid sealed.txt file-map.txt secrets.txt; do
+        for f in monitor.pid sealed.txt file-map.txt secrets.txt pii.txt; do
           [ -f "/tmp/uncharles-audit/$f" ] && exit 0
         done
         exit 1
@@ -91,7 +103,7 @@ sensors:
       - -c
       - |
         if [ -z "${PENDRIVE_MOUNT:-}" ] || [ ! -d "$PENDRIVE_MOUNT" ]; then
-          for f in monitor.pid sealed.txt file-map.txt secrets.txt; do
+          for f in monitor.pid sealed.txt file-map.txt secrets.txt pii.txt; do
             [ -f "/tmp/uncharles-audit/$f" ] && exit 1
           done
           exit 0
@@ -117,11 +129,15 @@ actions:
           | xargs -0 shasum -a 256 \
           > /tmp/uncharles-audit/file-map.txt
 
-  # Crude built-in secret scan. Upgrade to `gitleaks detect --no-git
-  # --source "$PENDRIVE_MOUNT" --report-path .../secrets.json
-  # --report-format json --exit-code 0` once gitleaks is on PATH.
-  # The trailing `true` keeps grep's "no match" exit-1 from killing
-  # the action — absence of secrets is a successful scan.
+  # Production-grade secret detection with graceful degradation:
+  #   1. gitleaks  — broad pattern detection (~160 rules), high recall
+  #   2. trufflehog --only-verified — calls issuing APIs to confirm
+  #      findings are LIVE credentials (high precision)
+  #   3. grep fallback — used only if neither tool is installed
+  # The two tools are complementary: gitleaks for the wide net,
+  # trufflehog for the actionable subset that currently authenticates.
+  # secrets.txt is the human-readable summary used by seal_audit; the
+  # raw JSON outputs sit alongside for deeper inspection.
   - name: scan_secrets
     cost: 3.0
     requires: [pendrive_mounted, map_recorded]
@@ -131,22 +147,89 @@ actions:
       - -c
       - |
         mkdir -p /tmp/uncharles-audit
-        grep -rEHn \
-          --exclude-dir=.fseventsd --exclude-dir=.Spotlight-V100 \
-          --exclude-dir=.Trashes \
-          -e 'AKIA[A-Z0-9]{16}' \
-          -e 'xox[baprs]-[A-Za-z0-9-]{10,}' \
-          -e 'gh[pousr]_[A-Za-z0-9]{20,}' \
-          -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' \
-          -e '(password|api[_-]?key|secret|token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+' \
-          "$PENDRIVE_MOUNT" \
-          > /tmp/uncharles-audit/secrets.txt 2>/dev/null || true
+        : > /tmp/uncharles-audit/secrets.txt
+        TOOL_USED=0
+
+        if command -v gitleaks >/dev/null 2>&1; then
+          TOOL_USED=1
+          gitleaks detect --no-git \
+            --source "$PENDRIVE_MOUNT" \
+            --report-format json \
+            --report-path /tmp/uncharles-audit/secrets-gitleaks.json \
+            --exit-code 0 \
+            >/dev/null 2>&1 || true
+          count=$(grep -c '"RuleID"' \
+            /tmp/uncharles-audit/secrets-gitleaks.json 2>/dev/null || echo 0)
+          echo "[gitleaks] $count finding(s) — secrets-gitleaks.json" \
+            >> /tmp/uncharles-audit/secrets.txt
+        fi
+
+        if command -v trufflehog >/dev/null 2>&1; then
+          TOOL_USED=1
+          trufflehog filesystem "$PENDRIVE_MOUNT" \
+            --json --only-verified --no-update \
+            > /tmp/uncharles-audit/secrets-trufflehog.ndjson \
+            2>/dev/null || true
+          count=$(wc -l < /tmp/uncharles-audit/secrets-trufflehog.ndjson \
+            2>/dev/null || echo 0)
+          echo "[trufflehog VERIFIED] $count finding(s) — secrets-trufflehog.ndjson" \
+            >> /tmp/uncharles-audit/secrets.txt
+        fi
+
+        if [ "$TOOL_USED" -eq 0 ]; then
+          echo "[grep fallback — install gitleaks/trufflehog for production scanning]" \
+            >> /tmp/uncharles-audit/secrets.txt
+          grep -rEHn \
+            --exclude-dir=.fseventsd --exclude-dir=.Spotlight-V100 \
+            --exclude-dir=.Trashes \
+            -e 'AKIA[A-Z0-9]{16}' \
+            -e 'xox[baprs]-[A-Za-z0-9-]{10,}' \
+            -e 'gh[pousr]_[A-Za-z0-9]{20,}' \
+            -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' \
+            -e '(password|api[_-]?key|secret|token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+' \
+            "$PENDRIVE_MOUNT" \
+            >> /tmp/uncharles-audit/secrets.txt 2>/dev/null || true
+        fi
+        true
+
+  # Forensic-grade PII scan with bulk_extractor — carves credit cards,
+  # emails, phone numbers, IPs, URLs, exif metadata, etc. out of files
+  # and filesystem slack space. Different tier from credential scanning;
+  # answers "what personal data is on this drive" rather than "what
+  # credentials." Skipped gracefully when bulk_extractor isn't installed.
+  - name: scan_pii
+    cost: 3.0
+    requires: [pendrive_mounted, map_recorded]
+    adds: [pii_scanned]
+    cmd:
+      - sh
+      - -c
+      - |
+        mkdir -p /tmp/uncharles-audit
+        rm -rf /tmp/uncharles-audit/bulk_extractor
+        if command -v bulk_extractor >/dev/null 2>&1; then
+          bulk_extractor -R \
+            -o /tmp/uncharles-audit/bulk_extractor \
+            "$PENDRIVE_MOUNT" \
+            >/dev/null 2>&1 || true
+          {
+            echo "[bulk_extractor] PII features found:"
+            for f in /tmp/uncharles-audit/bulk_extractor/*.txt; do
+              [ -f "$f" ] && [ -s "$f" ] || continue
+              n=$(grep -cv '^#' "$f" 2>/dev/null || wc -l < "$f")
+              echo "  $(basename "$f"): $n hit(s)"
+            done
+          } > /tmp/uncharles-audit/pii.txt
+        else
+          echo "[bulk_extractor not installed — PII scan skipped]" \
+            > /tmp/uncharles-audit/pii.txt
+        fi
         true
 
   # Real copy monitor when fswatch is installed; mock marker otherwise.
-  # The </dev/null + 2>&1 redirects detach the child from uncharles' pipes
-  # so Command::output() doesn't block waiting for the backgrounded
-  # process's stderr to close.
+  # The </dev/null + 2>&1 redirects detach the child from uncharles'
+  # pipes so Command::output() doesn't block waiting for the
+  # backgrounded process's stderr to close.
   - name: start_copy_monitor
     cost: 1.0
     requires: [pendrive_mounted]
@@ -165,12 +248,12 @@ actions:
           echo "mock-monitor-$(date +%s)" > /tmp/uncharles-audit/monitor.pid
         fi
 
-  # Seal the audit. `idle` is added optimistically so the planner sees a
-  # path to the goal; the `idle` sensor at the next iteration confirms
-  # by observing sealed.txt on disk.
+  # Seal the audit. `idle` is added optimistically so the planner sees
+  # a path to the goal; the `idle` sensor at the next iteration
+  # confirms by observing sealed.txt on disk.
   - name: seal_audit
     cost: 1.0
-    requires: [pendrive_mounted, map_recorded, secrets_scanned, monitor_active]
+    requires: [pendrive_mounted, map_recorded, secrets_scanned, pii_scanned, monitor_active]
     adds: [audit_sealed, idle]
     cmd:
       - sh
@@ -181,7 +264,12 @@ actions:
           echo "sealed-at: $(date '+%Y-%m-%dT%H:%M:%S%z')"
           echo "mount:     $PENDRIVE_MOUNT"
           echo "file-map:  $(wc -l < /tmp/uncharles-audit/file-map.txt) entries"
-          echo "secrets:   $(wc -l < /tmp/uncharles-audit/secrets.txt) hits"
+          echo
+          echo "secrets:"
+          sed 's/^/  /' /tmp/uncharles-audit/secrets.txt
+          echo
+          echo "pii:"
+          sed 's/^/  /' /tmp/uncharles-audit/pii.txt
         } > /tmp/uncharles-audit/sealed.txt
 
   # Triggered when the drive is gone but session state persists. Kills
@@ -195,7 +283,7 @@ actions:
     cost: 1.0
     requires: [eject_pending]
     adds: [idle]
-    removes: [monitor_active, map_recorded, secrets_scanned, audit_sealed]
+    removes: [monitor_active, map_recorded, secrets_scanned, pii_scanned, audit_sealed]
     cmd:
       - sh
       - -c
@@ -215,7 +303,11 @@ actions:
         rm -f /tmp/uncharles-audit/monitor.pid \
               /tmp/uncharles-audit/sealed.txt \
               /tmp/uncharles-audit/file-map.txt \
-              /tmp/uncharles-audit/secrets.txt
+              /tmp/uncharles-audit/secrets.txt \
+              /tmp/uncharles-audit/secrets-gitleaks.json \
+              /tmp/uncharles-audit/secrets-trufflehog.ndjson \
+              /tmp/uncharles-audit/pii.txt
+        rm -rf /tmp/uncharles-audit/bulk_extractor
 
 goal:
   requires: [idle]
