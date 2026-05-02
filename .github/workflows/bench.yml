@@ -2,9 +2,26 @@ name: bench
 
 on:
   pull_request:
+    # Trigger only on changes that can plausibly affect bench output.
+    # `grafo/**` / `goap-planner/**` would also fire on README, docs/,
+    # examples/, tests/, CLAUDE.md, and assets/ changes — none of which
+    # influence the compiled bench binary, but each one would burn a
+    # full bench run on every doc-touching PR.
     paths:
-      - 'grafo/**'
-      - 'goap-planner/**'
+      # Source code compiled into the bench binary, the bench file
+      # itself, and the per-crate manifest (dev-dep edits change what
+      # links into bench).
+      - 'grafo/src/**'
+      - 'grafo/benches/**'
+      - 'grafo/Cargo.toml'
+      - 'goap-planner/src/**'
+      - 'goap-planner/benches/**'
+      - 'goap-planner/Cargo.toml'
+      # Workspace-level files that affect dependency resolution and
+      # therefore the compiled bench binary across both crates.
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      # CI infra for the bench gate itself.
       - '.github/workflows/bench.yml'
       - '.github/scripts/detect-bench-regression.py'
 
