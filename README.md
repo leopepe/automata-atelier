@@ -103,7 +103,11 @@ More example configs live in [`uncharles/configs/`](uncharles/configs/).
 
 ## Performance
 
-`grafo` is the hot path under everything else, so its numbers govern what the planners and automatons above it can promise. Last measured 2026-05-01 on macOS / Rust 1.94.1 (Criterion 0.5, release profile, 100 samples):
+The graph kernel governs what the planners and automatons above it can promise; the planner's BFS layer governs what the runtime can promise. Both core libraries ship with a benchmark suite (Criterion 0.5, release profile, 100 samples) and a CI gate that fails PRs on regressions beyond a configured threshold. See [`docs/performance-tests.md`](docs/performance-tests.md) for the workspace-wide rules.
+
+### `grafo` — graph kernel
+
+Last measured 2026-05-01 on macOS / Rust 1.94.1.
 
 | Workload | Result |
 |---|---|
@@ -115,7 +119,25 @@ More example configs live in [`uncharles/configs/`](uncharles/configs/).
 | 512 parallel queries via Rayon over a shared `Arc<Graph>` | **914 µs** — scales near-linearly with cores |
 | Attribute count 1 → 20 per node (filter throughput) | **flat at ~10 ns** — O(1) `FxHashSet` lookup |
 
-Canonical summary with full tables, trade-offs, and history: [`grafo/docs/performance.md`](grafo/docs/performance.md). `goap-planner` and `uncharles` have no benchmarks yet — they ride on grafo's numbers for the search hot path; planner-side and runtime-side timings will be added when there's a real workload driving the requirement.
+Canonical summary: [`grafo/docs/performance.md`](grafo/docs/performance.md).
+
+### `goap-planner` — GOAP planner
+
+Last measured 2026-05-02 on macOS / Rust stable.
+
+| Workload | Result |
+|---|---|
+| 5-step linear plan | **3.4 µs** |
+| 50-step linear plan | **33 µs** |
+| 128-action library, single correct branch | **362 µs** |
+| 16 redundant paths, picks the cheapest | **24 µs** |
+| Goal already satisfied (fast-path early return) | **6.9 ns** |
+| `Action::applicable` (preconditions met / unmet) | **17 ns / 14 ns** |
+| 64 concurrent plans via Rayon over `Arc<Planner>` | **145 µs** (5.4× faster than sequential) |
+
+Canonical summary: [`goap-planner/docs/performance.md`](goap-planner/docs/performance.md).
+
+`uncharles` has no benchmarks yet — its hot path is shell exec, which is dominated by the cost of the commands it runs, not by uncharles itself. A bench will be added when there's a real workload showing measurable runtime overhead independent of the actions being executed.
 
 ## Building and testing
 
@@ -128,14 +150,24 @@ cargo fmt --all
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-Performance benchmarks for `grafo` live in [`grafo/benches/`](grafo/benches/) and run via `cargo bench -p grafo`. Pair every bench session with a flamegraph (see [`grafo/CLAUDE.md`](grafo/CLAUDE.md)).
+Benchmarks for the core libraries:
+
+```sh
+cargo bench -p grafo
+cargo bench -p goap-planner
+```
+
+Pair every bench session with a flamegraph (see [`grafo/CLAUDE.md`](grafo/CLAUDE.md) and [`goap-planner/CLAUDE.md`](goap-planner/CLAUDE.md)). PRs that touch a core library run the suite in CI via [`.github/workflows/bench.yml`](.github/workflows/bench.yml).
 
 ## Where to look next
 
 - [`grafo/README.md`](grafo/README.md) — full graph library docs and standalone examples.
-- [`grafo/docs/performance.md`](grafo/docs/performance.md) — current benchmark summary and history.
+- [`grafo/docs/performance.md`](grafo/docs/performance.md) — current grafo benchmark summary and history.
+- [`goap-planner/README.md`](goap-planner/README.md) — planner library docs.
+- [`goap-planner/docs/performance.md`](goap-planner/docs/performance.md) — current planner benchmark summary and history.
 - [`goap-planner/examples/`](goap-planner/examples/) — runnable planner scenarios (`deploy`, `release`, `refactor`, `validate`, `watch`, `dependency`).
 - [`uncharles/configs/`](uncharles/configs/) — YAML configs showing sensor/action/goal patterns.
+- [`docs/performance-tests.md`](docs/performance-tests.md) — workspace-wide rules for benchmark suites and the CI gate.
 - [`docs/todo.md`](docs/todo.md) — deferred design notes and pending work.
 
 ## License

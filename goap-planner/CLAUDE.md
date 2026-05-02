@@ -36,48 +36,39 @@ runtime crate), never here.
 
 ## Performance work
 
-The crate currently has no benchmark suite. **When the first benchmark is
-introduced** (criterion, custom, or otherwise), the following rules apply
-from day one:
+This crate is a core library (consumed by `uncharles`), so the workspace's
+[`docs/performance-tests.md`](../docs/performance-tests.md) rules apply:
+benchmarks are required, every bench run pairs with a flamegraph, and the
+canonical [`docs/performance.md`](docs/performance.md) is refreshed when
+headline numbers move.
 
-- Add a `[[bench]]` entry to `Cargo.toml` and a `criterion` dev-dependency
-  matching the version pinned in `grafo/Cargo.toml`.
-- Follow the same workflow as `grafo`: baseline → change → comparison →
-  written summary in `docs/perf-comparison-YYYY-MM-DD.md`.
-- **Generate a flamegraph for every bench run** (see [Flamegraphs](#flamegraphs)
-  below). Criterion answers *what is slow*; the flamegraph answers *where in
-  the call stack the time is spent*. Both are required to reason about a
-  regression — neither alone is sufficient evidence.
+- **Bench suite:** [`benches/performance.rs`](benches/performance.rs).
+  Mirrors `grafo/benches/performance.rs` in style — deterministic LCG for
+  shape generation, factory functions per scenario, one `bench_*` function
+  per group. Run with `cargo bench -p goap-planner`.
+- **Trigger conditions:** any change to `Planner::plan`, `Action::applicable`
+  / `Action::apply`, `State::signature` / `State::contains` / `State::insert`,
+  `Goal::satisfied_by`, the BFS bound (`max_states`), or the `grafo`
+  dependency.
+- **Workflow:** identical to grafo's `Benchmark workflow` and `Flamegraphs`
+  sections in [`grafo/CLAUDE.md`](../grafo/CLAUDE.md). Read those before a
+  bench session — they are the canonical reference for the whole workspace.
+- **CI gate:** `.github/workflows/bench.yml` runs the suite on every PR
+  that touches this crate and fails on regressions beyond the configured
+  threshold. See `docs/performance-tests.md` for the override procedure
+  (`bench:allow-regression` label) when a regression is a deliberate
+  trade-off.
 
-### Flamegraphs
+### Refreshing `docs/performance.md`
 
-Pair every benchmark run with a flamegraph SVG saved into `docs/`. This is a
-hard rule, not a suggestion: a perf regression report without a flamegraph
-is incomplete.
-
-- **Install once:** `cargo install flamegraph` (provides the `cargo flamegraph`
-  subcommand backed by DTrace on macOS, `perf` on Linux).
-- **Generate alongside each bench run:**
-  ```sh
-  cargo flamegraph --bench <bench-name> -o docs/flamegraph-<label>.svg -- --bench --profile-time 10
-  ```
-  - `<bench-name>` is the `[[bench]]` target's `name` field.
-  - `<label>` matches the criterion log it pairs with (`before`, `after`, or
-    a date / change identifier).
-  - `--profile-time 10` caps each bench at 10 seconds in profiling mode —
-    sufficient for stack sampling without the full criterion timing budget.
-  - Restrict to a subset during iteration by appending a filter after
-    `--profile-time 10`.
-- **macOS requires sudo for DTrace.** Either prefix with `sudo` or grant the
-  user DTrace permission. Without it, the run fails with
-  "dtrace: failed to initialize dtrace".
-- **Save under `docs/flamegraph-<label>.svg`.** The SVG is the artifact; do
-  not commit raw `perf.data` or `out.stacks` files.
-- **Reference the flamegraph from the perf-comparison summary** so the
-  criterion numbers and CPU profile are linked in the same document.
-- **Skip flamegraphs only when benchmarks are skipped** — i.e. doc-only /
-  test-only / clearly perf-neutral changes. If you ran a bench, you generate
-  a flamegraph.
+After a bench run that moves any headline number, update
+[`docs/performance.md`](docs/performance.md): the `Last measured` line,
+the absolute numbers in `## At a glance` / `## Planning` / `## Micro-ops`
+/ `## Concurrent plans`, the `## History` table entry, and (if applicable)
+the `## Trade-offs we accept` section. The dated
+`perf-comparison-YYYY-MM-DD.md` files are immutable history;
+`performance.md` is the always-current summary linked from
+`goap-planner/README.md` and the workspace `README.md`.
 
 ## Lint, format, test
 

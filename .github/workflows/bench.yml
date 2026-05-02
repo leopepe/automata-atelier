@@ -1,0 +1,88 @@
+name: bench
+
+on:
+  pull_request:
+    paths:
+      - 'grafo/**'
+      - 'goap-planner/**'
+      - '.github/workflows/bench.yml'
+      - '.github/scripts/detect-bench-regression.py'
+
+env:
+  CARGO_TERM_COLOR: always
+  # Maximum allowed regression (percent) on the upper bound of any bench's
+  # 95% confidence interval. Set high enough to absorb noise on GitHub's
+  # shared runners; tighten if/when we move to dedicated bench hardware.
+  REGRESSION_THRESHOLD_PCT: '10'
+
+jobs:
+  bench:
+    name: bench (${{ matrix.crate }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [grafo, goap-planner]
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          # Need full history so we can switch to the PR base branch and
+          # back without re-cloning.
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Cache key includes the crate so grafo and goap-planner jobs
+          # don't fight for the same cache slot.
+          key: bench-${{ matrix.crate }}
+
+      - name: Save base-branch baseline
+        # Run the bench on origin/<base_ref> first, save it as `pr-base`,
+        # then return to the PR head for the comparison run. We bench the
+        # base branch even when the PR doesn't touch it, because criterion
+        # baselines are stored in target/criterion and survive the
+        # checkout below.
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          git checkout "origin/${{ github.base_ref }}"
+          cargo bench -p ${{ matrix.crate }} --bench performance -- \
+            --save-baseline pr-base 2>&1 | tee bench-base.txt
+
+      - name: Compare PR head against baseline
+        run: |
+          set -euo pipefail
+          git checkout "${{ github.sha }}"
+          cargo bench -p ${{ matrix.crate }} --bench performance -- \
+            --baseline pr-base 2>&1 | tee bench-head.txt
+
+      - name: Detect regressions
+        # If the PR carries the `bench:allow-regression` label, the gate is
+        # downgraded to a warning. Use this only for deliberate trade-offs
+        # documented in the PR description and `perf-comparison-YYYY-MM-DD.md`.
+        env:
+          ALLOW_REGRESSION: ${{ contains(github.event.pull_request.labels.*.name, 'bench:allow-regression') }}
+        run: |
+          set +e
+          python3 .github/scripts/detect-bench-regression.py \
+            bench-head.txt "$REGRESSION_THRESHOLD_PCT"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ] && [ "$ALLOW_REGRESSION" = "true" ]; then
+            echo "::warning::Bench regression(s) detected; bench:allow-regression label is set, downgrading to warning."
+            exit 0
+          fi
+          exit "$rc"
+
+      - name: Upload bench artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ matrix.crate }}
+          path: |
+            bench-base.txt
+            bench-head.txt
+            target/criterion/
+          retention-days: 30
