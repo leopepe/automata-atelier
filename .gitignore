@@ -3,11 +3,12 @@
 # Rust build output (matches root and any nested grafo/target etc.)
 target/
 
-# Cargo lockfile — currently ignored.
-# Convention: commit Cargo.lock for binaries (reproducible builds), ignore it
-# for libraries. This workspace has a binary (uncharles), so flipping this
-# off and committing Cargo.lock is the conventional choice when ready.
-Cargo.lock
+# Cargo lockfile is committed.
+# This workspace ships a binary (uncharles), so reproducible builds win
+# over the per-consumer "fresh resolution" policy that suits pure-library
+# crates. Committing the lockfile also stabilises the bench-regression
+# CI gate: dev-deps stay pinned across base→PR-head bench runs, removing
+# one source of noise from the comparison.
 
 # Backup files produced by cargo fix / rustfmt
 **/*.rs.bk

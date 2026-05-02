@@ -78,14 +78,28 @@ fans out one job per core crate via a matrix. Each job:
 
 1. Checks out the PR's base branch and runs the full bench suite, saving the result with `--save-baseline pr-base`.
 2. Switches to the PR head and runs the same suite with `--baseline pr-base`.
-3. Pipes the comparison output through [`.github/scripts/detect-bench-regression.py`](../.github/scripts/detect-bench-regression.py), which fails the workflow if any benchmark's CI upper bound exceeds `REGRESSION_THRESHOLD_PCT` (default 10%) **and** criterion classified the change as "Performance has regressed".
+3. Pipes the comparison output through [`.github/scripts/detect-bench-regression.py`](../.github/scripts/detect-bench-regression.py), which fails the workflow if any benchmark's CI **lower bound** exceeds `REGRESSION_THRESHOLD_PCT` (default 10%) **and** criterion classified the change as "Performance has regressed".
 
-The threshold is intentionally loose enough to absorb GitHub-hosted-runner
-noise but tight enough to catch real regressions. The criterion+threshold
-combination is two filters layered: criterion's own statistical test
-(`p < 0.05` plus its noise floor) eliminates random fluctuations, and the
-percent-bound check eliminates true-but-tiny changes that happen to clear
-significance on an unusually quiet run.
+The script uses the *lower* bound of criterion's 95% confidence interval
+deliberately — the "robust regression" gate. A benchmark only counts as
+a regression when even the optimistic interpretation of the data crosses
+the threshold. This trades sensitivity for false-positive rate: shared
+GitHub-hosted runners drift by tens of percent under neighbour load, so
+a gate keyed on the upper or median CI bound triggers on noise. Real
+regressions present as tight intervals well above the threshold and
+clear the lower-bound check easily; runner-noise events present as wide
+intervals where only the upper bound looks scary, and the lower-bound
+gate ignores them.
+
+The criterion+threshold combination is two filters layered: criterion's
+own statistical test (`p < 0.05` plus its noise floor) eliminates random
+fluctuations, and the percent-bound check eliminates true-but-tiny
+changes that happen to clear significance on an unusually quiet run.
+
+Lockfile drift is removed as a noise source by committing `Cargo.lock`
+at the workspace root — both the baseline and PR-head bench runs resolve
+identical dependency versions instead of regenerating the lockfile when
+a PR adds dev-deps to one workspace member.
 
 ### Overriding the gate for an intentional trade-off
 

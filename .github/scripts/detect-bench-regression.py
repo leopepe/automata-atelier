@@ -5,8 +5,15 @@ Criterion already prints "Performance has regressed." when a change is
 statistically significant (p < 0.05) and exceeds its (tiny) default noise
 threshold of 1%. On shared CI runners that bar is too sensitive: noise
 alone can push a stable benchmark over it. We layer an additional gate on
-top: only fail if the upper bound of the 95% confidence interval crosses
-`threshold_pct` (default 10%).
+top: only fail if the **lower bound** of the 95% confidence interval
+crosses `threshold_pct` (default 10%).
+
+Using the lower bound (rather than the mean or upper bound) is the
+"robust regression" gate: a benchmark fails the check only when even the
+optimistic read of the data shows a regression above the threshold. This
+trades sensitivity for false-positive rate — a deliberate choice for
+shared-runner CI where small benches drift by tens of percent under
+neighbour load.
 
 Usage:
     detect-bench-regression.py <criterion-log> [threshold-pct]
@@ -62,7 +69,7 @@ def main() -> int:
         )
         return 2
 
-    failures: list[tuple[str, float]] = []
+    failures: list[tuple[str, float, float, float]] = []
     total = 0
     flagged_by_criterion = 0
 
@@ -72,30 +79,42 @@ def main() -> int:
         if match is None:
             # First-ever run with no prior baseline — nothing to compare.
             continue
+        lower = float(match.group(1))
+        median = float(match.group(2))
         upper = float(match.group(3))
         criterion_regressed = REGRESSED_VERDICT in body
         if criterion_regressed:
             flagged_by_criterion += 1
-            if upper > threshold:
-                failures.append((name, upper))
+            # Robust gate: even the optimistic (lower) bound of the
+            # 95% CI must exceed the threshold for this to count as a
+            # regression. Tight intervals around a real slowdown will
+            # clear this; wide intervals from runner jitter (where
+            # only the upper bound looks scary) will not.
+            if lower > threshold:
+                failures.append((name, lower, median, upper))
 
     print(
         f"Parsed {total} benchmark(s); criterion flagged {flagged_by_criterion}; "
-        f"{len(failures)} exceed threshold of {threshold}%."
+        f"{len(failures)} exceed threshold of {threshold}% on the lower CI bound."
     )
 
     if failures:
         print("", file=sys.stderr)
-        print("Regressions exceeding the threshold:", file=sys.stderr)
-        for name, upper in failures:
-            print(f"  - {name}: +{upper:.1f}% (CI upper bound)", file=sys.stderr)
+        print("Regressions exceeding the threshold (lower CI bound > threshold):", file=sys.stderr)
+        for name, lower, median, upper in failures:
+            print(
+                f"  - {name}: median +{median:.1f}% "
+                f"(CI [+{lower:.1f}%, +{upper:.1f}%])",
+                file=sys.stderr,
+            )
         print(
-            f"\nFAIL: {len(failures)} benchmark(s) regressed beyond {threshold}%.",
+            f"\nFAIL: {len(failures)} benchmark(s) regressed beyond {threshold}% "
+            f"on the lower CI bound.",
             file=sys.stderr,
         )
         return 1
 
-    print(f"OK: no benchmark regressed beyond {threshold}%.")
+    print(f"OK: no benchmark regressed beyond {threshold}% on the lower CI bound.")
     return 0
 
 
