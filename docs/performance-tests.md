@@ -101,27 +101,30 @@ at the workspace root — both the baseline and PR-head bench runs resolve
 identical dependency versions instead of regenerating the lockfile when
 a PR adds dev-deps to one workspace member.
 
-### Base-branch baseline cache
+### Base-branch baseline (same-machine comparisons)
 
-The base-branch bench result is the same for every PR opened against the
-same `main` SHA, but a naive workflow re-runs it every time. The bench
-workflow caches that result keyed by `bench-base-v3-<crate>-<base-sha>`,
-storing `target/criterion/` (where criterion's `pr-base` baseline data
-lives) plus the raw `bench-base.txt` log. On cache hit the base-bench
-step is skipped entirely; on miss it runs as before and the result is
-saved for the next PR. The cache invalidates naturally whenever `main`
-moves — the SHA is part of the key — so a stale baseline can never
-silently shadow a base-branch change.
+Every PR runs the base-branch bench fresh on the same runner that runs
+the head bench. There is no cross-PR cache.
 
-The first PR after a `main` push pays the full base-bench cost; every
-subsequent PR against the same `main` SHA pays close to zero for that
-half of the workflow. Caches expire after 7 days of no access (GitHub's
-default), so a cold start happens roughly weekly on quiet branches.
+This used to be different: an earlier design ([item A in `docs/todo.md`](
+https://github.com/leopepe/automata-atelier/blob/d36b25e/docs/todo.md))
+cached the base-branch bench result by `bench-base-v3-<crate>-<base-sha>`
+and skipped the base run on cache hits. That design tripled to
+quadrupled the bench gate's false-positive rate, because every cache
+hit became a cross-machine comparison: base measured on runner X,
+head measured on runner Y. GitHub-hosted runners drift ±20-50 % in
+micro-bench throughput from heap allocator state, neighbour load,
+and CPU model — and that drift surfaced as regressions of 50-100 %
+on small benches. PR #5, #6, and #26 all needed the
+`bench:allow-regression` workaround label as a result; see issue
+#24 for the full analysis.
 
-The `v3` segment in the cache key is a profile version: bump it
-whenever the CI sampling settings or bench-case set changes so cached
-baselines captured under the old profile cannot mix with head runs
-under the new one.
+Pinning same-machine comparisons costs one extra base-bench run per
+PR (no cache-hit shortcut), but it makes every comparison
+apples-to-apples and the gate's verdicts trustable. Combined with
+the reduced criterion sampling (B) and CI bench-case subset (D),
+each crate's full base + head sequence runs in ~5-7 minutes; the two
+crates run in parallel via the matrix.
 
 ### CI sampling profile
 
@@ -170,9 +173,10 @@ only small inputs could land. Acceptable for a threshold-based gate;
 local profiling and the canonical bench artifacts under `docs/` are
 the right tools for size-curve analysis, not the CI gate.
 
-The cache key carries this profile too: bumping it (`bench-base-v2-…`
-→ `bench-base-v3-…` in this change) prevents a full-sweep baseline
-captured under the old profile from mixing with subset head runs.
+(The earlier cache-key bump from `bench-base-v2-…` to
+`bench-base-v3-…` is now historical — the cache itself was removed
+together with the cross-machine comparison problem; see the previous
+section.)
 
 ### Overriding the gate for an intentional trade-off
 

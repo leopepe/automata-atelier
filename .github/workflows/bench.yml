@@ -2,9 +2,26 @@ name: bench
 
 on:
   pull_request:
+    # Trigger only on changes that can plausibly affect bench output.
+    # `grafo/**` / `goap-planner/**` would also fire on README, docs/,
+    # examples/, tests/, CLAUDE.md, and assets/ changes — none of which
+    # influence the compiled bench binary, but each one would burn a
+    # full bench run on every doc-touching PR.
     paths:
-      - 'grafo/**'
-      - 'goap-planner/**'
+      # Source code compiled into the bench binary, the bench file
+      # itself, and the per-crate manifest (dev-dep edits change what
+      # links into bench).
+      - 'grafo/src/**'
+      - 'grafo/benches/**'
+      - 'grafo/Cargo.toml'
+      - 'goap-planner/src/**'
+      - 'goap-planner/benches/**'
+      - 'goap-planner/Cargo.toml'
+      # Workspace-level files that affect dependency resolution and
+      # therefore the compiled bench binary across both crates.
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      # CI infra for the bench gate itself.
       - '.github/workflows/bench.yml'
       - '.github/scripts/detect-bench-regression.py'
 
@@ -81,47 +98,24 @@ jobs:
             echo "::notice::No bench suite on origin/${{ github.base_ref }} for ${{ matrix.crate }} — this PR introduces it; comparison gate skipped."
           fi
 
-      - name: Restore base-branch baseline cache
-        # Try to reuse a base-branch bench result captured by an earlier
-        # PR against the same base SHA. The baseline is a property of
-        # `<crate>` × `<base sha>` and is identical across PRs — running
-        # it again is wasted CI minutes.
-        #
-        # The cache stores criterion's `pr-base` baseline data (under
-        # `target/criterion`) and the raw log so the artifact upload at
-        # the end of the job still surfaces it. Cache misses naturally
-        # whenever the base branch moves.
-        id: cache-base
-        if: steps.baseline-check.outputs.available == 'true'
-        uses: actions/cache/restore@v4
-        with:
-          key: bench-base-v3-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
-          path: |
-            target/criterion
-            bench-base.txt
-
       - name: Save base-branch baseline
-        # Cache-miss path: bench origin/<base_ref> and save it as
-        # `pr-base`. Criterion baselines are stored in `target/criterion`
-        # and survive the checkout back to PR head in the next step.
-        if: steps.baseline-check.outputs.available == 'true' && steps.cache-base.outputs.cache-hit != 'true'
+        # Always run the base bench on the same runner that will run the
+        # head bench, so the two measurements share heap allocator state,
+        # neighbour load, and CPU model. The previous design cached the
+        # base bench across PRs (key `bench-base-v3-<crate>-<sha>`) and
+        # restored it from a *different* runner on cache hits — which
+        # turned every cache-hit PR into a cross-machine comparison
+        # against ±20-50 % runner-throughput drift. That dominated the
+        # bench gate's false-positive rate; see issue #24 for the
+        # analysis. Pinning same-machine comparisons here costs one
+        # extra base-bench run per PR but makes every comparison
+        # apples-to-apples.
+        if: steps.baseline-check.outputs.available == 'true'
         run: |
           set -euo pipefail
           git checkout "${{ steps.base-sha.outputs.sha }}"
           cargo bench -p ${{ matrix.crate }} --bench performance -- \
             --save-baseline pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-base.txt
-
-      - name: Persist base-branch baseline cache
-        # Save the freshly-captured baseline so the next PR against the
-        # same base SHA can skip the run entirely. Only fires on
-        # cache-miss — on hit the existing entry is already current.
-        if: steps.baseline-check.outputs.available == 'true' && steps.cache-base.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: bench-base-v3-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
-          path: |
-            target/criterion
-            bench-base.txt
 
       - name: Compare PR head against baseline
         if: steps.baseline-check.outputs.available == 'true'

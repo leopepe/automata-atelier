@@ -220,7 +220,7 @@ fn bench_construction(c: &mut Criterion) {
                 .iter()
                 .map(|&(a, b, w)| (labels[a].as_str(), labels[b].as_str(), w))
                 .collect();
-            b.iter(|| Graph::new(black_box(&nodes), black_box(&edges)).unwrap())
+            b.iter_with_large_drop(|| Graph::new(black_box(&nodes), black_box(&edges)).unwrap())
         });
 
         group.bench_with_input(BenchmarkId::new("sparse_dag_fan4", n), &n, |b, &n| {
@@ -245,7 +245,7 @@ fn bench_construction(c: &mut Criterion) {
                 .iter()
                 .map(|&(a, b, w)| (labels[a].as_str(), labels[b].as_str(), w))
                 .collect();
-            b.iter(|| Graph::new(black_box(&nodes), black_box(&edges)).unwrap())
+            b.iter_with_large_drop(|| Graph::new(black_box(&nodes), black_box(&edges)).unwrap())
         });
     }
 
@@ -485,7 +485,7 @@ fn bench_construction_parallel(c: &mut Criterion) {
             .collect();
 
         group.bench_with_input(BenchmarkId::new("sparse_dag_fan4", n), &n, |b, _| {
-            b.iter(|| Graph::new(black_box(&nodes), black_box(&edges)).unwrap())
+            b.iter_with_large_drop(|| Graph::new(black_box(&nodes), black_box(&edges)).unwrap())
         });
     }
 

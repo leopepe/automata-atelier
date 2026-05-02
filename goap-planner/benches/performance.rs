@@ -281,10 +281,27 @@ fn bench_state_ops(c: &mut Criterion) {
     });
 
     // insert — single-fact mutation cost.
+    //
+    // Uses `iter_batched_ref` (not `iter_batched`) so the State is borrowed
+    // across iterations and its drop falls outside the timed window. The
+    // earlier `iter_batched` form moved the State into the closure each
+    // iteration, which dropped a 100-fact `FxHashSet` *inside* the timed
+    // window — `State::insert` is ~50 ns but observed time was ~1 µs, of
+    // which ~99 % was drop. See issue #24.
+    //
+    // Each call inserts a uniquely-named fact, so the state grows by one
+    // per batch iteration; FxHashSet inserts are O(1) regardless of size,
+    // so this still measures the per-insert cost. Drops happen at batch
+    // boundaries, amortised over the whole batch.
     group.bench_function("insert", |b| {
-        b.iter_batched(
-            || State::from_facts((0..100).map(|i| format!("fact_{i}"))),
-            |mut s| s.insert(black_box("new_fact")),
+        let template = State::from_facts((0..100).map(|i| format!("fact_{i}")));
+        let mut counter: u64 = 0;
+        b.iter_batched_ref(
+            || template.clone(),
+            |s| {
+                counter = counter.wrapping_add(1);
+                s.insert(black_box(format!("new_fact_{counter}")));
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -381,6 +398,14 @@ fn bench_goal_check(c: &mut Criterion) {
 /// practice and shows wall-clock scaling.
 fn bench_concurrent_plans(c: &mut Criterion) {
     let mut group = c.benchmark_group("concurrent_plans");
+
+    // Pre-warm the global Rayon thread pool. Without this, the first
+    // parallel bench in this group pays for thread-pool spin-up inside
+    // its timed window, and per-runner startup variance shows up as
+    // false positives on the regression gate. See issue #24.
+    (0..256u32)
+        .into_par_iter()
+        .for_each(|_| std::hint::spin_loop());
 
     // Use a non-trivial chain plan as the per-call workload.
     let (actions, initial, goal) = chain_plan(20);
