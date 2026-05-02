@@ -84,7 +84,7 @@ impl Planner {
     /// assert_eq!(graph.edges[0].action, "step");
     /// ```
     pub fn explore(&self, initial: &State) -> StateGraph {
-        self.bfs(initial, None)
+        materialise(self.bfs_raw(initial, None))
     }
 
     /// Like [`Planner::explore`], but additionally records which discovered
@@ -108,7 +108,7 @@ impl Planner {
     /// assert!(goal_state.facts.contains("firewood"));
     /// ```
     pub fn explore_for_goal(&self, initial: &State, goal: &Goal) -> StateGraph {
-        self.bfs(initial, Some(goal))
+        materialise(self.bfs_raw(initial, Some(goal)))
     }
 
     /// Plan from `initial` to any state satisfying `goal`.
@@ -124,72 +124,57 @@ impl Planner {
             }));
         }
 
-        let graph = self.explore_for_goal(initial, goal);
-        if graph.truncated {
+        // Use the raw (unmaterialised) BFS so plan does not pay for
+        // sorting, BTreeSet construction per state, or sig-to-index
+        // bookkeeping that only the public StateGraph needs. plan() only
+        // wants the raw signatures / edge map / goal sigs.
+        let raw = self.bfs_raw(initial, Some(goal));
+        if raw.truncated {
             return Err(PlannerError::StateSpaceLimitExceeded {
                 max_states: self.max_states,
             });
         }
-        if graph.goal_satisfying.is_empty() {
+        if raw.goal_state_sigs.is_empty() {
             return Ok(None);
         }
 
-        // Build a grafo::Graph over the discovered states and run Dijkstra
-        // from initial to the synthetic GOAL_SINK linked from every
-        // goal-satisfying state.
-        let mut nodes: Vec<&str> = graph.states.iter().map(|s| s.signature.as_str()).collect();
-        nodes.push(GOAL_SINK);
+        // Build a grafo::Graph over the discovered signatures and run
+        // Dijkstra from initial to the synthetic GOAL_SINK that's linked
+        // from every goal-satisfying state.
+        let mut nodes: Vec<String> = raw.signatures.keys().cloned().collect();
+        nodes.push(GOAL_SINK.to_string());
 
-        let mut edges: Vec<(&str, &str, f64)> = graph
-            .edges
+        let mut edges: Vec<(String, String, f64)> = raw
+            .edge_map
             .iter()
-            .map(|e| {
-                (
-                    graph.states[e.from].signature.as_str(),
-                    graph.states[e.to].signature.as_str(),
-                    e.cost,
-                )
-            })
+            .map(|((from, to), (cost, _))| (from.clone(), to.clone(), *cost))
             .collect();
-        for &gs in &graph.goal_satisfying {
-            edges.push((graph.states[gs].signature.as_str(), GOAL_SINK, 0.0));
+        for gs in &raw.goal_state_sigs {
+            edges.push((gs.clone(), GOAL_SINK.to_string(), 0.0));
         }
 
-        let g = Graph::new(&nodes, &edges)?;
-        let initial_sig = graph.states[graph.initial].signature.as_str();
+        let node_refs: Vec<&str> = nodes.iter().map(String::as_str).collect();
+        let edge_refs: Vec<(&str, &str, f64)> = edges
+            .iter()
+            .map(|(a, b, c)| (a.as_str(), b.as_str(), *c))
+            .collect();
+        let graph = Graph::new(&node_refs, &edge_refs)?;
 
-        let path = match g.shortest_path(initial_sig, GOAL_SINK)? {
+        let path = match graph.shortest_path(&raw.initial_sig, GOAL_SINK)? {
             Some(p) => p,
             None => return Ok(None),
         };
 
-        // Reconstruct action names from the path. For each consecutive pair
-        // of state signatures, look up the cheapest edge (which `explore`
-        // already kept) and emit its action name.
-        let labels = path.resolve_labels(&g);
-        let edge_lookup: FxHashMap<(String, String), &StateEdge> = graph
-            .edges
-            .iter()
-            .map(|e| {
-                (
-                    (
-                        graph.states[e.from].signature.clone(),
-                        graph.states[e.to].signature.clone(),
-                    ),
-                    e,
-                )
-            })
-            .collect();
-
+        let labels = path.resolve_labels(&graph);
         let steps: Vec<String> = labels
             .windows(2)
             .filter_map(|pair| {
                 if pair[1] == GOAL_SINK {
                     None
                 } else {
-                    edge_lookup
+                    raw.edge_map
                         .get(&(pair[0].clone(), pair[1].clone()))
-                        .map(|e| e.action.clone())
+                        .map(|(_, name)| name.clone())
                 }
             })
             .collect();
@@ -200,16 +185,18 @@ impl Planner {
         }))
     }
 
-    /// Internal BFS over the state space, shared by [`Planner::explore`]
-    /// and [`Planner::explore_for_goal`].
+    /// Internal BFS over the state space, shared by [`Planner::explore`],
+    /// [`Planner::explore_for_goal`], and [`Planner::plan`]. Returns the
+    /// raw `FxHashMap`-backed structures so callers that don't need the
+    /// public, stable-ordered [`StateGraph`] (i.e. `plan`) avoid paying
+    /// for the materialisation step.
     ///
-    /// When `goal` is `Some`, every discovered state is checked against it
-    /// and recorded in `goal_satisfying`. When `None`, that work is skipped.
-    fn bfs(&self, initial: &State, goal: Option<&Goal>) -> StateGraph {
+    /// When `goal` is `Some`, every discovered state is checked against
+    /// it and the satisfying signatures are recorded. When `None`, that
+    /// work is skipped.
+    fn bfs_raw(&self, initial: &State, goal: Option<&Goal>) -> RawBfs {
         let initial_sig = initial.signature();
 
-        // Internal BFS uses fast Fx hashing; we sort once at the end for
-        // a stable public iteration order.
         let mut signatures: FxHashMap<String, State> = FxHashMap::default();
         signatures.insert(initial_sig.clone(), initial.clone());
 
@@ -266,50 +253,82 @@ impl Planner {
             }
         }
 
-        // Convert to the public, stable-ordered structure.
-        let mut states: Vec<StateNode> = signatures
-            .iter()
-            .map(|(sig, state)| StateNode {
-                signature: sig.clone(),
-                facts: state.facts().map(String::from).collect::<BTreeSet<_>>(),
-            })
-            .collect();
-        states.sort_by(|a, b| a.signature.cmp(&b.signature));
-
-        let sig_to_idx: FxHashMap<String, usize> = states
-            .iter()
-            .enumerate()
-            .map(|(i, n)| (n.signature.clone(), i))
-            .collect();
-
-        let mut edges: Vec<StateEdge> = edge_map
-            .into_iter()
-            .map(|((from, to), (cost, action))| StateEdge {
-                from: sig_to_idx[&from],
-                to: sig_to_idx[&to],
-                action,
-                cost,
-            })
-            .collect();
-        edges.sort_by(|a, b| {
-            a.from
-                .cmp(&b.from)
-                .then(a.action.cmp(&b.action))
-                .then(a.to.cmp(&b.to))
-        });
-
-        let initial_idx = sig_to_idx[&initial_sig];
-
-        let mut goal_satisfying: Vec<usize> =
-            goal_state_sigs.iter().map(|sig| sig_to_idx[sig]).collect();
-        goal_satisfying.sort();
-
-        StateGraph {
-            states,
-            edges,
-            initial: initial_idx,
-            goal_satisfying,
+        RawBfs {
+            signatures,
+            edge_map,
+            goal_state_sigs,
+            initial_sig,
             truncated,
         }
+    }
+}
+
+/// Raw output of [`Planner::bfs_raw`], before any sorting or
+/// materialisation. Internal-only: callers that want a stable, sorted
+/// public view go through [`materialise`].
+struct RawBfs {
+    signatures: FxHashMap<String, State>,
+    edge_map: FxHashMap<(String, String), (f64, String)>,
+    goal_state_sigs: FxHashSet<String>,
+    initial_sig: String,
+    truncated: bool,
+}
+
+/// Convert the raw BFS output into a stable-ordered public [`StateGraph`].
+///
+/// This is the work the inspection API pays for, kept out of the
+/// performance-sensitive [`Planner::plan`] path.
+fn materialise(raw: RawBfs) -> StateGraph {
+    let RawBfs {
+        signatures,
+        edge_map,
+        goal_state_sigs,
+        initial_sig,
+        truncated,
+    } = raw;
+
+    let mut states: Vec<StateNode> = signatures
+        .iter()
+        .map(|(sig, state)| StateNode {
+            signature: sig.clone(),
+            facts: state.facts().map(String::from).collect::<BTreeSet<_>>(),
+        })
+        .collect();
+    states.sort_by(|a, b| a.signature.cmp(&b.signature));
+
+    let sig_to_idx: FxHashMap<String, usize> = states
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (n.signature.clone(), i))
+        .collect();
+
+    let mut edges: Vec<StateEdge> = edge_map
+        .into_iter()
+        .map(|((from, to), (cost, action))| StateEdge {
+            from: sig_to_idx[&from],
+            to: sig_to_idx[&to],
+            action,
+            cost,
+        })
+        .collect();
+    edges.sort_by(|a, b| {
+        a.from
+            .cmp(&b.from)
+            .then(a.action.cmp(&b.action))
+            .then(a.to.cmp(&b.to))
+    });
+
+    let initial_idx = sig_to_idx[&initial_sig];
+
+    let mut goal_satisfying: Vec<usize> =
+        goal_state_sigs.iter().map(|sig| sig_to_idx[sig]).collect();
+    goal_satisfying.sort();
+
+    StateGraph {
+        states,
+        edges,
+        initial: initial_idx,
+        goal_satisfying,
+        truncated,
     }
 }

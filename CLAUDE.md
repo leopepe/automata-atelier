@@ -43,6 +43,10 @@ The crates have deliberately clean separation; preserve it when adding code:
 
 If a change feels like it should live in a lower layer, that's almost always the wrong direction — push it up, not down.
 
+## Performance is important
+
+Whenever changes are made to the core crates grafo and goap-planner performance tests will be executed in the CICD. Make sure after changes and git push, to verify if the benchmark jobs failed, if so analyse and fix the performance issues.
+
 ## Working with git and GitHub
 
 ### Commits and pull requests
