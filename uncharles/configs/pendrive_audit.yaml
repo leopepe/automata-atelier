@@ -70,11 +70,15 @@ sensors:
   # Per-step progress markers. These are file-existence sensors so the
   # planner sees real progress between iterations rather than just
   # trusting the optimistic effects.
-  # Tool availability. True when every required scan tool is on PATH,
-  # OR when install_tools has set the best-effort marker (couldn't
-  # install further — graceful degradation will handle the gap).
-  # Checked each iteration, so a `brew install` between sessions is
-  # picked up automatically. Marker is cleared on eject.
+  # Tool availability. The sensor reports two mutually-exclusive facts
+  # so install_tools can require the negative explicitly:
+  #   - exit 0 → tools_installed (add) + tools_not_installed (remove)
+  #   - exit 1 → tools_not_installed (add) + tools_installed (remove)
+  # Exit 0 when every required scan tool is on PATH, OR when
+  # install_tools has set the best-effort marker (couldn't install
+  # further — graceful degradation will handle the gap). Checked each
+  # iteration so a `brew install` between sessions is picked up
+  # automatically. Marker is cleared on eject.
   - name: tools_installed
     cmd:
       - sh
@@ -87,6 +91,12 @@ sensors:
           }
         done
         exit 0
+    on_success:
+      add: [tools_installed]
+      remove: [tools_not_installed]
+    on_failure:
+      add: [tools_not_installed]
+      remove: [tools_installed]
 
   - name: map_recorded
     cmd: ["test", "-f", "/tmp/uncharles-audit/file-map.txt"]
@@ -146,8 +156,9 @@ actions:
   # the graceful-degradation path for whatever's still missing.
   - name: install_tools
     cost: 5.0
-    requires: []
+    requires: [tools_not_installed]
     adds: [tools_installed]
+    removes: [tools_not_installed]
     cmd:
       - sh
       - -c
