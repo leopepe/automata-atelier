@@ -14,6 +14,13 @@ env:
   # 95% confidence interval. Set high enough to absorb noise on GitHub's
   # shared runners; tighten if/when we move to dedicated bench hardware.
   REGRESSION_THRESHOLD_PCT: '10'
+  # Reduced criterion sampling for CI. Defaults (3s warm-up + 5s
+  # measurement × 100 samples) are calibrated for nanosecond-precision
+  # research; this gate detects regressions above
+  # REGRESSION_THRESHOLD_PCT, where shorter sampling is enough.
+  # Per-case time drops from ~8s to ~3s. Local `cargo bench` is unaffected
+  # — these flags only apply inside this workflow.
+  CRITERION_CI_FLAGS: '--measurement-time 2 --warm-up-time 1 --sample-size 50'
 
 jobs:
   bench:
@@ -81,7 +88,7 @@ jobs:
         if: steps.baseline-check.outputs.available == 'true'
         uses: actions/cache/restore@v4
         with:
-          key: bench-base-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
+          key: bench-base-v2-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
           path: |
             target/criterion
             bench-base.txt
@@ -95,7 +102,7 @@ jobs:
           set -euo pipefail
           git checkout "${{ steps.base-sha.outputs.sha }}"
           cargo bench -p ${{ matrix.crate }} --bench performance -- \
-            --save-baseline pr-base 2>&1 | tee bench-base.txt
+            --save-baseline pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-base.txt
 
       - name: Persist base-branch baseline cache
         # Save the freshly-captured baseline so the next PR against the
@@ -104,7 +111,7 @@ jobs:
         if: steps.baseline-check.outputs.available == 'true' && steps.cache-base.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: bench-base-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
+          key: bench-base-v2-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
           path: |
             target/criterion
             bench-base.txt
@@ -115,7 +122,7 @@ jobs:
           set -euo pipefail
           git checkout "${{ github.sha }}"
           cargo bench -p ${{ matrix.crate }} --bench performance -- \
-            --baseline pr-base 2>&1 | tee bench-head.txt
+            --baseline pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-head.txt
 
       - name: Run PR head benches (introductory, no baseline)
         # Bootstrap path: bench the PR head with no comparison. This
@@ -125,7 +132,8 @@ jobs:
         if: steps.baseline-check.outputs.available == 'false'
         run: |
           set -euo pipefail
-          cargo bench -p ${{ matrix.crate }} --bench performance 2>&1 | tee bench-head.txt
+          cargo bench -p ${{ matrix.crate }} --bench performance -- \
+            $CRITERION_CI_FLAGS 2>&1 | tee bench-head.txt
 
       - name: Detect regressions
         if: steps.baseline-check.outputs.available == 'true'

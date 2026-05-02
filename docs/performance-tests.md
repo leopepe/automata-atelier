@@ -105,7 +105,7 @@ a PR adds dev-deps to one workspace member.
 
 The base-branch bench result is the same for every PR opened against the
 same `main` SHA, but a naive workflow re-runs it every time. The bench
-workflow caches that result keyed by `bench-base-<crate>-<base-sha>`,
+workflow caches that result keyed by `bench-base-v2-<crate>-<base-sha>`,
 storing `target/criterion/` (where criterion's `pr-base` baseline data
 lives) plus the raw `bench-base.txt` log. On cache hit the base-bench
 step is skipped entirely; on miss it runs as before and the result is
@@ -117,6 +117,33 @@ The first PR after a `main` push pays the full base-bench cost; every
 subsequent PR against the same `main` SHA pays close to zero for that
 half of the workflow. Caches expire after 7 days of no access (GitHub's
 default), so a cold start happens roughly weekly on quiet branches.
+
+The `v2` segment in the cache key is a profile version: bump it when
+the CI sampling settings change so cached baselines captured under the
+old profile cannot mix with head runs under the new one.
+
+### CI sampling profile
+
+Criterion's defaults — 3s warm-up + 5s measurement × 100 samples per
+case — target nanosecond-precision research. CI does not need that
+precision: the gate fires on regressions above
+`REGRESSION_THRESHOLD_PCT` (10%), well above the noise floor of any
+sensible reduced sample.
+
+The bench workflow passes `--measurement-time 2 --warm-up-time 1
+--sample-size 50` (exposed as `$CRITERION_CI_FLAGS` in `bench.yml`) to
+every `cargo bench` invocation it runs — base, head, and the
+introductory bootstrap path. Per-case sampling drops from ~8s to ~3s,
+which roughly halves the head-run wall time. Confidence intervals
+widen modestly; both the criterion-level "performance has regressed"
+classification and the percent-bound gate continue to flag genuine
+regressions because real regressions present as tight intervals well
+clear of the threshold.
+
+These flags only apply inside the workflow. Local `cargo bench` runs
+under each crate use criterion defaults — the higher-precision profile
+is the right one for capturing canonical baselines and writing
+comparison summaries.
 
 ### Overriding the gate for an intentional trade-off
 
