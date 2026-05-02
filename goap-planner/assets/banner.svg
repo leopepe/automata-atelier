@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="goap-planner — goal-oriented action planning">
+  <title>goap-planner</title>
+  <desc>Banner for the goap-planner crate. On the left, an abstract search-tree emblem: a root state at the top branches into several candidate paths, all traced faintly, with one chosen path highlighted in copper down to a goal flag — the planner exploring the state space and committing to a plan. On the right, the chosen plan rendered explicitly as a five-state chain with action labels and costs.</desc>
+
+  <defs>
+    <radialGradient id="parchment" cx="50%" cy="50%" r="65%">
+      <stop offset="0%"  stop-color="#FAF6E9"/>
+      <stop offset="80%" stop-color="#F1E9CD"/>
+      <stop offset="100%" stop-color="#E5DAB6"/>
+    </radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="16" cy="16" r="0.7" fill="#3A3530" fill-opacity="0.18"/>
+    </pattern>
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#1E3A5F"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#parchment)"/>
+  <rect width="1200" height="320" fill="url(#grid)"/>
+
+  <!-- Drafting frame -->
+  <rect x="20" y="20" width="1160" height="280" fill="none" stroke="#1E3A5F" stroke-width="0.6" stroke-opacity="0.55"/>
+  <rect x="28" y="28" width="1144" height="264" fill="none" stroke="#1E3A5F" stroke-width="0.4" stroke-opacity="0.4"/>
+
+  <!-- ============================================================
+       SEARCH-TREE EMBLEM (left)
+       Bounded box ≈ x:60-280, y:55-285.
+       A root state explored into 3 candidate branches, each branch
+       leading to one leaf. The chosen path (root → middle branch
+       → goal) is drawn in copper; the others are faint, the
+       discarded alternatives the planner had to consider.
+       ============================================================ -->
+
+  <!-- Faint branches (the rejected alternatives) -->
+  <g stroke="#1E3A5F" stroke-width="1.2" fill="none" stroke-opacity="0.4" stroke-linecap="round">
+    <!-- Left branch: root → L1-left → leaf-left -->
+    <line x1="170" y1="80"  x2="100" y2="170"/>
+    <line x1="100" y1="170" x2="90"  y2="250"/>
+    <!-- Right branch: root → L1-right → leaf-right -->
+    <line x1="170" y1="80"  x2="240" y2="170"/>
+    <line x1="240" y1="170" x2="250" y2="250"/>
+  </g>
+
+  <!-- Chosen path (root → middle child → goal) in copper -->
+  <g stroke="#C77F45" stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="170" y1="80"  x2="170" y2="170"/>
+    <line x1="170" y1="170" x2="170" y2="250"/>
+  </g>
+
+  <!-- Nodes -->
+  <g stroke="#1E3A5F" stroke-width="1.5">
+    <!-- Root (start state) -->
+    <circle cx="170" cy="80" r="10" fill="#C77F45"/>
+
+    <!-- Level 1: three explored states -->
+    <circle cx="100" cy="170" r="5"   fill="#FAF6E9" stroke-opacity="0.6"/>
+    <circle cx="170" cy="170" r="6.5" fill="#C77F45"/>
+    <circle cx="240" cy="170" r="5"   fill="#FAF6E9" stroke-opacity="0.6"/>
+
+    <!-- Level 2: leaves -->
+    <circle cx="90"  cy="250" r="4.5" fill="#FAF6E9" stroke-opacity="0.6"/>
+    <circle cx="170" cy="250" r="10"  fill="#C77F45"/>
+    <circle cx="250" cy="250" r="4.5" fill="#FAF6E9" stroke-opacity="0.6"/>
+  </g>
+
+  <!-- Goal flag flying out of the goal node -->
+  <g transform="translate(180,232)">
+    <line x1="0" y1="0" x2="0" y2="-32" stroke="#1E3A5F" stroke-width="1.5"/>
+    <path d="M0 -32 L20 -28 L16 -22 L20 -16 L0 -20 Z"
+          fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
+  </g>
+
+  <!-- Tiny "explore" annotation curving along the root -->
+  <g font-family="'Courier New', monospace" font-size="9" fill="#7B6B47" font-style="italic">
+    <text x="170" y="62" text-anchor="middle">initial state</text>
+    <text x="170" y="278" text-anchor="middle">goal reached</text>
+  </g>
+
+  <!-- Side annotation -->
+  <g stroke="#1E3A5F" stroke-width="0.5" stroke-opacity="0.45" fill="#1E3A5F" fill-opacity="0.55"
+     font-family="'Courier New', monospace" font-size="8">
+    <line x1="46" y1="60" x2="46" y2="280"/>
+    <line x1="42" y1="60" x2="50" y2="60"/>
+    <line x1="42" y1="280" x2="50" y2="280"/>
+    <text x="34" y="170" transform="rotate(-90,34,170)">plan(state, goal) → plan</text>
+  </g>
+
+  <!-- ============================================================
+       TITLE BLOCK + PLAN CHAIN  (right two-thirds: x ~ 300-1180)
+       The chain is the *output* of the search on the left: the
+       chosen sequence of actions, rendered explicitly.
+       ============================================================ -->
+
+  <g text-anchor="middle">
+    <text x="730" y="100"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="74" font-weight="bold" fill="#1E3A5F" letter-spacing="-1">goap-planner</text>
+
+    <text x="730" y="138"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="22" font-style="italic" fill="#C77F45">goal-oriented action planning</text>
+
+    <text x="730" y="168"
+          font-family="'Helvetica Neue', Arial, sans-serif"
+          font-size="11" fill="#475569" letter-spacing="4">STATE  ·  ACTION  ·  GOAL  ·  PLAN</text>
+  </g>
+
+  <!-- Plan chain (5 states, 4 labelled action transitions, goal flag) -->
+
+  <!-- Action arrows -->
+  <g stroke="#1E3A5F" stroke-width="1.6" fill="none" stroke-linecap="round">
+    <line x1="358" y1="240" x2="500" y2="240" marker-end="url(#arrow-navy)"/>
+    <line x1="528" y1="240" x2="670" y2="240" marker-end="url(#arrow-navy)"/>
+    <line x1="698" y1="240" x2="840" y2="240" marker-end="url(#arrow-navy)"/>
+    <line x1="868" y1="240" x2="1010" y2="240" marker-end="url(#arrow-navy)"/>
+  </g>
+
+  <!-- Action labels (above each arrow) -->
+  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="11" fill="#7B6B47" font-style="italic">
+    <text x="430" y="227">chop_tree</text>
+    <text x="600" y="227">split_log</text>
+    <text x="770" y="227">stack_logs</text>
+    <text x="940" y="227">light_fire</text>
+  </g>
+
+  <!-- Action costs (below each arrow) -->
+  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#C77F45">
+    <text x="430" y="266">cost 5</text>
+    <text x="600" y="266">cost 2</text>
+    <text x="770" y="266">cost 1</text>
+    <text x="940" y="266">cost 3</text>
+  </g>
+
+  <!-- States -->
+  <g stroke="#1E3A5F" stroke-width="1.8">
+    <circle cx="338"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="514"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="684"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="854"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="1036" cy="240" r="24" fill="#C77F45"/>
+  </g>
+
+  <!-- State labels -->
+  <g text-anchor="middle" font-family="Georgia, serif" font-size="14" font-style="italic" fill="#1E3A5F">
+    <text x="338"  y="245">S₀</text>
+    <text x="514"  y="245">S₁</text>
+    <text x="684"  y="245">S₂</text>
+    <text x="854"  y="245">S₃</text>
+  </g>
+  <g text-anchor="middle" font-family="Georgia, serif" font-size="14" font-style="italic" fill="#FAF6E9">
+    <text x="1036" y="245">G</text>
+  </g>
+
+  <!-- Goal flag flying out of goal state -->
+  <g transform="translate(1064,202)">
+    <line x1="0" y1="0" x2="0" y2="38" stroke="#1E3A5F" stroke-width="1.5"/>
+    <path d="M0 0 L22 6 L17 12 L22 18 L0 14 Z" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
+  </g>
+</svg>
