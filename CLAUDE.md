@@ -21,6 +21,18 @@ If a sub-directory has no `CLAUDE.md`, fall back to the closest ancestor that do
 
 These files are populated lazily: directories without one have no domain-specific rules yet. The user adds a `CLAUDE.md` when a particular directory needs its own instructions; absence does not mean "no instructions exist" globally — it just means none scoped to that path.
 
+## Read `docs/` to learn the repo
+
+The `docs/` directory at the workspace root is the canonical reference for how this repository is used and where things live. **Before doing substantive work, read the files under `docs/`** — start with [`docs/CLAUDE.md`](./docs/CLAUDE.md), which is an index of every workspace-wide doc and points to the rest.
+
+Specifically:
+
+- **Before writing or modifying any code**, read [`docs/coding-guidelines.md`](./docs/coding-guidelines.md). It is the source of truth for tests, lint and format gates, documentation duties, commit and PR conventions, and the "when in doubt" defaults.
+- **Before touching a core library's hot path** (currently `grafo` or `goap-planner`), read [`docs/performance-tests.md`](./docs/performance-tests.md).
+- **Before opening or updating a GitHub issue**, read [`docs/issues.md`](./docs/issues.md).
+
+When new workspace-wide documentation is added under `docs/`, the index in `docs/CLAUDE.md` is updated to list it; check there first rather than guessing what exists.
+
 ## Layered architecture (don't blur the boundaries)
 
 The crates have deliberately clean separation; preserve it when adding code:
@@ -35,7 +47,7 @@ If a change feels like it should live in a lower layer, that's almost always the
 
 ### Commits and pull requests
 
-Any time you author a commit, open or update a pull request, or otherwise produce text that lands in this repo's git or GitHub history, follow the rules in `docs/CLAUDE.md` under **Commits and pull requests**: Conventional Commits 1.0.0 for every commit message and PR title, and the template at `.github/PULL_REQUEST_TEMPLATE.md` for PR bodies. These apply uniformly — there is no informal-commit exception for quick fixes, doc tweaks, or AI-authored changes.
+Any time you author a commit, open or update a pull request, or otherwise produce text that lands in this repo's git or GitHub history, follow the rules in [`docs/coding-guidelines.md`](./docs/coding-guidelines.md) under **Commits and pull requests**: Conventional Commits 1.0.0 for every commit message and PR title, and the template at `.github/PULL_REQUEST_TEMPLATE.md` for PR bodies. These apply uniformly — there is no informal-commit exception for quick fixes, doc tweaks, or AI-authored changes.
 
 ### Issues
 

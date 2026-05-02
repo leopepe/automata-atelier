@@ -1,6 +1,6 @@
 # Issues
 
-How to file and triage issues in this workspace. Pull requests follow a separate set of rules — see [`docs/CLAUDE.md`](./CLAUDE.md) under **Commits and pull requests** and the template at [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) for those.
+How to file and triage issues in this workspace. Pull requests follow a separate set of rules — see [`docs/coding-guidelines.md`](./coding-guidelines.md) under **Commits and pull requests** and the template at [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) for those.
 
 ## When to open an issue
 
