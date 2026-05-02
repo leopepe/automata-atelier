@@ -1,0 +1,178 @@
+# Post-apply convergence watcher for one OpenTofu state key. Verifies that
+# the deployed world (one cloud × one tier × one env, scoped by the state
+# backend the local working directory points at) stays converged with `main`
+# *between* CI pushes — drift detection, not plan/apply orchestration.
+#
+# Run from the IaC repo root (the directory `tofu init` would be run in)
+# with:
+#
+#   uncharles run --config tofu_drift_watch.yaml --execute --interval-ms 30000
+#
+# uncharles exits after one cycle: either at iteration 1 (NoPlan — push_completed
+# is false, CI is broken, do not probe) or after one of the `archive_*`
+# actions flips `idle` true. To probe continuously, wrap in:
+#
+#   while true; do uncharles run --config tofu_drift_watch.yaml --execute; sleep 600; done
+#
+# Five-to-ten-minute outer ticks are the right cadence — the steady state is
+# `tofu init -lockfile=readonly` plus one `gh run list` call per probe.
+#
+# Decision context: see `docs/adrs/0002-uncharles-as-post-apply-iac-convergence-watcher.md`.
+# This config is the minimum viable shape from option (c) of issue #25:
+# scoped to one state key, post-apply only, never plans/applies on its own.
+#
+# Sidecar state on disk (created lazily by the actions; clean up by deleting
+# the directory):
+#   .uncharles/state/last_plan_exit       — three-valued plan exit (0|1|2)
+#   .uncharles/state/prefetch_done        — present iff prefetch is fresh
+#   .uncharles/evidence/<utc_ts>/         — archived per-cycle evidence
+#
+# Prereqs in the target repo:
+#   - `tofu` on PATH; the working dir has a usable backend config
+#   - **readonly** cloud credentials in scope. The watcher must NEVER hold
+#     apply-capable creds — this is the security posture this config commits
+#     to. Stale-lock recovery and any apply-capable action are explicit
+#     follow-ups (see ADR 0002 "Follow-up gaps").
+#   - `gh` authenticated, `WATCH_WORKFLOW` exported (e.g. `infrastructure.yaml`)
+#   - `.uncharles/scripts/prefetch.sh` exists (project-specific: lambda zips,
+#     SOPS decrypt, anything `tofu plan` resolves at plan time). Idempotent;
+#     creates `.uncharles/state/prefetch_done` on success.
+#   - `.uncharles/scripts/tofu-plan-refresh.sh` runs
+#     `tofu plan -refresh-only -detailed-exitcode -no-color`
+#     and writes the three-valued exit code (0|1|2) to
+#     `.uncharles/state/last_plan_exit`. The wrapper itself exits 0 if the
+#     plan ran (regardless of result) or non-zero only on process-level
+#     failure (signal, missing tofu binary, credential failure).
+#   - `.uncharles/scripts/archive.sh <kind>` archives stdout/stderr and any
+#     plan output under `.uncharles/evidence/<utc_ts>/`, where `<kind>` is
+#     one of `clean`, `drift`, or `error`. Removes
+#     `.uncharles/state/last_plan_exit` and `.uncharles/state/prefetch_done`
+#     on success so the next outer-tick invocation re-probes from scratch.
+
+sensors:
+  # `push_completed` — the most recent run of `WATCH_WORKFLOW` exited
+  # success. When false (CI failing or no run found), the planner cannot
+  # route through any action and uncharles exits with NoPlan. That is a
+  # useful operator signal: "CI is broken, drift cannot be safely probed".
+  - name: push_completed
+    cmd:
+      - sh
+      - -c
+      - |
+        run_status=$(gh run list --workflow="${WATCH_WORKFLOW:-infrastructure.yaml}" \
+          --limit=1 --json status,conclusion \
+          -q '.[0] | .status + ":" + .conclusion' 2>/dev/null) || exit 1
+        [ "$run_status" = "completed:success" ]
+
+  # `lock_file_in_sync` — `.terraform.lock.hcl` matches the providers the
+  # working tree resolves to. Drift here means a provider was bumped on
+  # `main` since the watcher last ran; recovery is `tofu_init` (read-only
+  # provider refresh — no `-upgrade`, by design).
+  - name: lock_file_in_sync
+    cmd: ["tofu", "init", "-lockfile=readonly", "-input=false", "-no-color"]
+
+  # `prefetch_done` — project-specific marker that artifacts referenced by
+  # `tofu plan` (lambda zips, SOPS-decrypted vars, etc.) have been seeded
+  # for this run. Without this, `filebase64sha256()` and friends fail at
+  # plan time and we'd misread that as state drift.
+  - name: prefetch_done
+    cmd: ["test", "-f", ".uncharles/state/prefetch_done"]
+
+  # `plan_clean`, `plan_has_changes`, `plan_errored` — three orthogonal
+  # facts derived from `tofu plan -refresh-only -detailed-exitcode`. The
+  # runtime today only sees binary action exit codes (ADR 0002 flags this
+  # as the headline runtime gap); `tofu_plan_refresh` writes the three-valued
+  # exit to `.uncharles/state/last_plan_exit` and these sensors decode it.
+  # Mutually exclusive: at most one is true at a time.
+  - name: plan_clean
+    cmd:
+      - sh
+      - -c
+      - '[ "$(cat .uncharles/state/last_plan_exit 2>/dev/null)" = "0" ]'
+
+  - name: plan_has_changes
+    cmd:
+      - sh
+      - -c
+      - '[ "$(cat .uncharles/state/last_plan_exit 2>/dev/null)" = "2" ]'
+
+  - name: plan_errored
+    cmd:
+      - sh
+      - -c
+      - '[ "$(cat .uncharles/state/last_plan_exit 2>/dev/null)" = "1" ]'
+
+actions:
+  # Refresh providers and the lock file. `tofu init` here uses readonly
+  # creds and does NOT touch state. `-upgrade` is deliberately omitted —
+  # the watcher must not silently bump provider versions; lock-file
+  # recovery is a separate, approval-gated follow-up (ADR 0002 gap 3).
+  - name: tofu_init
+    cost: 3.0
+    requires: [push_completed]
+    adds: [lock_file_in_sync]
+    cmd: ["tofu", "init", "-lockfile=readonly", "-input=false", "-no-color"]
+
+  # Project-specific prefetch (lambda zips, SOPS decrypt, etc.). The
+  # script no-ops if the marker is fresh enough; idempotency is the
+  # script's responsibility, not the planner's.
+  - name: prefetch_artifacts
+    cost: 2.0
+    requires: [push_completed]
+    adds: [prefetch_done]
+    cmd: [".uncharles/scripts/prefetch.sh"]
+
+  # Drift probe. Wrapper runs `tofu plan -refresh-only -detailed-exitcode`
+  # and writes the exit code to `.uncharles/state/last_plan_exit`, then
+  # exits 0 if the plan ran (regardless of result). Optimistic
+  # `+plan_clean` is corrected next iteration by the three plan_* sensors
+  # reading the marker — same divergence-replan pattern as
+  # `release_watch.yaml`'s `await_deploy`. If the actual result is
+  # `plan_has_changes` or `plan_errored`, the planner reroutes to the
+  # matching `archive_*` action on the next iteration.
+  - name: tofu_plan_refresh
+    cost: 5.0
+    requires: [push_completed, lock_file_in_sync, prefetch_done]
+    adds: [plan_clean]
+    cmd: [".uncharles/scripts/tofu-plan-refresh.sh"]
+
+  # Convergence confirmed. Records "world is converged with `main` as of
+  # <utc_ts>" and exits the loop. The archive script also clears
+  # `last_plan_exit` and `prefetch_done` so the next outer-tick re-probes.
+  - name: archive_clean
+    cost: 1.0
+    requires: [plan_clean]
+    adds: [idle]
+    removes: [plan_clean]
+    cmd: [".uncharles/scripts/archive.sh", "clean"]
+
+  # Drift detected. The watcher does NOT auto-apply or auto-remediate;
+  # drift is surfaced for a human (or a higher-level workflow) to triage.
+  # Setting `idle` lets the watcher exit cleanly; the external wrapper
+  # decides whether to alert based on the archive contents.
+  - name: archive_drift
+    cost: 1.0
+    requires: [plan_has_changes]
+    adds: [idle]
+    removes: [plan_has_changes]
+    cmd: [".uncharles/scripts/archive.sh", "drift"]
+
+  # Plan errored (provider failure, state-schema decay, missing artifact
+  # the prefetch should have seeded). Same disposition as `archive_drift`:
+  # the watcher does not retry — the issue's "self-induced rug-pull"
+  # failure mode is exactly the case where blind retry against
+  # half-mutated state worsens things. Surfaces and exits.
+  - name: archive_error
+    cost: 1.0
+    requires: [plan_errored]
+    adds: [idle]
+    removes: [plan_errored]
+    cmd: [".uncharles/scripts/archive.sh", "error"]
+
+# Goal is `idle`: one of the `archive_*` actions completed and set the
+# marker via its effects. The outer wrapper invokes uncharles again on the
+# next outer tick; cold-start state in that next invocation has neither
+# `last_plan_exit` nor `prefetch_done`, so the planner re-derives the
+# probe path from scratch.
+goal:
+  requires: [idle]
