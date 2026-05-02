@@ -38,27 +38,56 @@ jobs:
           # don't fight for the same cache slot.
           key: bench-${{ matrix.crate }}
 
+      - name: Detect base baseline availability
+        # When a PR introduces the bench suite for a crate, the base
+        # branch has no `benches/performance.rs` to run yet — the
+        # comparison gate has nothing to compare against. Detect that
+        # case here and downstream steps switch to an introductory
+        # head-only run.
+        id: baseline-check
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          if git show "origin/${{ github.base_ref }}:${{ matrix.crate }}/benches/performance.rs" >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No bench suite on origin/${{ github.base_ref }} for ${{ matrix.crate }} — this PR introduces it; comparison gate skipped."
+          fi
+
       - name: Save base-branch baseline
         # Run the bench on origin/<base_ref> first, save it as `pr-base`,
         # then return to the PR head for the comparison run. We bench the
         # base branch even when the PR doesn't touch it, because criterion
         # baselines are stored in target/criterion and survive the
         # checkout below.
+        if: steps.baseline-check.outputs.available == 'true'
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
           git checkout "origin/${{ github.base_ref }}"
           cargo bench -p ${{ matrix.crate }} --bench performance -- \
             --save-baseline pr-base 2>&1 | tee bench-base.txt
 
       - name: Compare PR head against baseline
+        if: steps.baseline-check.outputs.available == 'true'
         run: |
           set -euo pipefail
           git checkout "${{ github.sha }}"
           cargo bench -p ${{ matrix.crate }} --bench performance -- \
             --baseline pr-base 2>&1 | tee bench-head.txt
 
+      - name: Run PR head benches (introductory, no baseline)
+        # Bootstrap path: bench the PR head with no comparison. This
+        # produces `bench-head.txt` so the upload-artifacts step still
+        # has something to attach. Regression detection is skipped
+        # because there's no baseline to regress against.
+        if: steps.baseline-check.outputs.available == 'false'
+        run: |
+          set -euo pipefail
+          cargo bench -p ${{ matrix.crate }} --bench performance 2>&1 | tee bench-head.txt
+
       - name: Detect regressions
+        if: steps.baseline-check.outputs.available == 'true'
         # If the PR carries the `bench:allow-regression` label, the gate is
         # downgraded to a warning. Use this only for deliberate trade-offs
         # documented in the PR description and `perf-comparison-YYYY-MM-DD.md`.
