@@ -1,0 +1,332 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling crossbeam-utils v0.8.21
+   Compiling serde_core v1.0.228
+   Compiling rayon-core v1.13.0
+   Compiling zerocopy v0.8.48
+   Compiling either v1.15.0
+   Compiling serde v1.0.228
+   Compiling zmij v1.0.21
+   Compiling autocfg v1.5.0
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling serde_json v1.0.149
+   Compiling memchr v2.8.0
+   Compiling ciborium-io v0.2.2
+   Compiling itoa v1.0.18
+   Compiling regex-syntax v0.8.10
+   Compiling num-traits v0.2.19
+   Compiling plotters-backend v0.3.7
+   Compiling clap_lex v1.1.0
+   Compiling anstyle v1.0.14
+   Compiling clap_builder v4.6.0
+   Compiling plotters-svg v0.3.7
+   Compiling regex-automata v0.4.14
+   Compiling itertools v0.10.5
+   Compiling rustc-hash v2.1.2
+   Compiling cast v0.3.0
+   Compiling same-file v1.0.6
+   Compiling once_cell v1.21.4
+   Compiling criterion-plot v0.5.0
+   Compiling clap v4.6.1
+   Compiling walkdir v2.5.0
+   Compiling anes v0.1.6
+   Compiling regex v1.12.3
+   Compiling oorandom v11.1.5
+   Compiling is-terminal v0.4.17
+   Compiling plotters v0.3.7
+   Compiling crossbeam-epoch v0.9.18
+   Compiling crossbeam-deque v0.8.6
+   Compiling syn v2.0.117
+   Compiling rayon v1.12.0
+   Compiling grafo v0.1.0 (/Users/pepe/Workspace/rust/automata-atelier/grafo)
+   Compiling zerocopy-derive v0.8.48
+   Compiling serde_derive v1.0.228
+   Compiling goap-planner v0.1.0 (/Users/pepe/Workspace/rust/automata-atelier/goap-planner)
+   Compiling tinytemplate v1.2.1
+   Compiling half v2.7.1
+   Compiling ciborium-ll v0.2.2
+   Compiling ciborium v0.2.2
+   Compiling criterion v0.5.1
+    Finished `bench` profile [optimized] target(s) in 9.12s
+     Running benches/performance.rs (target/release/deps/performance-acc5bdbe65046d63)
+Gnuplot not found, using plotters backend
+Benchmarking planning/chain/steps/5
+Benchmarking planning/chain/steps/5: Warming up for 3.0000 s
+Benchmarking planning/chain/steps/5: Collecting 100 samples in estimated 5.0059 s (1.5M iterations)
+Benchmarking planning/chain/steps/5: Analyzing
+planning/chain/steps/5  time:   [3.2546 µs 3.2642 µs 3.2753 µs]
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low severe
+  3 (3.00%) low mild
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking planning/chain/steps/10
+Benchmarking planning/chain/steps/10: Warming up for 3.0000 s
+Benchmarking planning/chain/steps/10: Collecting 100 samples in estimated 5.0266 s (848k iterations)
+Benchmarking planning/chain/steps/10: Analyzing
+planning/chain/steps/10 time:   [5.8613 µs 5.8791 µs 5.8999 µs]
+Found 6 outliers among 100 measurements (6.00%)
+  3 (3.00%) low mild
+  3 (3.00%) high mild
+Benchmarking planning/chain/steps/20
+Benchmarking planning/chain/steps/20: Warming up for 3.0000 s
+Benchmarking planning/chain/steps/20: Collecting 100 samples in estimated 5.0325 s (439k iterations)
+Benchmarking planning/chain/steps/20: Analyzing
+planning/chain/steps/20 time:   [11.386 µs 11.416 µs 11.455 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high severe
+Benchmarking planning/chain/steps/50
+Benchmarking planning/chain/steps/50: Warming up for 3.0000 s
+Benchmarking planning/chain/steps/50: Collecting 100 samples in estimated 5.0070 s (157k iterations)
+Benchmarking planning/chain/steps/50: Analyzing
+planning/chain/steps/50 time:   [31.846 µs 31.926 µs 32.008 µs]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) low mild
+  3 (3.00%) high mild
+
+Benchmarking planning/wide/branches/8
+Benchmarking planning/wide/branches/8: Warming up for 3.0000 s
+Benchmarking planning/wide/branches/8: Collecting 100 samples in estimated 5.0194 s (495k iterations)
+Benchmarking planning/wide/branches/8: Analyzing
+planning/wide/branches/8
+                        time:   [10.073 µs 10.117 µs 10.162 µs]
+Benchmarking planning/wide/branches/32
+Benchmarking planning/wide/branches/32: Warming up for 3.0000 s
+Benchmarking planning/wide/branches/32: Collecting 100 samples in estimated 5.2313 s (111k iterations)
+Benchmarking planning/wide/branches/32: Analyzing
+planning/wide/branches/32
+                        time:   [46.849 µs 47.027 µs 47.205 µs]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) low mild
+  3 (3.00%) high mild
+Benchmarking planning/wide/branches/128
+Benchmarking planning/wide/branches/128: Warming up for 3.0000 s
+Benchmarking planning/wide/branches/128: Collecting 100 samples in estimated 5.0959 s (15k iterations)
+Benchmarking planning/wide/branches/128: Analyzing
+planning/wide/branches/128
+                        time:   [336.01 µs 336.93 µs 338.01 µs]
+Found 9 outliers among 100 measurements (9.00%)
+  1 (1.00%) low severe
+  3 (3.00%) low mild
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+Benchmarking planning/wide/branches/512
+Benchmarking planning/wide/branches/512: Warming up for 3.0000 s
+Benchmarking planning/wide/branches/512: Collecting 100 samples in estimated 5.2759 s (1100 iterations)
+Benchmarking planning/wide/branches/512: Analyzing
+planning/wide/branches/512
+                        time:   [4.7715 ms 4.7818 ms 4.7928 ms]
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) low mild
+  2 (2.00%) high severe
+
+Benchmarking planning/redundant_paths/paths/2
+Benchmarking planning/redundant_paths/paths/2: Warming up for 3.0000 s
+Benchmarking planning/redundant_paths/paths/2: Collecting 100 samples in estimated 5.0079 s (1.6M iterations)
+Benchmarking planning/redundant_paths/paths/2: Analyzing
+planning/redundant_paths/paths/2
+                        time:   [3.0965 µs 3.1082 µs 3.1205 µs]
+Benchmarking planning/redundant_paths/paths/4
+Benchmarking planning/redundant_paths/paths/4: Warming up for 3.0000 s
+Benchmarking planning/redundant_paths/paths/4: Collecting 100 samples in estimated 5.0018 s (874k iterations)
+Benchmarking planning/redundant_paths/paths/4: Analyzing
+planning/redundant_paths/paths/4
+                        time:   [5.6199 µs 5.6417 µs 5.6678 µs]
+Found 8 outliers among 100 measurements (8.00%)
+  1 (1.00%) low severe
+  3 (3.00%) low mild
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking planning/redundant_paths/paths/8
+Benchmarking planning/redundant_paths/paths/8: Warming up for 3.0000 s
+Benchmarking planning/redundant_paths/paths/8: Collecting 100 samples in estimated 5.0235 s (454k iterations)
+Benchmarking planning/redundant_paths/paths/8: Analyzing
+planning/redundant_paths/paths/8
+                        time:   [10.968 µs 11.022 µs 11.074 µs]
+Benchmarking planning/redundant_paths/paths/16
+Benchmarking planning/redundant_paths/paths/16: Warming up for 3.0000 s
+Benchmarking planning/redundant_paths/paths/16: Collecting 100 samples in estimated 5.0406 s (222k iterations)
+Benchmarking planning/redundant_paths/paths/16: Analyzing
+planning/redundant_paths/paths/16
+                        time:   [22.739 µs 22.861 µs 22.978 µs]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) low mild
+Benchmarking planning/redundant_paths/paths/32
+Benchmarking planning/redundant_paths/paths/32: Warming up for 3.0000 s
+Benchmarking planning/redundant_paths/paths/32: Collecting 100 samples in estimated 5.1880 s (106k iterations)
+Benchmarking planning/redundant_paths/paths/32: Analyzing
+planning/redundant_paths/paths/32
+                        time:   [49.942 µs 50.239 µs 50.533 µs]
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) low mild
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking planning/boundaries/already_satisfied
+Benchmarking planning/boundaries/already_satisfied: Warming up for 3.0000 s
+Benchmarking planning/boundaries/already_satisfied: Collecting 100 samples in estimated 5.0000 s (661M iterations)
+Benchmarking planning/boundaries/already_satisfied: Analyzing
+planning/boundaries/already_satisfied
+                        time:   [7.1462 ns 7.1668 ns 7.1883 ns]
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+Benchmarking planning/boundaries/unreachable
+Benchmarking planning/boundaries/unreachable: Warming up for 3.0000 s
+Benchmarking planning/boundaries/unreachable: Collecting 100 samples in estimated 5.0050 s (1.5M iterations)
+Benchmarking planning/boundaries/unreachable: Analyzing
+planning/boundaries/unreachable
+                        time:   [3.4166 µs 3.4263 µs 3.4359 µs]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) low mild
+  2 (2.00%) high mild
+
+Benchmarking ops/state/contains_hit
+Benchmarking ops/state/contains_hit: Warming up for 3.0000 s
+Benchmarking ops/state/contains_hit: Collecting 100 samples in estimated 5.0000 s (990M iterations)
+Benchmarking ops/state/contains_hit: Analyzing
+ops/state/contains_hit  time:   [5.0643 ns 5.0768 ns 5.0895 ns]
+Found 9 outliers among 100 measurements (9.00%)
+  2 (2.00%) low severe
+  3 (3.00%) low mild
+  4 (4.00%) high mild
+Benchmarking ops/state/contains_miss
+Benchmarking ops/state/contains_miss: Warming up for 3.0000 s
+Benchmarking ops/state/contains_miss: Collecting 100 samples in estimated 5.0000 s (1.9B iterations)
+Benchmarking ops/state/contains_miss: Analyzing
+ops/state/contains_miss time:   [2.5727 ns 2.5780 ns 2.5833 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking ops/state/insert
+Benchmarking ops/state/insert: Warming up for 3.0000 s
+Benchmarking ops/state/insert: Collecting 100 samples in estimated 5.0102 s (1.5M iterations)
+Benchmarking ops/state/insert: Analyzing
+ops/state/insert        time:   [870.87 ns 878.90 ns 886.48 ns]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking ops/state/from_facts/1
+Benchmarking ops/state/from_facts/1: Warming up for 3.0000 s
+Benchmarking ops/state/from_facts/1: Collecting 100 samples in estimated 5.0001 s (157M iterations)
+Benchmarking ops/state/from_facts/1: Analyzing
+ops/state/from_facts/1  time:   [31.563 ns 31.725 ns 31.899 ns]
+Found 9 outliers among 100 measurements (9.00%)
+  5 (5.00%) high mild
+  4 (4.00%) high severe
+Benchmarking ops/state/from_facts/10
+Benchmarking ops/state/from_facts/10: Warming up for 3.0000 s
+Benchmarking ops/state/from_facts/10: Collecting 100 samples in estimated 5.0002 s (24M iterations)
+Benchmarking ops/state/from_facts/10: Analyzing
+ops/state/from_facts/10 time:   [216.51 ns 218.79 ns 221.02 ns]
+Benchmarking ops/state/from_facts/100
+Benchmarking ops/state/from_facts/100: Warming up for 3.0000 s
+Benchmarking ops/state/from_facts/100: Collecting 100 samples in estimated 5.0031 s (2.4M iterations)
+Benchmarking ops/state/from_facts/100: Analyzing
+ops/state/from_facts/100
+                        time:   [2.2012 µs 2.2086 µs 2.2169 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking ops/action/applicable_met
+Benchmarking ops/action/applicable_met: Warming up for 3.0000 s
+Benchmarking ops/action/applicable_met: Collecting 100 samples in estimated 5.0000 s (305M iterations)
+Benchmarking ops/action/applicable_met: Analyzing
+ops/action/applicable_met
+                        time:   [16.290 ns 16.447 ns 16.607 ns]
+Benchmarking ops/action/applicable_unmet
+Benchmarking ops/action/applicable_unmet: Warming up for 3.0000 s
+Benchmarking ops/action/applicable_unmet: Collecting 100 samples in estimated 5.0000 s (374M iterations)
+Benchmarking ops/action/applicable_unmet: Analyzing
+ops/action/applicable_unmet
+                        time:   [13.250 ns 13.288 ns 13.325 ns]
+Found 7 outliers among 100 measurements (7.00%)
+  2 (2.00%) low severe
+  4 (4.00%) low mild
+  1 (1.00%) high mild
+Benchmarking ops/action/apply
+Benchmarking ops/action/apply: Warming up for 3.0000 s
+Benchmarking ops/action/apply: Collecting 100 samples in estimated 5.0000 s (40M iterations)
+Benchmarking ops/action/apply: Analyzing
+ops/action/apply        time:   [123.09 ns 123.74 ns 124.38 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+Benchmarking ops/goal/trivial_one_required
+Benchmarking ops/goal/trivial_one_required: Warming up for 3.0000 s
+Benchmarking ops/goal/trivial_one_required: Collecting 100 samples in estimated 5.0000 s (759M iterations)
+Benchmarking ops/goal/trivial_one_required: Analyzing
+ops/goal/trivial_one_required
+                        time:   [6.5080 ns 6.5351 ns 6.5607 ns]
+Found 13 outliers among 100 measurements (13.00%)
+  1 (1.00%) low severe
+  9 (9.00%) low mild
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+Benchmarking ops/goal/compound_10_req_10_forbid
+Benchmarking ops/goal/compound_10_req_10_forbid: Warming up for 3.0000 s
+Benchmarking ops/goal/compound_10_req_10_forbid: Collecting 100 samples in estimated 5.0002 s (62M iterations)
+Benchmarking ops/goal/compound_10_req_10_forbid: Analyzing
+ops/goal/compound_10_req_10_forbid
+                        time:   [78.974 ns 79.324 ns 79.704 ns]
+Found 12 outliers among 100 measurements (12.00%)
+  6 (6.00%) low mild
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+Benchmarking ops/goal/unmet_required
+Benchmarking ops/goal/unmet_required: Warming up for 3.0000 s
+Benchmarking ops/goal/unmet_required: Collecting 100 samples in estimated 5.0000 s (1.4B iterations)
+Benchmarking ops/goal/unmet_required: Analyzing
+ops/goal/unmet_required time:   [3.4716 ns 3.4754 ns 3.4800 ns]
+Found 12 outliers among 100 measurements (12.00%)
+  1 (1.00%) low severe
+  4 (4.00%) low mild
+  2 (2.00%) high mild
+  5 (5.00%) high severe
+
+Benchmarking concurrent_plans/sequential_64
+Benchmarking concurrent_plans/sequential_64: Warming up for 3.0000 s
+Benchmarking concurrent_plans/sequential_64: Collecting 100 samples in estimated 7.6589 s (10k iterations)
+Benchmarking concurrent_plans/sequential_64: Analyzing
+concurrent_plans/sequential_64
+                        time:   [760.79 µs 763.95 µs 767.11 µs]
+Benchmarking concurrent_plans/parallel_64_rayon
+Benchmarking concurrent_plans/parallel_64_rayon: Warming up for 3.0000 s
+Benchmarking concurrent_plans/parallel_64_rayon: Collecting 100 samples in estimated 5.2738 s (35k iterations)
+Benchmarking concurrent_plans/parallel_64_rayon: Analyzing
+concurrent_plans/parallel_64_rayon
+                        time:   [147.72 µs 148.11 µs 148.52 µs]
+Found 8 outliers among 100 measurements (8.00%)
+  4 (4.00%) low mild
+  4 (4.00%) high mild
+Benchmarking concurrent_plans/parallel_rayon/8
+Benchmarking concurrent_plans/parallel_rayon/8: Warming up for 3.0000 s
+Benchmarking concurrent_plans/parallel_rayon/8: Collecting 100 samples in estimated 5.1168 s (96k iterations)
+Benchmarking concurrent_plans/parallel_rayon/8: Analyzing
+concurrent_plans/parallel_rayon/8
+                        time:   [52.970 µs 53.307 µs 53.723 µs]
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) high mild
+  5 (5.00%) high severe
+Benchmarking concurrent_plans/parallel_rayon/32
+Benchmarking concurrent_plans/parallel_rayon/32: Warming up for 3.0000 s
+Benchmarking concurrent_plans/parallel_rayon/32: Collecting 100 samples in estimated 5.0264 s (50k iterations)
+Benchmarking concurrent_plans/parallel_rayon/32: Analyzing
+concurrent_plans/parallel_rayon/32
+                        time:   [98.126 µs 98.586 µs 99.176 µs]
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+Benchmarking concurrent_plans/parallel_rayon/128
+Benchmarking concurrent_plans/parallel_rayon/128: Warming up for 3.0000 s
+Benchmarking concurrent_plans/parallel_rayon/128: Collecting 100 samples in estimated 5.9311 s (25k iterations)
+Benchmarking concurrent_plans/parallel_rayon/128: Analyzing
+concurrent_plans/parallel_rayon/128
+                        time:   [231.47 µs 233.53 µs 236.16 µs]
+Found 8 outliers among 100 measurements (8.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+  4 (4.00%) high severe
+

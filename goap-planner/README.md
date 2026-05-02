@@ -62,15 +62,15 @@ All figures from `cargo bench -p goap-planner` (Criterion 0.5, 100 samples, rele
 
 | Scenario | Result |
 |---|---|
-| 5-step linear plan | **3.4 µs** |
-| 50-step linear plan | **33 µs** |
-| 128-action library, single correct branch | **362 µs** |
-| 16 redundant paths, picks the cheapest | **24 µs** |
-| Goal already satisfied (fast-path early return) | **6.9 ns** |
-| `Goal::satisfied_by` (1 required fact) | **6.2 ns** |
-| `State::contains` (hit / miss) | **5.4 ns / 2.7 ns** |
-| `Action::applicable` (met / unmet) | **17 ns / 14 ns** |
-| 64 concurrent plans via Rayon over `Arc<Planner>` | **145 µs** (5.4× faster than sequential) |
+| 5-step linear plan | **3.3 µs** |
+| 50-step linear plan | **32 µs** |
+| 128-action library, single correct branch | **337 µs** |
+| 16 redundant paths, picks the cheapest | **23 µs** |
+| Goal already satisfied (fast-path early return) | **7.2 ns** |
+| `Goal::satisfied_by` (1 required fact) | **6.5 ns** |
+| `State::contains` (hit / miss) | **5.1 ns / 2.6 ns** |
+| `Action::applicable` (met / unmet) | **16 ns / 13 ns** |
+| 64 concurrent plans via Rayon over `Arc<Planner>` | **148 µs** (5.2× faster than sequential) |
 
 Canonical summary with full tables and trade-offs: [`docs/performance.md`](docs/performance.md). Raw bench logs accumulate as `docs/bench-<label>.txt`; per-change deltas live in dated `docs/perf-comparison-YYYY-MM-DD.md` snapshots once the suite is touched.
 
