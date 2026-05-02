@@ -21,6 +21,13 @@ env:
   # Per-case time drops from ~8s to ~3s. Local `cargo bench` is unaffected
   # — these flags only apply inside this workflow.
   CRITERION_CI_FLAGS: '--measurement-time 2 --warm-up-time 1 --sample-size 50'
+  # Trim each multi-size bench sweep to its largest input. The largest
+  # case dominates the regression signal — the smaller sizes are useful
+  # locally for plotting the per-size scaling curve, but in CI they only
+  # add wall time. Reduces total bench cases by ~30%. Read by
+  # `ci_sample_sizes()` in each crate's `benches/performance.rs`; local
+  # `cargo bench` (env unset) keeps the full sweep.
+  CI_BENCH_SUBSET: '1'
 
 jobs:
   bench:
@@ -88,7 +95,7 @@ jobs:
         if: steps.baseline-check.outputs.available == 'true'
         uses: actions/cache/restore@v4
         with:
-          key: bench-base-v2-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
+          key: bench-base-v3-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
           path: |
             target/criterion
             bench-base.txt
@@ -111,7 +118,7 @@ jobs:
         if: steps.baseline-check.outputs.available == 'true' && steps.cache-base.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          key: bench-base-v2-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
+          key: bench-base-v3-${{ matrix.crate }}-${{ steps.base-sha.outputs.sha }}
           path: |
             target/criterion
             bench-base.txt

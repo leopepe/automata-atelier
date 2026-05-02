@@ -28,6 +28,24 @@ fn lcg(state: &mut u64) -> u64 {
 }
 
 // ---------------------------------------------------------------------------
+// CI sweep gate
+// ---------------------------------------------------------------------------
+
+/// Reduce a multi-size sweep to its largest entry when `CI_BENCH_SUBSET`
+/// is set in the environment. The largest input dominates the regression
+/// signal, so dropping the smaller sizes in CI saves wall time without
+/// changing the gate's verdict. Local `cargo bench` (env unset) runs the
+/// full sweep so the per-size scaling curve stays visible during
+/// development.
+fn ci_sample_sizes<T: Copy>(sizes: &[T]) -> Vec<T> {
+    if std::env::var_os("CI_BENCH_SUBSET").is_some() {
+        sizes.last().copied().into_iter().collect()
+    } else {
+        sizes.to_vec()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Scenario factories
 //
 // Each factory returns (actions, initial_state, goal). The topology is
@@ -137,7 +155,7 @@ fn redundant_paths(n_paths: usize) -> (Vec<Action>, State, Goal) {
 fn bench_planning_chain(c: &mut Criterion) {
     let mut group = c.benchmark_group("planning/chain");
 
-    for &n in &[5usize, 10, 20, 50] {
+    for &n in &ci_sample_sizes(&[5usize, 10, 20, 50]) {
         let (actions, initial, goal) = chain_plan(n);
         let planner = Planner::new(actions);
         group.bench_with_input(BenchmarkId::new("steps", n), &n, |b, _| {
@@ -162,7 +180,7 @@ fn bench_planning_chain(c: &mut Criterion) {
 fn bench_planning_wide(c: &mut Criterion) {
     let mut group = c.benchmark_group("planning/wide");
 
-    for &n in &[8usize, 32, 128, 512] {
+    for &n in &ci_sample_sizes(&[8usize, 32, 128, 512]) {
         let (actions, initial, goal) = wide_branching(n);
         let planner = Planner::new(actions);
         group.bench_with_input(BenchmarkId::new("branches", n), &n, |b, _| {
@@ -187,7 +205,7 @@ fn bench_planning_wide(c: &mut Criterion) {
 fn bench_planning_redundant(c: &mut Criterion) {
     let mut group = c.benchmark_group("planning/redundant_paths");
 
-    for &n in &[2usize, 4, 8, 16, 32] {
+    for &n in &ci_sample_sizes(&[2usize, 4, 8, 16, 32]) {
         let (actions, initial, goal) = redundant_paths(n);
         let planner = Planner::new(actions);
         group.bench_with_input(BenchmarkId::new("paths", n), &n, |b, _| {
@@ -272,7 +290,7 @@ fn bench_state_ops(c: &mut Criterion) {
     });
 
     // from_facts — bulk construction at varying sizes.
-    for &n in &[1usize, 10, 100] {
+    for &n in &ci_sample_sizes(&[1usize, 10, 100]) {
         let inputs: Vec<String> = (0..n).map(|i| format!("fact_{i}")).collect();
         group.bench_with_input(BenchmarkId::new("from_facts", n), &n, |b, _| {
             b.iter(|| State::from_facts(black_box(inputs.iter().cloned())))
@@ -386,7 +404,7 @@ fn bench_concurrent_plans(c: &mut Criterion) {
         })
     });
 
-    for &n_calls in &[8usize, 32, 128] {
+    for &n_calls in &ci_sample_sizes(&[8usize, 32, 128]) {
         let local: Vec<(State, Goal)> = (0..n_calls)
             .map(|_| (initial.clone(), goal.clone()))
             .collect();

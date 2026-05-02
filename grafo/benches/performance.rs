@@ -24,6 +24,24 @@ fn lcg(state: &mut u64) -> u64 {
 }
 
 // ---------------------------------------------------------------------------
+// CI sweep gate
+// ---------------------------------------------------------------------------
+
+/// Reduce a multi-size sweep to its largest entry when `CI_BENCH_SUBSET`
+/// is set in the environment. The largest input dominates the regression
+/// signal, so dropping the smaller sizes in CI saves wall time without
+/// changing the gate's verdict. Local `cargo bench` (env unset) runs the
+/// full sweep so the per-size scaling curve stays visible during
+/// development.
+fn ci_sample_sizes<T: Copy>(sizes: &[T]) -> Vec<T> {
+    if std::env::var_os("CI_BENCH_SUBSET").is_some() {
+        sizes.last().copied().into_iter().collect()
+    } else {
+        sizes.to_vec()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Graph factories
 // ---------------------------------------------------------------------------
 
@@ -193,7 +211,7 @@ fn attributed_dag(n: usize, fan_out: usize, attrs_per_node: usize) -> Graph {
 fn bench_construction(c: &mut Criterion) {
     let mut group = c.benchmark_group("construction");
 
-    for &n in &[1_000usize, 5_000, 10_000, 50_000, 100_000] {
+    for &n in &ci_sample_sizes(&[1_000usize, 5_000, 10_000, 50_000, 100_000]) {
         group.bench_with_input(BenchmarkId::new("chain", n), &n, |b, &n| {
             let labels: Vec<String> = (0..n).map(|i| i.to_string()).collect();
             let nodes: Vec<&str> = labels.iter().map(String::as_str).collect();
@@ -244,7 +262,7 @@ fn bench_search_no_filter(c: &mut Criterion) {
     let mut group = c.benchmark_group("search/no_filter");
 
     // Chain: O(V) edges, path visits every node — stresses path reconstruction.
-    for &n in &[1_000usize, 10_000, 100_000] {
+    for &n in &ci_sample_sizes(&[1_000usize, 10_000, 100_000]) {
         let g = chain(n);
         let src = "0";
         let dst = (n - 1).to_string();
@@ -254,7 +272,7 @@ fn bench_search_no_filter(c: &mut Criterion) {
     }
 
     // Sparse DAG fan-out 4: realistic workload.
-    for &n in &[1_000usize, 10_000, 50_000] {
+    for &n in &ci_sample_sizes(&[1_000usize, 10_000, 50_000]) {
         let g = sparse_dag(n, 4);
         let dst = (n - 1).to_string();
         group.bench_with_input(BenchmarkId::new("sparse_dag_fan4", n), &n, |b, _| {
@@ -263,7 +281,7 @@ fn bench_search_no_filter(c: &mut Criterion) {
     }
 
     // Sparse DAG fan-out 16: higher edge density → more heap churn.
-    for &n in &[1_000usize, 10_000, 50_000] {
+    for &n in &ci_sample_sizes(&[1_000usize, 10_000, 50_000]) {
         let g = sparse_dag(n, 16);
         let dst = (n - 1).to_string();
         group.bench_with_input(BenchmarkId::new("sparse_dag_fan16", n), &n, |b, _| {
@@ -272,7 +290,7 @@ fn bench_search_no_filter(c: &mut Criterion) {
     }
 
     // Layered DAG: maximum heap pressure (E = layers × width²).
-    for &(layers, width) in &[(20usize, 10usize), (50, 20), (100, 30)] {
+    for &(layers, width) in &ci_sample_sizes(&[(20usize, 10usize), (50, 20), (100, 30)]) {
         let (g, src, dst) = layered_dag(layers, width);
         let label = format!("{}x{}", layers, width);
         group.bench_with_input(BenchmarkId::new("layered", &label), &label, |b, _| {
@@ -360,7 +378,7 @@ fn bench_attr_count_scaling(c: &mut Criterion) {
     const N: usize = 5_000;
     const FAN: usize = 4;
 
-    for &attrs in &[1usize, 5, 10, 20, 50] {
+    for &attrs in &ci_sample_sizes(&[1usize, 5, 10, 20, 50]) {
         let g = attributed_dag(N, FAN, attrs);
         let dst = (N - 1).to_string();
         group.bench_with_input(BenchmarkId::new("attrs_per_node", attrs), &attrs, |b, _| {
@@ -387,7 +405,7 @@ fn bench_attr_count_scaling(c: &mut Criterion) {
 fn bench_path_reconstruction(c: &mut Criterion) {
     let mut group = c.benchmark_group("search/path_reconstruction");
 
-    for &n in &[10usize, 100, 1_000, 10_000, 100_000] {
+    for &n in &ci_sample_sizes(&[10usize, 100, 1_000, 10_000, 100_000]) {
         let g = chain(n);
         let dst = (n - 1).to_string();
 
@@ -419,7 +437,7 @@ fn bench_fanout_scaling(c: &mut Criterion) {
 
     const N: usize = 10_000;
 
-    for &fan in &[1usize, 2, 4, 8, 16, 32] {
+    for &fan in &ci_sample_sizes(&[1usize, 2, 4, 8, 16, 32]) {
         let g = sparse_dag(N, fan);
         let dst = (N - 1).to_string();
         group.bench_with_input(BenchmarkId::new("fan_out", fan), &fan, |b, _| {
@@ -441,7 +459,7 @@ fn bench_construction_parallel(c: &mut Criterion) {
     let mut group = c.benchmark_group("construction/parallel_sort");
 
     // Large sparse DAGs where the sort step dominates.
-    for &n in &[10_000usize, 100_000, 500_000] {
+    for &n in &ci_sample_sizes(&[10_000usize, 100_000, 500_000]) {
         // Pre-build labels and raw edge list outside the timed section.
         let labels: Vec<String> = (0..n).map(|i| i.to_string()).collect();
         let nodes: Vec<&str> = labels.iter().map(String::as_str).collect();
@@ -519,7 +537,7 @@ fn bench_concurrent_queries(c: &mut Criterion) {
     });
 
     // Scale: how does parallel throughput grow with query count?
-    for &n_queries in &[8usize, 32, 128, 512] {
+    for &n_queries in &ci_sample_sizes(&[8usize, 32, 128, 512]) {
         let pairs: Vec<(String, String)> = (0..n_queries)
             .map(|i| ((i * (N / n_queries)).to_string(), dst.clone()))
             .collect();
