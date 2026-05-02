@@ -101,6 +101,23 @@ at the workspace root — both the baseline and PR-head bench runs resolve
 identical dependency versions instead of regenerating the lockfile when
 a PR adds dev-deps to one workspace member.
 
+### Base-branch baseline cache
+
+The base-branch bench result is the same for every PR opened against the
+same `main` SHA, but a naive workflow re-runs it every time. The bench
+workflow caches that result keyed by `bench-base-<crate>-<base-sha>`,
+storing `target/criterion/` (where criterion's `pr-base` baseline data
+lives) plus the raw `bench-base.txt` log. On cache hit the base-bench
+step is skipped entirely; on miss it runs as before and the result is
+saved for the next PR. The cache invalidates naturally whenever `main`
+moves — the SHA is part of the key — so a stale baseline can never
+silently shadow a base-branch change.
+
+The first PR after a `main` push pays the full base-bench cost; every
+subsequent PR against the same `main` SHA pays close to zero for that
+half of the workflow. Caches expire after 7 days of no access (GitHub's
+default), so a cold start happens roughly weekly on quiet branches.
+
 ### Overriding the gate for an intentional trade-off
 
 A change can be a real regression and still be the right move (see grafo's
