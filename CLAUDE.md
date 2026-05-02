@@ -33,8 +33,14 @@ If a change feels like it should live in a lower layer, that's almost always the
 
 ## Working with git and GitHub
 
+### Commits and pull requests
+
 Any time you author a commit, open or update a pull request, or otherwise produce text that lands in this repo's git or GitHub history, follow the rules in `docs/CLAUDE.md` under **Commits and pull requests**: Conventional Commits 1.0.0 for every commit message and PR title, and the template at `.github/PULL_REQUEST_TEMPLATE.md` for PR bodies. These apply uniformly — there is no informal-commit exception for quick fixes, doc tweaks, or AI-authored changes.
+
+### Issues
+
+Any time you open or update a GitHub issue in this repo, follow `docs/issues.md`: pick the right template under `.github/ISSUE_TEMPLATE/` (`bug_report`, `feature_request`, or `design_proposal`), apply the canonical labels (`type:*`, `scope:*`, optional `priority:*`, `status:*`), and link issues to PRs using `Closes #N` / `Refs #N`. The full label list and lifecycle are in that doc.
 
 ## Pending work
 
-`docs/todo.md` tracks deferred design notes captured during sessions. Read it before proposing changes that may overlap with already-tracked work, so what you do composes with what's already planned.
+The backlog lives in [GitHub Issues](https://github.com/leopepe/automata-atelier/issues), not in this repo. Before proposing changes that may overlap with already-tracked work, search the issue list filtered by `type:design` (design discussions) and `type:feature` (proposed capabilities) so what you do composes with what's already planned. See `docs/issues.md` for the labelling scheme.
