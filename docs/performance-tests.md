@@ -105,7 +105,7 @@ a PR adds dev-deps to one workspace member.
 
 The base-branch bench result is the same for every PR opened against the
 same `main` SHA, but a naive workflow re-runs it every time. The bench
-workflow caches that result keyed by `bench-base-v2-<crate>-<base-sha>`,
+workflow caches that result keyed by `bench-base-v3-<crate>-<base-sha>`,
 storing `target/criterion/` (where criterion's `pr-base` baseline data
 lives) plus the raw `bench-base.txt` log. On cache hit the base-bench
 step is skipped entirely; on miss it runs as before and the result is
@@ -118,9 +118,10 @@ subsequent PR against the same `main` SHA pays close to zero for that
 half of the workflow. Caches expire after 7 days of no access (GitHub's
 default), so a cold start happens roughly weekly on quiet branches.
 
-The `v2` segment in the cache key is a profile version: bump it when
-the CI sampling settings change so cached baselines captured under the
-old profile cannot mix with head runs under the new one.
+The `v3` segment in the cache key is a profile version: bump it
+whenever the CI sampling settings or bench-case set changes so cached
+baselines captured under the old profile cannot mix with head runs
+under the new one.
 
 ### CI sampling profile
 
@@ -144,6 +145,34 @@ These flags only apply inside the workflow. Local `cargo bench` runs
 under each crate use criterion defaults — the higher-precision profile
 is the right one for capturing canonical baselines and writing
 comparison summaries.
+
+### CI bench-case subset
+
+Multi-size sweeps in each crate's `benches/performance.rs`
+(`planning/chain/steps/{5,10,20,50}`,
+`construction/chain/{1k…100k}`, etc.) iterate over input sizes so the
+per-size scaling curve is visible during local development. For
+regression detection the largest input dominates: a code change that
+hurts performance shows up at the largest size first, and any
+regression that only affects small inputs is below the threshold the
+gate cares about.
+
+Both bench files include a small `ci_sample_sizes()` helper. When
+`CI_BENCH_SUBSET` is set in the environment it returns only the last
+(largest) entry of any size slice; otherwise it returns the slice
+unchanged. The bench workflow exports `CI_BENCH_SUBSET=1` at the job
+level so every base, head, and bootstrap run takes the subset path.
+Local `cargo bench` (env unset) keeps the full sweep.
+
+Cuts roughly 30% of bench cases overall. The trade-off is that the
+per-size scaling curve isn't exercised in CI — a regression hurting
+only small inputs could land. Acceptable for a threshold-based gate;
+local profiling and the canonical bench artifacts under `docs/` are
+the right tools for size-curve analysis, not the CI gate.
+
+The cache key carries this profile too: bumping it (`bench-base-v2-…`
+→ `bench-base-v3-…` in this change) prevents a full-sweep baseline
+captured under the old profile from mixing with subset head runs.
 
 ### Overriding the gate for an intentional trade-off
 
