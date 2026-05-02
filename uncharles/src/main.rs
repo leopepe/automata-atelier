@@ -21,7 +21,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use config::Config;
 use run::{LoopEvent, LoopOutcome, Outcome, RunError, run_loop, sense_and_plan};
@@ -101,6 +101,25 @@ struct InspectArgs {
     /// When the cap is hit, the printed graph is marked TRUNCATED.
     #[arg(long, value_name = "N")]
     max_states: Option<usize>,
+
+    /// Output format. Default is human-readable text. `dot` and `mermaid`
+    /// are graph-renderer-friendly; `json` is pipeable / structured.
+    #[arg(long, value_enum, default_value_t = InspectFormat::Text)]
+    format: InspectFormat,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+enum InspectFormat {
+    /// Human-readable text report (default). Six labelled sections.
+    Text,
+    /// Graphviz DOT. Pipe to `dot -Tsvg`, `graph-easy --as=boxart`, or
+    /// `dot -Tpng | chafa -` for terminal-friendly rendering.
+    Dot,
+    /// Mermaid `flowchart LR`. Paste into a Markdown viewer with Mermaid
+    /// support, or <https://mermaid.live>.
+    Mermaid,
+    /// Pretty-printed JSON. Pipeable to `jq` and friends.
+    Json,
 }
 
 fn main() -> ExitCode {
@@ -242,8 +261,18 @@ fn inspect_command(args: InspectArgs) -> ExitCode {
     };
 
     let (initial, graph, analysis) = inspect::inspect(&config, &args.have, args.max_states);
-    let report = inspect::render_text(&config, &initial, &graph, &analysis);
+    let report = match args.format {
+        InspectFormat::Text => inspect::render_text(&config, &initial, &graph, &analysis),
+        InspectFormat::Dot => inspect::render_dot(&config, &initial, &graph, &analysis),
+        InspectFormat::Mermaid => inspect::render_mermaid(&config, &initial, &graph, &analysis),
+        InspectFormat::Json => inspect::render_json(&config, &initial, &graph, &analysis),
+    };
     print!("{report}");
+    // Non-text formats often don't end with their own trailing newline;
+    // make sure stdout looks tidy when piped.
+    if !report.ends_with('\n') {
+        println!();
+    }
 
     if analysis.is_clean() {
         ExitCode::SUCCESS

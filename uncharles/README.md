@@ -60,6 +60,41 @@ the planner's default exploration cap (10 000). Exit code is `0` when the
 config is clean, `1` when static analysis finds issues, `2` if the config
 could not be loaded.
 
+#### Output formats
+
+`--format <text|dot|mermaid|json>` selects how the inspection report is
+rendered. Default is `text` (the human-readable six-section report).
+
+```sh
+# Visual graph in your terminal via graph-easy (Perl):
+brew install graph-easy
+cargo run -q -p uncharles -- inspect --config X.yaml --format dot \
+  | graph-easy --as=boxart
+
+# Or pipe Graphviz to chafa for an image-based ASCII rendering:
+cargo run -q -p uncharles -- inspect --config X.yaml --format dot \
+  | dot -Tpng | chafa -
+
+# In iTerm2 or Kitty you can render the real image inline:
+cargo run -q -p uncharles -- inspect --config X.yaml --format dot \
+  | dot -Tpng | imgcat                # iTerm2
+cargo run -q -p uncharles -- inspect --config X.yaml --format dot \
+  | dot -Tpng | kitty +kitten icat    # Kitty
+
+# Mermaid for Markdown viewers / mermaid.live:
+cargo run -q -p uncharles -- inspect --config X.yaml --format mermaid
+
+# JSON for piping to jq or other tooling:
+cargo run -q -p uncharles -- inspect --config X.yaml --format json \
+  | jq '.static_analysis'
+```
+
+In all formats, initial state is filled blue, goal-satisfying states are
+filled green, and any state that is *both* (rare) is filled orange. DOT
+and Mermaid include the static-analysis findings as `//` and `%%`
+comments respectively; JSON exposes them as a structured `static_analysis`
+field. Exit codes are unchanged across formats.
+
 Implements [issue #22](https://github.com/leopepe/automata-atelier/issues/22).
 
 A minimal config:
