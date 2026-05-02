@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="grafo — the graph kernel">
   <title>grafo</title>
-  <desc>Banner for the grafo crate: the title sits above a horizontal directed acyclic graph rendered in technical-blueprint style, with one shortest path highlighted in copper to evoke Dijkstra's search.</desc>
+  <desc>Banner for the grafo crate. On the left, a Greek scribe figure — beard, simple chiton, holding an unrolled scroll inscribed with the verb γράφω ("to write, to draw") and a stylus, an etymological nod to the word's origin. On the right, the title sits above a horizontal directed acyclic graph with one shortest path highlighted in copper, evoking Dijkstra's search. A thin Greek meander frieze runs along the lower edge.</desc>
 
   <defs>
     <radialGradient id="parchment" cx="50%" cy="50%" r="65%">
@@ -11,10 +11,17 @@
     <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
       <circle cx="16" cy="16" r="0.7" fill="#3A3530" fill-opacity="0.18"/>
     </pattern>
-    <!-- Arrowhead marker for the path -->
     <marker id="arrow-copper" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 Z" fill="#C77F45"/>
     </marker>
+
+    <!-- Greek meander (key) pattern, repeating along the horizontal axis -->
+    <pattern id="meander" x="0" y="0" width="48" height="14" patternUnits="userSpaceOnUse">
+      <path d="M 0 14 L 0 4 L 16 4 L 16 10 L 8 10 L 8 6
+               M 24 14 L 24 4 L 40 4 L 40 10 L 32 10 L 32 6
+               M 48 14 L 48 4"
+            fill="none" stroke="#1E3A5F" stroke-width="1" stroke-opacity="0.55"/>
+    </pattern>
   </defs>
 
   <rect width="1200" height="320" fill="url(#parchment)"/>
@@ -25,96 +32,160 @@
   <rect x="28" y="28" width="1144" height="264" fill="none" stroke="#1E3A5F" stroke-width="0.4" stroke-opacity="0.4"/>
 
   <!-- ============================================================
-       TITLE BLOCK (top half)
+       GREEK SCRIBE (left)
+       Bounded box ≈ x:60-285, y:35-285.
+       Bearded scholar in a chiton, laurel wreath, holding an
+       unrolled scroll inscribed γράφω in the left hand and a
+       stylus poised over the scroll in the right hand.
        ============================================================ -->
-  <g text-anchor="middle">
-    <text x="600" y="118"
-          font-family="Georgia, 'Times New Roman', serif"
-          font-size="84" font-weight="bold" fill="#1E3A5F" letter-spacing="-1">grafo</text>
 
-    <text x="600" y="160"
-          font-family="Georgia, 'Times New Roman', serif"
-          font-size="26" font-style="italic" fill="#C77F45">the graph kernel</text>
+  <!-- Head -->
+  <circle cx="158" cy="92" r="28" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="2.2"/>
 
-    <text x="600" y="190"
-          font-family="'Helvetica Neue', Arial, sans-serif"
-          font-size="11" fill="#475569" letter-spacing="4">DIRECTED ACYCLIC GRAPHS  ·  DIJKSTRA SEARCH  ·  CSR STORAGE</text>
+  <!-- Hair (curls framing the head) -->
+  <g fill="#1E3A5F" stroke="#1E3A5F" stroke-width="1" stroke-linejoin="round">
+    <path d="M 134 80 Q 130 70 138 65 Q 145 62 150 70 Q 142 70 138 76 Z" fill-opacity="0.85"/>
+    <path d="M 178 78 Q 184 68 178 62 Q 168 62 165 70 Q 174 70 178 78 Z" fill-opacity="0.85"/>
+    <path d="M 144 70 Q 150 60 162 60 Q 174 60 178 70 Q 165 64 144 70 Z" fill-opacity="0.85"/>
+  </g>
+
+  <!-- Laurel wreath (small leaves above forehead) -->
+  <g fill="none" stroke="#C77F45" stroke-width="1.2" stroke-linecap="round">
+    <path d="M 134 72 Q 138 64 144 62"/>
+    <path d="M 138 66 Q 134 60 130 64"/>
+    <path d="M 178 72 Q 174 64 168 62"/>
+    <path d="M 174 66 Q 178 60 182 64"/>
+    <ellipse cx="142" cy="63" rx="3" ry="1.6" fill="#C77F45" stroke="none" transform="rotate(-25 142 63)"/>
+    <ellipse cx="170" cy="63" rx="3" ry="1.6" fill="#C77F45" stroke="none" transform="rotate(25 170 63)"/>
+    <ellipse cx="155" cy="58" rx="3" ry="1.6" fill="#C77F45" stroke="none"/>
+  </g>
+
+  <!-- Eye (just a small mark) -->
+  <circle cx="148" cy="92" r="1.6" fill="#1E3A5F"/>
+  <circle cx="168" cy="92" r="1.6" fill="#1E3A5F"/>
+
+  <!-- Brow -->
+  <line x1="143" y1="86" x2="153" y2="85" stroke="#1E3A5F" stroke-width="1"/>
+  <line x1="163" y1="85" x2="173" y2="86" stroke="#1E3A5F" stroke-width="1"/>
+
+  <!-- Nose -->
+  <path d="M 158 96 L 156 105 L 160 107" fill="none" stroke="#1E3A5F" stroke-width="1"/>
+
+  <!-- Beard (covering lower face and chin, flowing down) -->
+  <path d="M 138 110
+           Q 140 130  150 138
+           Q 158 142  166 138
+           Q 176 130  178 110
+           Q 174 122  168 124
+           Q 158 124  148 124
+           Q 142 122  138 110 Z"
+        fill="#1E3A5F" fill-opacity="0.85" stroke="#1E3A5F" stroke-width="1"/>
+  <!-- Beard texture lines -->
+  <line x1="148" y1="128" x2="146" y2="138" stroke="#3A4A66" stroke-width="0.6"/>
+  <line x1="158" y1="130" x2="158" y2="140" stroke="#3A4A66" stroke-width="0.6"/>
+  <line x1="168" y1="128" x2="170" y2="138" stroke="#3A4A66" stroke-width="0.6"/>
+
+  <!-- Neck -->
+  <line x1="158" y1="120" x2="158" y2="135" stroke="#1E3A5F" stroke-width="2" stroke-opacity="0.4"/>
+
+  <!-- Chiton (robe), classical drape: a fabric covering both shoulders,
+       widening to floor. Drawn with curves to suggest fabric folds. -->
+  <path d="M 110 140
+           Q 100 160  98 200
+           L 92 270
+           L 226 270
+           L 220 200
+           Q 218 160  208 140
+           Q 200 132  186 134
+           L 158 145
+           L 130 134
+           Q 116 132  110 140 Z"
+        fill="#FAF6E9" stroke="#1E3A5F" stroke-width="2.2" stroke-linejoin="round"/>
+
+  <!-- Robe folds (vertical curves) -->
+  <g stroke="#1E3A5F" stroke-width="0.8" fill="none" stroke-opacity="0.55">
+    <path d="M 124 148 Q 122 200 120 268"/>
+    <path d="M 144 152 Q 142 210 140 268"/>
+    <path d="M 174 152 Q 178 210 180 268"/>
+    <path d="M 194 148 Q 198 200 200 268"/>
+  </g>
+
+  <!-- Shoulder-pin clasp (copper, classical detail) -->
+  <circle cx="118" cy="142" r="3" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
+  <circle cx="200" cy="142" r="3" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
+
+  <!-- Belt across the waist -->
+  <line x1="110" y1="200" x2="208" y2="200" stroke="#C77F45" stroke-width="2.5"/>
+
+  <!-- Right arm of figure (viewer's left): holds scroll, extended -->
+  <g stroke="#1E3A5F" stroke-width="2.2" stroke-linecap="round" fill="none">
+    <path d="M 110 150 Q 80 165  72 192"/>
+    <path d="M 72 192 Q 70 210  82 215"/>
+  </g>
+
+  <!-- Scroll held in left hand of viewer's perspective -->
+  <g transform="translate(40,200) rotate(-8)">
+    <!-- Top roll -->
+    <ellipse cx="34" cy="0" rx="6" ry="3" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="1.2"/>
+    <line x1="0" y1="0" x2="68" y2="0" stroke="#1E3A5F" stroke-width="1.2"/>
+    <!-- Unrolled parchment (the body of the scroll) -->
+    <rect x="0" y="0" width="68" height="44" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="1.5"/>
+    <!-- Bottom roll -->
+    <ellipse cx="34" cy="44" rx="6" ry="3" fill="#FAF6E9" stroke="#1E3A5F" stroke-width="1.2"/>
+    <!-- Inscribed Greek text: γράφω -->
+    <text x="34" y="22" text-anchor="middle"
+          font-family="'GFS Didot', Georgia, 'Times New Roman', serif"
+          font-size="18" font-style="italic" fill="#1E3A5F">γράφω</text>
+    <!-- Tiny graph sketch underneath the word, "what is being written" -->
+    <g stroke="#C77F45" stroke-width="0.8" fill="#C77F45">
+      <line x1="14" y1="34" x2="28" y2="30" stroke="#C77F45"/>
+      <line x1="28" y1="30" x2="42" y2="36" stroke="#C77F45"/>
+      <line x1="42" y1="36" x2="54" y2="32" stroke="#C77F45"/>
+      <circle cx="14" cy="34" r="1.6"/>
+      <circle cx="28" cy="30" r="1.6"/>
+      <circle cx="42" cy="36" r="1.6"/>
+      <circle cx="54" cy="32" r="1.6"/>
+    </g>
+  </g>
+
+  <!-- Left arm of figure (viewer's right): bent, holding stylus poised over scroll -->
+  <g stroke="#1E3A5F" stroke-width="2.2" stroke-linecap="round" fill="none">
+    <path d="M 208 150 Q 230 175  220 200"/>
+    <path d="M 220 200 Q 215 215  198 218"/>
+  </g>
+
+  <!-- Stylus (small writing instrument, copper tip) -->
+  <g transform="translate(170,210) rotate(-25)">
+    <line x1="0" y1="0" x2="36" y2="0" stroke="#1E3A5F" stroke-width="2"/>
+    <circle cx="38" cy="0" r="2.5" fill="#C77F45" stroke="#1E3A5F" stroke-width="0.8"/>
+    <line x1="-4" y1="0" x2="0" y2="0" stroke="#C77F45" stroke-width="2"/>
+  </g>
+
+  <!-- Side annotation, like a museum label -->
+  <g stroke="#1E3A5F" stroke-width="0.5" stroke-opacity="0.45" fill="#1E3A5F" fill-opacity="0.55"
+     font-family="'Courier New', monospace" font-size="8">
+    <line x1="46" y1="60" x2="46" y2="282"/>
+    <line x1="42" y1="60" x2="50" y2="60"/>
+    <line x1="42" y1="282" x2="50" y2="282"/>
+    <text x="34" y="170" transform="rotate(-90,34,170)">γράφω · to write, to draw</text>
   </g>
 
   <!-- ============================================================
-       DAG (bottom half)
-       Source at far left (140), sink at far right (1060). The
-       highlighted copper path is the Dijkstra shortest path the
-       library would return.
+       TITLE BLOCK + DAG  (right two-thirds: x ~ 300-1180)
        ============================================================ -->
 
-  <!-- All edges (faint navy, the full graph) -->
-  <g stroke="#1E3A5F" stroke-width="1.2" fill="none" stroke-opacity="0.7">
-    <line x1="140" y1="250" x2="280" y2="220"/>
-    <line x1="140" y1="250" x2="280" y2="250"/>
-    <line x1="140" y1="250" x2="280" y2="285"/>
+  <g text-anchor="middle">
+    <text x="730" y="100"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="84" font-weight="bold" fill="#1E3A5F" letter-spacing="-1">grafo</text>
 
-    <line x1="280" y1="220" x2="450" y2="225"/>
-    <line x1="280" y1="220" x2="450" y2="265"/>
-    <line x1="280" y1="250" x2="450" y2="225"/>
-    <line x1="280" y1="250" x2="450" y2="265"/>
-    <line x1="280" y1="285" x2="450" y2="265"/>
+    <text x="730" y="138"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="22" font-style="italic" fill="#C77F45">γράφω · the graph kernel</text>
 
-    <line x1="450" y1="225" x2="620" y2="235"/>
-    <line x1="450" y1="225" x2="620" y2="280"/>
-    <line x1="450" y1="265" x2="620" y2="235"/>
-    <line x1="450" y1="265" x2="620" y2="280"/>
-
-    <line x1="620" y1="235" x2="780" y2="225"/>
-    <line x1="620" y1="235" x2="780" y2="270"/>
-    <line x1="620" y1="280" x2="780" y2="270"/>
-
-    <line x1="780" y1="225" x2="930" y2="240"/>
-    <line x1="780" y1="270" x2="930" y2="240"/>
-    <line x1="780" y1="270" x2="930" y2="280"/>
-
-    <line x1="930" y1="240" x2="1060" y2="255"/>
-    <line x1="930" y1="280" x2="1060" y2="255"/>
-  </g>
-
-  <!-- Highlighted shortest path: source → top-mid → top-mid → top → mid → sink -->
-  <g stroke="#C77F45" stroke-width="3" fill="none" stroke-linecap="round">
-    <line x1="140" y1="250" x2="280" y2="220"/>
-    <line x1="280" y1="220" x2="450" y2="225"/>
-    <line x1="450" y1="225" x2="620" y2="235"/>
-    <line x1="620" y1="235" x2="780" y2="225"/>
-    <line x1="780" y1="225" x2="930" y2="240"/>
-    <line x1="930" y1="240" x2="1060" y2="255" marker-end="url(#arrow-copper)"/>
-  </g>
-
-  <!-- Nodes (drawn last so they sit on top of edges) -->
-  <g stroke="#1E3A5F" stroke-width="1.5">
-    <!-- Source (highlighted) -->
-    <circle cx="140"  cy="250" r="8"  fill="#C77F45"/>
-    <!-- Layer 1 -->
-    <circle cx="280"  cy="220" r="6"  fill="#C77F45"/>
-    <circle cx="280"  cy="250" r="5"  fill="#FAF6E9"/>
-    <circle cx="280"  cy="285" r="5"  fill="#FAF6E9"/>
-    <!-- Layer 2 -->
-    <circle cx="450"  cy="225" r="6"  fill="#C77F45"/>
-    <circle cx="450"  cy="265" r="5"  fill="#FAF6E9"/>
-    <!-- Layer 3 -->
-    <circle cx="620"  cy="235" r="6"  fill="#C77F45"/>
-    <circle cx="620"  cy="280" r="5"  fill="#FAF6E9"/>
-    <!-- Layer 4 -->
-    <circle cx="780"  cy="225" r="6"  fill="#C77F45"/>
-    <circle cx="780"  cy="270" r="5"  fill="#FAF6E9"/>
-    <!-- Layer 5 -->
-    <circle cx="930"  cy="240" r="6"  fill="#C77F45"/>
-    <circle cx="930"  cy="280" r="5"  fill="#FAF6E9"/>
-    <!-- Sink (highlighted) -->
-    <circle cx="1060" cy="255" r="8"  fill="#C77F45"/>
-  </g>
-
-  <!-- Labels: source / sink -->
-  <g font-family="'Courier New', monospace" font-size="10" fill="#475569" text-anchor="middle">
-    <text x="140"  y="278">src</text>
-    <text x="1060" y="283">dst</text>
+    <text x="730" y="166"
+          font-family="'Helvetica Neue', Arial, sans-serif"
+          font-size="11" fill="#475569" letter-spacing="4">DIRECTED ACYCLIC GRAPHS  ·  DIJKSTRA SEARCH  ·  CSR STORAGE</text>
   </g>
 
   <!-- Complexity annotation, top-right -->
@@ -122,4 +193,70 @@
         font-family="'Courier New', monospace" font-size="11" fill="#7B6B47">
     O((V + E) log V)
   </text>
+
+  <!-- DAG (compressed into x:330-1140, y:200-260) -->
+
+  <!-- Faint full-graph edges -->
+  <g stroke="#1E3A5F" stroke-width="1.1" fill="none" stroke-opacity="0.7">
+    <line x1="338" y1="230" x2="450" y2="206"/>
+    <line x1="338" y1="230" x2="450" y2="230"/>
+    <line x1="338" y1="230" x2="450" y2="256"/>
+
+    <line x1="450" y1="206" x2="572" y2="208"/>
+    <line x1="450" y1="206" x2="572" y2="244"/>
+    <line x1="450" y1="230" x2="572" y2="208"/>
+    <line x1="450" y1="230" x2="572" y2="244"/>
+    <line x1="450" y1="256" x2="572" y2="244"/>
+
+    <line x1="572" y1="208" x2="700" y2="216"/>
+    <line x1="572" y1="208" x2="700" y2="252"/>
+    <line x1="572" y1="244" x2="700" y2="216"/>
+    <line x1="572" y1="244" x2="700" y2="252"/>
+
+    <line x1="700" y1="216" x2="830" y2="208"/>
+    <line x1="700" y1="216" x2="830" y2="248"/>
+    <line x1="700" y1="252" x2="830" y2="248"/>
+
+    <line x1="830" y1="208" x2="960" y2="222"/>
+    <line x1="830" y1="248" x2="960" y2="222"/>
+    <line x1="830" y1="248" x2="960" y2="256"/>
+
+    <line x1="960" y1="222" x2="1080" y2="232"/>
+    <line x1="960" y1="256" x2="1080" y2="232"/>
+  </g>
+
+  <!-- Highlighted shortest path (Dijkstra) -->
+  <g stroke="#C77F45" stroke-width="2.6" fill="none" stroke-linecap="round">
+    <line x1="338" y1="230" x2="450" y2="206"/>
+    <line x1="450" y1="206" x2="572" y2="208"/>
+    <line x1="572" y1="208" x2="700" y2="216"/>
+    <line x1="700" y1="216" x2="830" y2="208"/>
+    <line x1="830" y1="208" x2="960" y2="222"/>
+    <line x1="960" y1="222" x2="1080" y2="232" marker-end="url(#arrow-copper)"/>
+  </g>
+
+  <!-- Nodes -->
+  <g stroke="#1E3A5F" stroke-width="1.4">
+    <circle cx="338"  cy="230" r="7"   fill="#C77F45"/>
+    <circle cx="450"  cy="206" r="5.5" fill="#C77F45"/>
+    <circle cx="450"  cy="230" r="4.5" fill="#FAF6E9"/>
+    <circle cx="450"  cy="256" r="4.5" fill="#FAF6E9"/>
+    <circle cx="572"  cy="208" r="5.5" fill="#C77F45"/>
+    <circle cx="572"  cy="244" r="4.5" fill="#FAF6E9"/>
+    <circle cx="700"  cy="216" r="5.5" fill="#C77F45"/>
+    <circle cx="700"  cy="252" r="4.5" fill="#FAF6E9"/>
+    <circle cx="830"  cy="208" r="5.5" fill="#C77F45"/>
+    <circle cx="830"  cy="248" r="4.5" fill="#FAF6E9"/>
+    <circle cx="960"  cy="222" r="5.5" fill="#C77F45"/>
+    <circle cx="960"  cy="256" r="4.5" fill="#FAF6E9"/>
+    <circle cx="1080" cy="232" r="7"   fill="#C77F45"/>
+  </g>
+
+  <g font-family="'Courier New', monospace" font-size="9" fill="#475569" text-anchor="middle">
+    <text x="338"  y="252">src</text>
+    <text x="1080" y="254">dst</text>
+  </g>
+
+  <!-- Greek meander frieze along the bottom edge -->
+  <rect x="40" y="278" width="1120" height="14" fill="url(#meander)"/>
 </svg>

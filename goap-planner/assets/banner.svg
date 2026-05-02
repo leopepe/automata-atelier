@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="goap-planner — goal-oriented action planning">
   <title>goap-planner</title>
-  <desc>Banner for the goap-planner crate: the title sits above a horizontal state-machine chain, with action labels above each transition arrow and a goal flag at the rightmost state.</desc>
+  <desc>Banner for the goap-planner crate. On the left, a tactical operator figure inspired by the F.E.A.R. Replica soldiers — the game whose AI made GOAP famous — drawn with a helmet, single-light visor, balaclava, body armor with MOLLE pouches, and a rifle held diagonally across the chest. On the right, a five-state planning chain with FEAR-style combat action labels (flank, take_cover, suppress, advance) leading to the goal "target_engaged".</desc>
 
   <defs>
     <radialGradient id="parchment" cx="50%" cy="50%" r="65%">
@@ -24,75 +24,205 @@
   <rect x="28" y="28" width="1144" height="264" fill="none" stroke="#1E3A5F" stroke-width="0.4" stroke-opacity="0.4"/>
 
   <!-- ============================================================
-       TITLE BLOCK (top half)
+       REPLICA SOLDIER (left)
+       Bounding box ≈ x:60-275, y:35-285.
+       Helmet · single-light visor · balaclava · chest plate ·
+       diagonal rifle. Designed to read as "tactical AI" without
+       being so literal it crosses into fan-art territory.
        ============================================================ -->
+
+  <!-- Antenna stub on helmet -->
+  <line x1="190" y1="40" x2="190" y2="55" stroke="#1E3A5F" stroke-width="2"/>
+  <circle cx="190" cy="37" r="3" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
+
+  <!-- Helmet (rounded combat cap) -->
+  <path d="M 110 105
+           L 110 80
+           Q 110 50  155 50
+           Q 200 50  200 80
+           L 200 105 Z"
+        fill="none" stroke="#1E3A5F" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Helmet rear edge / nape -->
+  <line x1="110" y1="105" x2="200" y2="105" stroke="#1E3A5F" stroke-width="2.5"/>
+
+  <!-- Visor band (the iconic Replica single-light) -->
+  <rect x="113" y="78" width="84" height="14" rx="2" fill="#1E3A5F" stroke="none"/>
+  <!-- Single-eye copper glow -->
+  <circle cx="155" cy="85" r="3.5" fill="#C77F45" stroke="none"/>
+  <!-- Visor edge highlights -->
+  <line x1="116" y1="85" x2="148" y2="85" stroke="#3A4A66" stroke-width="0.6"/>
+  <line x1="162" y1="85" x2="194" y2="85" stroke="#3A4A66" stroke-width="0.6"/>
+
+  <!-- Helmet vent/strap detail -->
+  <line x1="118" y1="62" x2="125" y2="55" stroke="#1E3A5F" stroke-width="1"/>
+  <line x1="192" y1="62" x2="185" y2="55" stroke="#1E3A5F" stroke-width="1"/>
+
+  <!-- Balaclava (covering lower face below visor) -->
+  <path d="M 118 92
+           Q 118 115  155 118
+           Q 192 115  192 92"
+        fill="#1E3A5F" fill-opacity="0.85" stroke="#1E3A5F" stroke-width="1"/>
+  <!-- Tiny cheek-stitch line (texture) -->
+  <line x1="135" y1="105" x2="175" y2="105" stroke="#3A4A66" stroke-width="0.6"/>
+
+  <!-- Neck guard / collar -->
+  <rect x="138" y="116" width="34" height="10" fill="none" stroke="#1E3A5F" stroke-width="1.5"/>
+
+  <!-- Chest plate / tactical vest body -->
+  <path d="M 100 130
+           L 100 220
+           Q 100 230  110 230
+           L 200 230
+           Q 210 230  210 220
+           L 210 130
+           Z"
+        fill="none" stroke="#1E3A5F" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Vest centre seam -->
+  <line x1="155" y1="130" x2="155" y2="230" stroke="#1E3A5F" stroke-width="1" stroke-opacity="0.6"/>
+
+  <!-- MOLLE pouches (rows of small rectangles on the chest) -->
+  <g stroke="#1E3A5F" stroke-width="1" fill="none">
+    <rect x="108" y="146" width="18" height="14" rx="1"/>
+    <rect x="108" y="166" width="18" height="14" rx="1"/>
+    <rect x="184" y="146" width="18" height="14" rx="1"/>
+    <rect x="184" y="166" width="18" height="14" rx="1"/>
+    <rect x="130" y="190" width="50" height="16" rx="1"/>
+  </g>
+
+  <!-- Diagonal sling strap across chest -->
+  <line x1="100" y1="155" x2="210" y2="200" stroke="#C77F45" stroke-width="2" stroke-opacity="0.85"/>
+
+  <!-- Right arm of figure (viewer's left): bent forward, gripping stock -->
+  <g stroke="#1E3A5F" stroke-width="2.5" stroke-linecap="round" fill="none">
+    <line x1="100" y1="135" x2="86"  y2="170"/>
+    <line x1="86"  y1="170" x2="120" y2="200"/>
+  </g>
+  <circle cx="123" cy="202" r="5" fill="#1E3A5F" stroke="none"/>
+
+  <!-- Left arm of figure (viewer's right): forward grip -->
+  <g stroke="#1E3A5F" stroke-width="2.5" stroke-linecap="round" fill="none">
+    <line x1="210" y1="135" x2="225" y2="158"/>
+    <line x1="225" y1="158" x2="195" y2="173"/>
+  </g>
+  <circle cx="192" cy="174" r="5" fill="#1E3A5F" stroke="none"/>
+
+  <!-- Rifle body (held diagonal across chest, stock at left hip, muzzle up-right) -->
+  <g stroke="#1E3A5F" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Main body: thick line -->
+    <line x1="115" y1="208" x2="245" y2="125" stroke-width="4"/>
+    <!-- Lighter outline parallel for chunky barrel -->
+    <line x1="118" y1="214" x2="248" y2="131" stroke-width="2"/>
+    <!-- Stock -->
+    <path d="M 110 210 L 100 218 L 108 224 L 122 215 Z"
+          fill="#1E3A5F" stroke="#1E3A5F" stroke-width="1"/>
+    <!-- Pistol grip -->
+    <path d="M 138 198 L 134 215 L 142 218 L 146 200 Z"
+          fill="#1E3A5F" stroke="#1E3A5F" stroke-width="1"/>
+    <!-- Trigger guard (small loop) -->
+    <circle cx="142" cy="200" r="3" fill="none" stroke="#1E3A5F" stroke-width="1.2"/>
+    <!-- Magazine (vertical, drops down from middle) -->
+    <rect x="148" y="186" width="10" height="22" fill="#1E3A5F" stroke="#1E3A5F" stroke-width="1" transform="rotate(-32 153 197)"/>
+    <!-- Foregrip / handguard -->
+    <line x1="180" y1="170" x2="200" y2="158" stroke-width="3"/>
+    <!-- Muzzle / flash hider -->
+    <line x1="248" y1="123" x2="258" y2="116" stroke-width="2.5"/>
+    <line x1="252" y1="119" x2="258" y2="125" stroke-width="1.5"/>
+  </g>
+
+  <!-- Tactical leg / pant outlines -->
+  <g stroke="#1E3A5F" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="125" y1="230" x2="125" y2="278"/>
+    <line x1="185" y1="230" x2="185" y2="278"/>
+    <!-- Combat boots -->
+    <rect x="113" y="278" width="24" height="8" rx="1" fill="#1E3A5F"/>
+    <rect x="173" y="278" width="24" height="8" rx="1" fill="#1E3A5F"/>
+    <!-- Knee pads -->
+    <rect x="118" y="245" width="14" height="12" rx="1" fill="none" stroke-width="1.5"/>
+    <rect x="178" y="245" width="14" height="12" rx="1" fill="none" stroke-width="1.5"/>
+  </g>
+
+  <!-- Side annotation -->
+  <g stroke="#1E3A5F" stroke-width="0.5" stroke-opacity="0.45" fill="#1E3A5F" fill-opacity="0.55"
+     font-family="'Courier New', monospace" font-size="8">
+    <line x1="46" y1="50" x2="46" y2="285"/>
+    <line x1="42" y1="50" x2="50" y2="50"/>
+    <line x1="42" y1="285" x2="50" y2="285"/>
+    <text x="34" y="170" transform="rotate(-90,34,170)">REPLICA-class</text>
+  </g>
+
+  <!-- ============================================================
+       TITLE BLOCK + STATE CHAIN  (right two-thirds: x ~ 300-1180)
+       ============================================================ -->
+
   <g text-anchor="middle">
-    <text x="600" y="118"
+    <text x="730" y="100"
           font-family="Georgia, 'Times New Roman', serif"
-          font-size="78" font-weight="bold" fill="#1E3A5F" letter-spacing="-1">goap-planner</text>
+          font-size="74" font-weight="bold" fill="#1E3A5F" letter-spacing="-1">goap-planner</text>
 
-    <text x="600" y="160"
+    <text x="730" y="138"
           font-family="Georgia, 'Times New Roman', serif"
-          font-size="26" font-style="italic" fill="#C77F45">goal-oriented action planning</text>
+          font-size="22" font-style="italic" fill="#C77F45">goal-oriented action planning</text>
 
-    <text x="600" y="190"
+    <text x="730" y="168"
           font-family="'Helvetica Neue', Arial, sans-serif"
           font-size="11" fill="#475569" letter-spacing="4">STATE  ·  ACTION  ·  GOAL  ·  PLAN</text>
   </g>
 
-  <!-- ============================================================
-       STATE MACHINE (bottom half)
-       Five states, four labelled action transitions, with a goal
-       flag flying out of the rightmost state.
-       ============================================================ -->
+  <!-- State machine: 5 states, 4 labelled action transitions, goal flag.
+       Compressed to fit x:320-1140 (820 wide) so it sits beside the soldier. -->
 
-  <!-- Action edges (drawn first, so nodes overlap them) -->
+  <!-- Action arrows (drawn first; nodes overlap them) -->
   <g stroke="#1E3A5F" stroke-width="1.6" fill="none" stroke-linecap="round">
-    <line x1="172" y1="250" x2="362" y2="250" marker-end="url(#arrow-navy)"/>
-    <line x1="392" y1="250" x2="582" y2="250" marker-end="url(#arrow-navy)"/>
-    <line x1="612" y1="250" x2="802" y2="250" marker-end="url(#arrow-navy)"/>
-    <line x1="832" y1="250" x2="1022" y2="250" marker-end="url(#arrow-navy)"/>
+    <line x1="358" y1="240" x2="500" y2="240" marker-end="url(#arrow-navy)"/>
+    <line x1="528" y1="240" x2="670" y2="240" marker-end="url(#arrow-navy)"/>
+    <line x1="698" y1="240" x2="840" y2="240" marker-end="url(#arrow-navy)"/>
+    <line x1="868" y1="240" x2="1010" y2="240" marker-end="url(#arrow-navy)"/>
   </g>
 
   <!-- Action labels (above each arrow) -->
-  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="12" fill="#7B6B47" font-style="italic">
-    <text x="270" y="237">chop_tree</text>
-    <text x="490" y="237">split_log</text>
-    <text x="710" y="237">stack_logs</text>
-    <text x="930" y="237">light_fire</text>
+  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="11" fill="#7B6B47" font-style="italic">
+    <text x="430" y="227">flank</text>
+    <text x="600" y="227">take_cover</text>
+    <text x="770" y="227">suppress</text>
+    <text x="940" y="227">advance</text>
   </g>
 
-  <!-- Action costs (below each arrow, small) -->
-  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#C77F45">
-    <text x="270" y="278">cost 5</text>
-    <text x="490" y="278">cost 2</text>
-    <text x="710" y="278">cost 1</text>
-    <text x="930" y="278">cost 3</text>
+  <!-- Action costs (below each arrow) -->
+  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#C77F45">
+    <text x="430" y="266">cost 4</text>
+    <text x="600" y="266">cost 1</text>
+    <text x="770" y="266">cost 2</text>
+    <text x="940" y="266">cost 3</text>
   </g>
 
-  <!-- States (large circles labelled with fact-set glyphs) -->
+  <!-- States: 5 large circles -->
   <g stroke="#1E3A5F" stroke-width="1.8">
-    <circle cx="148"  cy="250" r="24" fill="#FAF6E9"/>
-    <circle cx="378"  cy="250" r="24" fill="#FAF6E9"/>
-    <circle cx="598"  cy="250" r="24" fill="#FAF6E9"/>
-    <circle cx="818"  cy="250" r="24" fill="#FAF6E9"/>
-    <circle cx="1048" cy="250" r="26" fill="#C77F45"/>
+    <circle cx="338"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="514"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="684"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="854"  cy="240" r="22" fill="#FAF6E9"/>
+    <circle cx="1036" cy="240" r="24" fill="#C77F45"/>
   </g>
 
-  <!-- State labels inside the circles -->
-  <g text-anchor="middle" font-family="Georgia, serif" font-size="15" font-style="italic" fill="#1E3A5F">
-    <text x="148"  y="255">S₀</text>
-    <text x="378"  y="255">S₁</text>
-    <text x="598"  y="255">S₂</text>
-    <text x="818"  y="255">S₃</text>
+  <!-- State labels -->
+  <g text-anchor="middle" font-family="Georgia, serif" font-size="14" font-style="italic" fill="#1E3A5F">
+    <text x="338"  y="245">S₀</text>
+    <text x="514"  y="245">S₁</text>
+    <text x="684"  y="245">S₂</text>
+    <text x="854"  y="245">S₃</text>
   </g>
-  <g text-anchor="middle" font-family="Georgia, serif" font-size="15" font-style="italic" fill="#FAF6E9">
-    <text x="1048" y="255">G</text>
+  <g text-anchor="middle" font-family="Georgia, serif" font-size="14" font-style="italic" fill="#FAF6E9">
+    <text x="1036" y="245">G</text>
   </g>
 
-  <!-- Goal flag flying out of the goal state -->
-  <g transform="translate(1080,210)">
-    <line x1="0" y1="0" x2="0" y2="40" stroke="#1E3A5F" stroke-width="1.5"/>
-    <path d="M0 0 L24 6 L18 12 L24 18 L0 14 Z" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
+  <!-- Goal-state caption -->
+  <text x="1036" y="280" text-anchor="middle"
+        font-family="'Courier New', monospace" font-size="9" fill="#7B6B47" font-style="italic">target_engaged</text>
+
+  <!-- Goal flag flying out of goal state -->
+  <g transform="translate(1064,202)">
+    <line x1="0" y1="0" x2="0" y2="38" stroke="#1E3A5F" stroke-width="1.5"/>
+    <path d="M0 0 L22 6 L17 12 L22 18 L0 14 Z" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
   </g>
 </svg>
