@@ -79,18 +79,32 @@
     <rect x="156" y="122" width="8" height="8" rx="1" fill="#C77F45"/>
   </g>
 
-  <!-- Body / vest -->
-  <rect x="115" y="132" width="90" height="118" rx="6" fill="none" stroke="#1E3A5F" stroke-width="2.5"/>
-  <!-- Vest split (vertical centre line) -->
-  <line x1="160" y1="132" x2="160" y2="250" stroke="#1E3A5F" stroke-width="1" stroke-opacity="0.7"/>
-  <!-- Buttons -->
-  <circle cx="160" cy="155" r="2.2" fill="#1E3A5F"/>
-  <circle cx="160" cy="185" r="2.2" fill="#1E3A5F"/>
-  <circle cx="160" cy="215" r="2.2" fill="#1E3A5F"/>
-  <!-- Pocket detail (asymmetric, like a vest welt pocket) -->
+  <!-- Torso (upper body): the vest section, where the bow tie attaches -->
+  <rect x="115" y="132" width="90" height="72" rx="6" fill="none" stroke="#1E3A5F" stroke-width="2.5"/>
+  <!-- Vest split (centre seam, torso only) -->
+  <line x1="160" y1="132" x2="160" y2="204" stroke="#1E3A5F" stroke-width="1" stroke-opacity="0.7"/>
+  <!-- Buttons (two, sized to the shorter torso) -->
+  <circle cx="160" cy="152" r="2.2" fill="#1E3A5F"/>
+  <circle cx="160" cy="180" r="2.2" fill="#1E3A5F"/>
+  <!-- Welt pocket on the torso -->
   <line x1="124" y1="170" x2="146" y2="170" stroke="#1E3A5F" stroke-width="1"/>
   <line x1="124" y1="170" x2="124" y2="178" stroke="#1E3A5F" stroke-width="1"/>
   <line x1="146" y1="170" x2="146" y2="178" stroke="#1E3A5F" stroke-width="1"/>
+
+  <!-- Waist articulation: visible joint between torso and pelvis -->
+  <line x1="128" y1="208" x2="192" y2="208" stroke="#1E3A5F" stroke-width="2"/>
+  <circle cx="160" cy="208" r="4" fill="#C77F45" stroke="#1E3A5F" stroke-width="1.2"/>
+  <circle cx="160" cy="208" r="1.5" fill="#1E3A5F"/>
+
+  <!-- Pelvis (lower body): narrower than the torso, the way classic
+       segmented-robot icons articulate the hip -->
+  <rect x="128" y="212" width="64" height="38" rx="5" fill="none" stroke="#1E3A5F" stroke-width="2.5"/>
+  <!-- Belt across the top of the pelvis -->
+  <line x1="128" y1="222" x2="192" y2="222" stroke="#C77F45" stroke-width="1.5"/>
+  <!-- Indicator panel on the pelvis (two small status lights) -->
+  <rect x="148" y="232" width="24" height="9" rx="1.5" fill="none" stroke="#1E3A5F" stroke-width="1"/>
+  <circle cx="155" cy="236.5" r="1.4" fill="#C77F45"/>
+  <circle cx="165" cy="236.5" r="1.4" fill="#1E3A5F"/>
 
   <!-- Left arm of figure (viewer's left): hangs at side -->
   <g stroke="#1E3A5F" stroke-width="2.5" stroke-linecap="round" fill="none">
