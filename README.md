@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.svg" alt="Automata Atelier — A workshop for building automatons" width="100%">
+</p>
+
 # Automata Atelier
 
 A workshop for building **automatons** — small, autonomous agents that sense the world, plan a path through it, and act. Every automaton in this atelier is built on the same foundation: directed graphs and shortest-path search. What differs is the planner on top, the surface they expose, and the kind of work they're aimed at.
