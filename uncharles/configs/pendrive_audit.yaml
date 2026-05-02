@@ -146,7 +146,7 @@ actions:
   # the graceful-degradation path for whatever's still missing.
   - name: install_tools
     cost: 5.0
-    requires: [pendrive_mounted]
+    requires: []
     adds: [tools_installed]
     cmd:
       - sh
