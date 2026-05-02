@@ -20,6 +20,11 @@ the required benchmark surface, the workflow, and what CI enforces.
 If you are about to open or update a GitHub issue, read
 [`issues.md`](./issues.md) for the templates, labels, and lifecycle.
 
+If a decision is being taken that touches architecture, core components,
+performance, security, or a user/integration interface, read
+[`adrs.md`](./adrs.md) — it defines when an Architecture Decision Record is
+required, the MADR format used, and the workflow for ratifying one.
+
 ## What lives in this directory
 
 | File | Purpose |
@@ -27,6 +32,8 @@ If you are about to open or update a GitHub issue, read
 | [`coding-guidelines.md`](./coding-guidelines.md) | Workspace coding rules: tests, lint/format, docs, commits, PRs. Read before any code change. |
 | [`performance-tests.md`](./performance-tests.md) | Benchmark suite requirements for core libraries; flamegraphs, perf comparisons, CI. |
 | [`issues.md`](./issues.md) | How to file and triage GitHub issues: templates, labels, linking to PRs. |
+| [`adrs.md`](./adrs.md) | Architecture Decision Records: when to write one, MADR format, lifecycle. |
+| [`adrs/`](./adrs/) | The ADR records themselves, plus the template and index. |
 | `CLAUDE.md` | This index. |
 
 When new workspace-wide documentation is added, list it here so it is
