@@ -1,0 +1,221 @@
+# Pendrive audit / DLP-lite pipeline.
+#
+# Watches the directory at $PENDRIVE_MOUNT (a real /Volumes/<label> on
+# macOS, or /tmp/fake-pendrive in mock mode), records a hashed file map,
+# scans for secrets, optionally starts a copy monitor (fswatch, if
+# installed), and seals an audit log under /tmp/uncharles-audit/. On
+# eject (mount disappears), cleanup wipes per-session state so the next
+# insertion gets a fresh audit.
+#
+# All sensors and actions that touch the mount read $PENDRIVE_MOUNT from
+# the environment, so the same config drives both modes.
+#
+# === Real-pendrive run (recommended) ===
+#
+#   uncharles/scripts/pendrive-watch.sh
+#
+# That wrapper discovers an external mount under /Volumes/, exports
+# PENDRIVE_MOUNT, and re-runs uncharles each cycle. Empty mount → idle.
+#
+# === Mock run (no hardware) ===
+#
+#   mkdir -p /tmp/fake-pendrive
+#   echo 'AKIAIOSFODNN7EXAMPLE' > /tmp/fake-pendrive/aws.env
+#   PENDRIVE_MOUNT=/tmp/fake-pendrive cargo run -q -p uncharles -- \
+#     --config uncharles/configs/pendrive_audit.yaml --execute --pretty
+#
+# Eject simulation: rm -rf /tmp/fake-pendrive (real: physically unplug).
+#
+# === Audit artifacts under /tmp/uncharles-audit/ ===
+#
+#   file-map.txt   sha256 + path of every file on the mount
+#   secrets.txt    grep hits for common secret patterns
+#   copies.log     fswatch stream of file events on the mount (if installed)
+#   monitor.pid    PID of the fswatch process (or "mock-monitor-<ts>")
+#   sealed.txt     human-readable audit summary; presence = audit complete
+#
+# === Real copy-tracking ===
+#
+# The default `start_copy_monitor` checks for fswatch on PATH and uses it
+# if present (`brew install fswatch`); otherwise it writes a mock marker
+# and copies.log stays empty. Either way the planner advances.
+
+sensors:
+  # Drive presence. Mount path comes from $PENDRIVE_MOUNT; empty/unset
+  # means "no drive". Wrapped in sh -c so the env var expands.
+  - name: pendrive_mounted
+    cmd:
+      - sh
+      - -c
+      - |
+        [ -n "${PENDRIVE_MOUNT:-}" ] && [ -d "$PENDRIVE_MOUNT" ]
+
+  # Per-step progress markers. These are file-existence sensors so the
+  # planner sees real progress between iterations rather than just
+  # trusting the optimistic effects.
+  - name: map_recorded
+    cmd: ["test", "-f", "/tmp/uncharles-audit/file-map.txt"]
+
+  - name: secrets_scanned
+    cmd: ["test", "-f", "/tmp/uncharles-audit/secrets.txt"]
+
+  - name: monitor_active
+    cmd: ["test", "-f", "/tmp/uncharles-audit/monitor.pid"]
+
+  - name: audit_sealed
+    cmd: ["test", "-f", "/tmp/uncharles-audit/sealed.txt"]
+
+  # `eject_pending` — drive is gone but per-session audit state remains.
+  # This is the positive trigger for cleanup_after_eject (the action
+  # model has no "NOT pendrive_mounted" — the negation is encoded here).
+  - name: eject_pending
+    cmd:
+      - sh
+      - -c
+      - |
+        if [ -n "${PENDRIVE_MOUNT:-}" ] && [ -d "$PENDRIVE_MOUNT" ]; then
+          exit 1
+        fi
+        for f in monitor.pid sealed.txt file-map.txt secrets.txt; do
+          [ -f "/tmp/uncharles-audit/$f" ] && exit 0
+        done
+        exit 1
+
+  # `idle` — the goal predicate. True when:
+  #   (a) no drive AND no leftover audit state (cold idle), or
+  #   (b) drive present AND audit sealed for this session (warm idle).
+  # In every other state there's work to do and the planner picks it up.
+  - name: idle
+    cmd:
+      - sh
+      - -c
+      - |
+        if [ -z "${PENDRIVE_MOUNT:-}" ] || [ ! -d "$PENDRIVE_MOUNT" ]; then
+          for f in monitor.pid sealed.txt file-map.txt secrets.txt; do
+            [ -f "/tmp/uncharles-audit/$f" ] && exit 1
+          done
+          exit 0
+        fi
+        [ -f /tmp/uncharles-audit/sealed.txt ]
+
+actions:
+  # Hash every file on the drive. macOS `shasum -a 256` is built-in.
+  # Skips macOS metadata directories (.fseventsd, .Spotlight-V100, .Trashes).
+  - name: enumerate_files
+    cost: 2.0
+    requires: [pendrive_mounted]
+    adds: [map_recorded]
+    cmd:
+      - sh
+      - -c
+      - |
+        set -e
+        mkdir -p /tmp/uncharles-audit
+        find "$PENDRIVE_MOUNT" \
+          \( -name '.fseventsd' -o -name '.Spotlight-V100' -o -name '.Trashes' \) -prune \
+          -o -type f -print0 \
+          | xargs -0 shasum -a 256 \
+          > /tmp/uncharles-audit/file-map.txt
+
+  # Crude built-in secret scan. Upgrade to `gitleaks detect --no-git
+  # --source "$PENDRIVE_MOUNT" --report-path .../secrets.json
+  # --report-format json --exit-code 0` once gitleaks is on PATH.
+  # The trailing `true` keeps grep's "no match" exit-1 from killing
+  # the action — absence of secrets is a successful scan.
+  - name: scan_secrets
+    cost: 3.0
+    requires: [pendrive_mounted, map_recorded]
+    adds: [secrets_scanned]
+    cmd:
+      - sh
+      - -c
+      - |
+        mkdir -p /tmp/uncharles-audit
+        grep -rEHn \
+          --exclude-dir=.fseventsd --exclude-dir=.Spotlight-V100 \
+          --exclude-dir=.Trashes \
+          -e 'AKIA[A-Z0-9]{16}' \
+          -e 'xox[baprs]-[A-Za-z0-9-]{10,}' \
+          -e 'gh[pousr]_[A-Za-z0-9]{20,}' \
+          -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' \
+          -e '(password|api[_-]?key|secret|token)[[:space:]]*[:=][[:space:]]*[^[:space:]]+' \
+          "$PENDRIVE_MOUNT" \
+          > /tmp/uncharles-audit/secrets.txt 2>/dev/null || true
+        true
+
+  # Real copy monitor when fswatch is installed; mock marker otherwise.
+  # The </dev/null + 2>&1 redirects detach the child from uncharles' pipes
+  # so Command::output() doesn't block waiting for the backgrounded
+  # process's stderr to close.
+  - name: start_copy_monitor
+    cost: 1.0
+    requires: [pendrive_mounted]
+    adds: [monitor_active]
+    cmd:
+      - sh
+      - -c
+      - |
+        mkdir -p /tmp/uncharles-audit
+        : > /tmp/uncharles-audit/copies.log
+        if command -v fswatch >/dev/null 2>&1; then
+          nohup fswatch -r "$PENDRIVE_MOUNT" \
+            >>/tmp/uncharles-audit/copies.log 2>&1 </dev/null &
+          echo $! > /tmp/uncharles-audit/monitor.pid
+        else
+          echo "mock-monitor-$(date +%s)" > /tmp/uncharles-audit/monitor.pid
+        fi
+
+  # Seal the audit. `idle` is added optimistically so the planner sees a
+  # path to the goal; the `idle` sensor at the next iteration confirms
+  # by observing sealed.txt on disk.
+  - name: seal_audit
+    cost: 1.0
+    requires: [pendrive_mounted, map_recorded, secrets_scanned, monitor_active]
+    adds: [audit_sealed, idle]
+    cmd:
+      - sh
+      - -c
+      - |
+        mkdir -p /tmp/uncharles-audit
+        {
+          echo "sealed-at: $(date '+%Y-%m-%dT%H:%M:%S%z')"
+          echo "mount:     $PENDRIVE_MOUNT"
+          echo "file-map:  $(wc -l < /tmp/uncharles-audit/file-map.txt) entries"
+          echo "secrets:   $(wc -l < /tmp/uncharles-audit/secrets.txt) hits"
+        } > /tmp/uncharles-audit/sealed.txt
+
+  # Triggered when the drive is gone but session state persists. Kills
+  # the fswatch process if it's real (PID file content is numeric);
+  # no-ops on the mock marker. Archives any captured copy events as
+  # `copies.<timestamp>.log` so the forensic trail survives the next
+  # insertion (start_copy_monitor truncates copies.log on each new
+  # session). Then wipes per-session markers so reinsertion forces a
+  # fresh audit.
+  - name: cleanup_after_eject
+    cost: 1.0
+    requires: [eject_pending]
+    adds: [idle]
+    removes: [monitor_active, map_recorded, secrets_scanned, audit_sealed]
+    cmd:
+      - sh
+      - -c
+      - |
+        if [ -f /tmp/uncharles-audit/monitor.pid ]; then
+          pid=$(cat /tmp/uncharles-audit/monitor.pid)
+          case "$pid" in
+            mock-monitor-*) ;;
+            *) kill "$pid" 2>/dev/null || true ;;
+          esac
+        fi
+        if [ -s /tmp/uncharles-audit/copies.log ]; then
+          ts=$(date '+%Y%m%dT%H%M%S')
+          mv /tmp/uncharles-audit/copies.log \
+             "/tmp/uncharles-audit/copies.$ts.log"
+        fi
+        rm -f /tmp/uncharles-audit/monitor.pid \
+              /tmp/uncharles-audit/sealed.txt \
+              /tmp/uncharles-audit/file-map.txt \
+              /tmp/uncharles-audit/secrets.txt
+
+goal:
+  requires: [idle]
