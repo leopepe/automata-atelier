@@ -13,7 +13,7 @@ next free number.
 
 | #    | Title | Status | Date |
 | ---- | ----- | ------ | ---- |
-| —    | _No ADRs yet. The first decision recorded here will be `0001`._ | — | — |
+| 0001 | [Relax `main` ruleset for solo-contributor workflow](./0001-relax-main-ruleset-for-solo-contributor.md) | accepted | 2026-05-02 |
 
 ## Status legend
 
