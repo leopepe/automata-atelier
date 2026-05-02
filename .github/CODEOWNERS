@@ -1,0 +1,7 @@
+# Code owners for this repository.
+# Syntax: <path-pattern> <@user|@org/team> [@additional-owners...]
+# Reference: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-customization/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo. Most-specific match wins, so
+# add narrower rules below this line if/when sub-areas need separate owners.
+* @leopepe
