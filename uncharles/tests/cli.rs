@@ -234,6 +234,140 @@ fn release_watch_dry_run_emits_expected_schema() {
 }
 
 #[test]
+fn tofu_drift_watch_dry_run_pins_post_apply_watcher_design() {
+    // Pins the design from ADR 0002 (post-apply IaC convergence watcher):
+    // the sensor/action surface, the three-valued plan_* facts, the
+    // archive_* fan-out, and the goal `idle`. Also pins the security
+    // invariant from the ADR's "Confirmation" section by reading the
+    // YAML directly: the watcher must never invoke `tofu apply` and must
+    // never run `tofu init -upgrade`. Both would silently violate the
+    // readonly-creds posture this config commits to.
+    use std::fs;
+
+    let output = Command::new(binary())
+        .arg("--config")
+        .arg(config_path("tofu_drift_watch.yaml"))
+        .arg("--dry-run")
+        .output()
+        .expect("failed to spawn uncharles");
+    assert!(
+        output.status.success(),
+        "expected exit 0, got {:?}, stderr={}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).unwrap();
+
+    let sensor_names: Vec<&str> = parsed["sensors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(
+        sensor_names,
+        vec![
+            "push_completed",
+            "lock_file_in_sync",
+            "prefetch_done",
+            "plan_clean",
+            "plan_has_changes",
+            "plan_errored",
+        ],
+    );
+
+    let action_names: Vec<&str> = parsed["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        action_names,
+        vec![
+            "tofu_init",
+            "prefetch_artifacts",
+            "tofu_plan_refresh",
+            "archive_clean",
+            "archive_drift",
+            "archive_error",
+        ],
+    );
+
+    let goal_requires: Vec<&str> = parsed["goal"]["requires"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(goal_requires, vec!["idle"]);
+
+    // Each archive_* must remove the plan_* fact it consumes; without
+    // that, a stale plan result from a previous cycle would let the next
+    // invocation skip the probe (tofu_plan_refresh's optimistic +plan_clean
+    // would be already true from cold-start sensor simulation). Guard
+    // against a future config edit silently dropping that effect.
+    for (action, removed) in &[
+        ("archive_clean", "plan_clean"),
+        ("archive_drift", "plan_has_changes"),
+        ("archive_error", "plan_errored"),
+    ] {
+        let entry = parsed["actions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|a| a["name"] == *action)
+            .unwrap_or_else(|| panic!("action {action} not found"));
+        let removes: Vec<&str> = entry["removes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(
+            removes.contains(removed),
+            "{action} must remove {removed}; got removes={removes:?}",
+        );
+    }
+
+    // Security invariant from ADR 0002: the watcher commits to a
+    // readonly-creds posture. Walk every sensor/action `cmd` and reject
+    // tokens that would silently violate it (`apply` to tofu, `-upgrade`
+    // to init). If a future edit slips either in, this trips loudly so
+    // the posture has to be re-decided in an ADR rather than in a diff.
+    let yaml = fs::read_to_string(config_path("tofu_drift_watch.yaml")).unwrap();
+    let parsed_yaml: serde_yaml::Value = serde_yaml::from_str(&yaml).unwrap();
+    let mut all_cmds: Vec<Vec<String>> = Vec::new();
+    for kind in ["sensors", "actions"] {
+        for item in parsed_yaml[kind].as_sequence().into_iter().flatten() {
+            if let Some(cmd) = item["cmd"].as_sequence() {
+                all_cmds.push(
+                    cmd.iter()
+                        .map(|v| v.as_str().unwrap_or_default().to_string())
+                        .collect(),
+                );
+            }
+        }
+    }
+    for cmd in &all_cmds {
+        assert!(
+            !cmd.windows(2).any(|w| w[0] == "tofu" && w[1] == "apply"),
+            "watcher must never run `tofu apply`; readonly-only per ADR 0002. \
+             Offending cmd: {cmd:?}",
+        );
+        for arg in cmd {
+            assert!(
+                !arg.split_whitespace().any(|tok| tok == "-upgrade"),
+                "watcher must not pass `-upgrade` to `tofu init`; silent \
+                 provider bumps violate ADR 0002. Offending cmd: {cmd:?}",
+            );
+        }
+    }
+}
+
+#[test]
 fn execute_loop_drives_podcast_pipeline_end_to_end() {
     // Hermetic e2e for podcast.yaml. Pre-stages a fixture-guids.txt with
     // two GUIDs in a fresh temp dir, runs uncharles, and asserts the full

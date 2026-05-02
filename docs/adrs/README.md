@@ -14,6 +14,7 @@ next free number.
 | #    | Title | Status | Date |
 | ---- | ----- | ------ | ---- |
 | 0001 | [Relax `main` ruleset for solo-contributor workflow](./0001-relax-main-ruleset-for-solo-contributor.md) | accepted | 2026-05-02 |
+| 0002 | [Use uncharles as a post-apply IaC convergence watcher, not a CI replacement](./0002-uncharles-as-post-apply-iac-convergence-watcher.md) | accepted | 2026-05-03 |
 
 ## Status legend
 
