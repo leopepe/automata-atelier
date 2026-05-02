@@ -19,6 +19,12 @@ Where tests live, by crate:
 
 Aim for the highest *meaningful* coverage — every public path, every error variant, every documented behaviour. Avoid coverage theatre: tests that execute code without asserting anything useful are noise, not signal.
 
+## Performance tests for core libraries
+
+Any crate used as a dependency by at least one other crate in this workspace ("core library") **must** ship a benchmark suite. Today that is `grafo` (consumed by `goap-planner` and indirectly by `uncharles`) and `goap-planner` (consumed by `uncharles`); the rule applies automatically to any future crate that gains a workspace-internal consumer. The full guideline — required surface (`Cargo.toml`, `benches/performance.rs`, `docs/performance.md`, `docs/bench-<label>.txt`, `docs/perf-comparison-YYYY-MM-DD.md`, `docs/flamegraph-<label>.svg`), workflow, trigger conditions, and CI enforcement — lives in [`performance-tests.md`](./performance-tests.md).
+
+Read that file before touching a core library's hot path or adding a new core crate. Pair every benchmark run with a flamegraph; pair every change that moves the headline numbers with a `perf-comparison-YYYY-MM-DD.md` snapshot and refresh the canonical `docs/performance.md`. CI enforces these rules on PRs touching a core library — see [`performance-tests.md`](./performance-tests.md) and `.github/workflows/bench.yml`.
+
 ## Lint and format
 
 Before considering any change finished, run all three:
