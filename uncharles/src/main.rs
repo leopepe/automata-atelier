@@ -177,6 +177,11 @@ fn run_command(args: RunArgs) -> ExitCode {
         }
     };
 
+    if let Err(e) = config.validate() {
+        eprintln!("error: invalid config: {e}");
+        return ExitCode::from(2);
+    }
+
     if args.dry_run {
         emit_dry_run(&config, args.pretty);
         return ExitCode::SUCCESS;
@@ -259,6 +264,11 @@ fn inspect_command(args: InspectArgs) -> ExitCode {
             return ExitCode::from(2);
         }
     };
+
+    if let Err(e) = config.validate() {
+        eprintln!("error: invalid config: {e}");
+        return ExitCode::from(2);
+    }
 
     let (initial, graph, analysis) = inspect::inspect(&config, &args.have, args.max_states);
     let report = match args.format {

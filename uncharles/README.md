@@ -115,6 +115,25 @@ goal:
   requires: [tests_pass]
 ```
 
+Actions also accept a `forbids` field — facts that must be **absent** for
+the action to fire (mirrors `goal.forbids`). Lets you express "do this
+only when X is not present" directly, instead of inventing a synthetic
+sensor that observes the negative shape:
+
+```yaml
+actions:
+  - name: install_tools
+    cost: 5.0
+    forbids: [tools_installed]   # only fire when tools are missing
+    adds: [tools_installed]
+    cmd: ["brew", "install", "..."]
+```
+
+A fact in both `requires` and `forbids` on the same action is rejected
+at config-load time as a `ConfigError::ActionContradiction` (the action
+would be structurally unsatisfiable). See `pendrive_audit.yaml` for a
+real-world migration of two synthetic-sensor proxies onto `forbids`.
+
 ## Example configs
 
 Real configs covering different domains — read them as a tour of what the runtime can express:

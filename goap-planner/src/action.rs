@@ -5,13 +5,18 @@ use crate::state::State;
 /// An action transforms a [`State`] when its preconditions hold.
 ///
 /// Effects are applied as: remove `remove_effects` first, then insert
-/// `add_effects`. Preconditions are pure conjunctions — every fact in
-/// `preconditions` must be present in the source state.
+/// `add_effects`. Preconditions are conjunctions — every fact in
+/// `preconditions` must be present in the source state and every fact
+/// in `forbidden` must be absent.
 #[derive(Clone, Debug)]
 pub struct Action {
     pub name: String,
     pub cost: f64,
     pub preconditions: FxHashSet<String>,
+    /// Negative preconditions: facts whose presence disables the action.
+    /// Mirrors [`crate::Goal::forbids`]. Empty by default — actions
+    /// without `forbids` behave exactly as before.
+    pub forbidden: FxHashSet<String>,
     pub add_effects: FxHashSet<String>,
     pub remove_effects: FxHashSet<String>,
 }
@@ -22,6 +27,7 @@ impl Action {
             name: name.into(),
             cost,
             preconditions: FxHashSet::default(),
+            forbidden: FxHashSet::default(),
             add_effects: FxHashSet::default(),
             remove_effects: FxHashSet::default(),
         }
@@ -29,6 +35,33 @@ impl Action {
 
     pub fn requires(mut self, fact: impl Into<String>) -> Self {
         self.preconditions.insert(fact.into());
+        self
+    }
+
+    /// Add a negative precondition. The action only fires when the
+    /// given fact is **absent** from the source state.
+    ///
+    /// Mirrors [`crate::Goal::forbids`]. Multiple `.forbids(...)` calls
+    /// accumulate; all listed facts must be absent for the action to
+    /// be applicable.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use goap_planner::{Action, State};
+    ///
+    /// let eject = Action::new("eject_now", 1.0)
+    ///     .requires("audit_sealed")
+    ///     .forbids("pendrive_mounted")
+    ///     .adds("eject_done");
+    ///
+    /// // Audit sealed AND pendrive mounted — action NOT applicable.
+    /// assert!(!eject.applicable(&State::from_facts(["audit_sealed", "pendrive_mounted"])));
+    /// // Audit sealed AND pendrive unmounted — action IS applicable.
+    /// assert!(eject.applicable(&State::from_facts(["audit_sealed"])));
+    /// ```
+    pub fn forbids(mut self, fact: impl Into<String>) -> Self {
+        self.forbidden.insert(fact.into());
         self
     }
 
@@ -42,8 +75,11 @@ impl Action {
         self
     }
 
+    /// `true` iff every fact in `preconditions` is present in `state`
+    /// **and** every fact in `forbidden` is absent from it.
     pub fn applicable(&self, state: &State) -> bool {
         self.preconditions.iter().all(|p| state.contains(p))
+            && self.forbidden.iter().all(|f| !state.contains(f))
     }
 
     pub fn apply(&self, state: &State) -> State {

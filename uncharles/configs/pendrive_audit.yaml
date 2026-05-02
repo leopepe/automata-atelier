@@ -70,15 +70,16 @@ sensors:
   # Per-step progress markers. These are file-existence sensors so the
   # planner sees real progress between iterations rather than just
   # trusting the optimistic effects.
-  # Tool availability. The sensor reports two mutually-exclusive facts
-  # so install_tools can require the negative explicitly:
-  #   - exit 0 → tools_installed (add) + tools_not_installed (remove)
-  #   - exit 1 → tools_not_installed (add) + tools_installed (remove)
-  # Exit 0 when every required scan tool is on PATH, OR when
-  # install_tools has set the best-effort marker (couldn't install
-  # further — graceful degradation will handle the gap). Checked each
-  # iteration so a `brew install` between sessions is picked up
-  # automatically. Marker is cleared on eject.
+  # Tool availability. Exit 0 when every required scan tool is on
+  # PATH, OR when install_tools has set the best-effort marker
+  # (couldn't install further — graceful degradation will handle the
+  # gap). Checked each iteration so a `brew install` between sessions
+  # is picked up automatically. Marker is cleared on eject.
+  #
+  # Uses the default sensor effect mapping (add `tools_installed` on
+  # exit 0, remove on non-zero); install_tools gates itself on the
+  # absence of this fact via `forbids`, so no synthetic
+  # `tools_not_installed` companion fact is needed.
   - name: tools_installed
     cmd:
       - sh
@@ -91,12 +92,6 @@ sensors:
           }
         done
         exit 0
-    on_success:
-      add: [tools_installed]
-      remove: [tools_not_installed]
-    on_failure:
-      add: [tools_not_installed]
-      remove: [tools_installed]
 
   - name: map_recorded
     cmd: ["test", "-f", "/tmp/uncharles-audit/file-map.txt"]
@@ -113,17 +108,17 @@ sensors:
   - name: audit_sealed
     cmd: ["test", "-f", "/tmp/uncharles-audit/sealed.txt"]
 
-  # `eject_pending` — drive is gone but per-session audit state remains.
-  # This is the positive trigger for cleanup_after_eject (the action
-  # model has no "NOT pendrive_mounted" — the negation is encoded here).
-  - name: eject_pending
+  # `audit_state_present` — at least one per-session audit artefact
+  # exists on disk. Honest about what it measures: file presence, no
+  # negation embedded. The cleanup action gates itself with
+  # `forbids: [pendrive_mounted]` to express "the drive is gone *and*
+  # state remains" cleanly, instead of folding both halves of that
+  # condition into the sensor.
+  - name: audit_state_present
     cmd:
       - sh
       - -c
       - |
-        if [ -n "${PENDRIVE_MOUNT:-}" ] && [ -d "$PENDRIVE_MOUNT" ]; then
-          exit 1
-        fi
         for f in monitor.pid sealed.txt file-map.txt secrets.txt pii.txt; do
           [ -f "/tmp/uncharles-audit/$f" ] && exit 0
         done
@@ -156,9 +151,8 @@ actions:
   # the graceful-degradation path for whatever's still missing.
   - name: install_tools
     cost: 5.0
-    requires: [tools_not_installed]
+    forbids: [tools_installed]
     adds: [tools_installed]
-    removes: [tools_not_installed]
     cmd:
       - sh
       - -c
@@ -379,16 +373,18 @@ actions:
           sed 's/^/  /' /tmp/uncharles-audit/pii.txt
         } > /tmp/uncharles-audit/sealed.txt
 
-  # Triggered when the drive is gone but session state persists. Kills
-  # the fswatch process if it's real (PID file content is numeric);
-  # no-ops on the mock marker. Archives any captured copy events as
-  # `copies.<timestamp>.log` so the forensic trail survives the next
-  # insertion (start_copy_monitor truncates copies.log on each new
-  # session). Then wipes per-session markers so reinsertion forces a
-  # fresh audit.
+  # Triggered when the drive is gone (`forbids: [pendrive_mounted]`)
+  # but session state persists (`requires: [audit_state_present]`).
+  # Kills the fswatch process if it's real (PID file content is
+  # numeric); no-ops on the mock marker. Archives any captured copy
+  # events as `copies.<timestamp>.log` so the forensic trail survives
+  # the next insertion (start_copy_monitor truncates copies.log on
+  # each new session). Then wipes per-session markers so reinsertion
+  # forces a fresh audit.
   - name: cleanup_after_eject
     cost: 1.0
-    requires: [eject_pending]
+    requires: [audit_state_present]
+    forbids: [pendrive_mounted]
     adds: [idle]
     removes: [monitor_active, map_recorded, secrets_scanned, pii_scanned, tools_installed, audit_sealed]
     cmd:

@@ -184,6 +184,7 @@ fn render_actions(out: &mut String, actions: &[ActionSpec]) {
     for a in actions {
         let _ = writeln!(out, "  {} [cost {}]", a.name, a.cost);
         let _ = writeln!(out, "    requires: {}", join_or_none(&a.requires));
+        let _ = writeln!(out, "    forbids:  {}", join_or_none(&a.forbids));
         let _ = writeln!(out, "    adds:     {}", join_or_none(&a.adds));
         let _ = writeln!(out, "    removes:  {}", join_or_none(&a.removes));
     }
@@ -571,7 +572,7 @@ fn mermaid_escape(s: &str) -> String {
 /// ```text
 /// {
 ///   "sensors":   [ { name, cmd, on_success, on_failure } ],
-///   "actions":   [ { name, cost, requires, adds, removes } ],
+///   "actions":   [ { name, cost, requires, forbids, adds, removes } ],
 ///   "goal":      { requires, forbids },
 ///   "initial_state": { facts: [...], note },
 ///   "graph":     { states, edges, truncated },
@@ -603,6 +604,7 @@ pub fn render_json(
                 "name": a.name,
                 "cost": a.cost,
                 "requires": a.requires,
+                "forbids": a.forbids,
                 "adds": a.adds,
                 "removes": a.removes,
             })
@@ -1232,6 +1234,7 @@ mod tests {
             name: "act".into(),
             cost: 1.0,
             requires: vec![],
+            forbids: vec![],
             adds: vec!["c".into()],
             removes: vec![],
             cmd: None,

@@ -44,6 +44,18 @@ pub struct ActionSpec {
     pub cost: f64,
     #[serde(default)]
     pub requires: Vec<String>,
+    /// Negative preconditions: facts that must be **absent** for the
+    /// action to fire. Mirrors `GoalSpec.forbids`. Lets configs express
+    /// "do this only when X is not present" without inventing a
+    /// synthetic sensor that observes the negative shape — see
+    /// `pendrive_audit.yaml`'s migration of the old `eject_pending` /
+    /// `tools_not_installed` proxies.
+    ///
+    /// Validated for non-overlap with `requires` at config load time
+    /// (see [`Config::validate`]); a fact in both fields would make
+    /// the action structurally unsatisfiable.
+    #[serde(default)]
+    pub forbids: Vec<String>,
     #[serde(default)]
     pub adds: Vec<String>,
     #[serde(default)]
@@ -81,6 +93,63 @@ pub struct GoalSpec {
     pub forbids: Vec<String>,
 }
 
+/// Errors returned by [`Config::validate`].
+#[derive(Debug)]
+pub enum ConfigError {
+    /// An action declares the same fact in both `requires` and `forbids`,
+    /// which would make it structurally unsatisfiable.
+    ActionContradiction { action: String, facts: Vec<String> },
+}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ActionContradiction { action, facts } => {
+                let list = facts.join(", ");
+                write!(
+                    f,
+                    "action `{action}` lists `{list}` in both `requires` and `forbids` — \
+                     the action could never fire. Drop the fact from one of the lists."
+                )
+            }
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {}
+
+impl Config {
+    /// Run static validation on a parsed config. Currently checks:
+    ///
+    /// - No action declares the same fact in both `requires` and
+    ///   `forbids` (would be structurally unsatisfiable).
+    ///
+    /// Called by `main.rs` after YAML parse, before either `run` or
+    /// `inspect` consumes the config. Future config-level invariants
+    /// belong here so they're enforced uniformly across subcommands.
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        for action in &self.actions {
+            let requires: std::collections::BTreeSet<&str> =
+                action.requires.iter().map(String::as_str).collect();
+            let overlap: Vec<String> = action
+                .forbids
+                .iter()
+                .filter(|f| requires.contains(f.as_str()))
+                .cloned()
+                .collect();
+            if !overlap.is_empty() {
+                let mut overlap = overlap;
+                overlap.sort();
+                return Err(ConfigError::ActionContradiction {
+                    action: action.name.clone(),
+                    facts: overlap,
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 impl SensorSpec {
     pub fn effects_for(&self, success: bool) -> Effects {
         if success {
@@ -100,6 +169,124 @@ impl SensorSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---------------------------------------------------------------------
+    // ActionSpec.forbids — YAML parsing + validation
+    // ---------------------------------------------------------------------
+
+    #[test]
+    fn parses_action_with_forbids_field() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: eject_now
+                cost: 1.0
+                requires: [audit_sealed]
+                forbids: [pendrive_mounted]
+                adds: [eject_done]
+                cmd: ["true"]
+            goal:
+              requires: [eject_done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(config.actions[0].requires, vec!["audit_sealed"]);
+        assert_eq!(config.actions[0].forbids, vec!["pendrive_mounted"]);
+    }
+
+    #[test]
+    fn forbids_defaults_to_empty_when_omitted() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: noop
+                cost: 1.0
+                cmd: ["true"]
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.actions[0].forbids.is_empty());
+    }
+
+    #[test]
+    fn validate_accepts_action_with_disjoint_requires_and_forbids() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: act
+                cost: 1.0
+                requires: [a]
+                forbids: [b]
+                adds: [c]
+                cmd: ["true"]
+            goal:
+              requires: [c]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_action_with_overlapping_requires_and_forbids() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: contradiction
+                cost: 1.0
+                requires: [foo, bar]
+                forbids: [foo]
+                adds: [done]
+                cmd: ["true"]
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        let err = config.validate().expect_err("expected ActionContradiction");
+        match err {
+            ConfigError::ActionContradiction { action, facts } => {
+                assert_eq!(action, "contradiction");
+                assert_eq!(facts, vec!["foo"]);
+            }
+        }
+    }
+
+    #[test]
+    fn validate_reports_all_overlapping_facts_in_a_single_action() {
+        let yaml = r#"
+            sensors: []
+            actions:
+              - name: tangled
+                cost: 1.0
+                requires: [a, b, c]
+                forbids: [b, a]
+                adds: [done]
+                cmd: ["true"]
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        let err = config.validate().expect_err("expected ActionContradiction");
+        match err {
+            ConfigError::ActionContradiction { action, facts } => {
+                assert_eq!(action, "tangled");
+                // sorted for stable error output
+                assert_eq!(facts, vec!["a", "b"]);
+            }
+        }
+    }
+
+    #[test]
+    fn validate_error_message_names_action_and_facts() {
+        let err = ConfigError::ActionContradiction {
+            action: "act".into(),
+            facts: vec!["x".into(), "y".into()],
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("`act`"));
+        assert!(msg.contains("`x, y`"));
+        assert!(msg.contains("requires"));
+        assert!(msg.contains("forbids"));
+    }
 
     // ---------------------------------------------------------------------
     // SensorSpec::effects_for — default and custom mappings
