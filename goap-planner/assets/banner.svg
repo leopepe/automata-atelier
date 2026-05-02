@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="goap-planner — goal-oriented action planning">
+  <title>goap-planner</title>
+  <desc>Banner for the goap-planner crate: the title sits above a horizontal state-machine chain, with action labels above each transition arrow and a goal flag at the rightmost state.</desc>
+
+  <defs>
+    <radialGradient id="parchment" cx="50%" cy="50%" r="65%">
+      <stop offset="0%"  stop-color="#FAF6E9"/>
+      <stop offset="80%" stop-color="#F1E9CD"/>
+      <stop offset="100%" stop-color="#E5DAB6"/>
+    </radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="16" cy="16" r="0.7" fill="#3A3530" fill-opacity="0.18"/>
+    </pattern>
+    <marker id="arrow-navy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#1E3A5F"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#parchment)"/>
+  <rect width="1200" height="320" fill="url(#grid)"/>
+
+  <!-- Drafting frame -->
+  <rect x="20" y="20" width="1160" height="280" fill="none" stroke="#1E3A5F" stroke-width="0.6" stroke-opacity="0.55"/>
+  <rect x="28" y="28" width="1144" height="264" fill="none" stroke="#1E3A5F" stroke-width="0.4" stroke-opacity="0.4"/>
+
+  <!-- ============================================================
+       TITLE BLOCK (top half)
+       ============================================================ -->
+  <g text-anchor="middle">
+    <text x="600" y="118"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="78" font-weight="bold" fill="#1E3A5F" letter-spacing="-1">goap-planner</text>
+
+    <text x="600" y="160"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="26" font-style="italic" fill="#C77F45">goal-oriented action planning</text>
+
+    <text x="600" y="190"
+          font-family="'Helvetica Neue', Arial, sans-serif"
+          font-size="11" fill="#475569" letter-spacing="4">STATE  ·  ACTION  ·  GOAL  ·  PLAN</text>
+  </g>
+
+  <!-- ============================================================
+       STATE MACHINE (bottom half)
+       Five states, four labelled action transitions, with a goal
+       flag flying out of the rightmost state.
+       ============================================================ -->
+
+  <!-- Action edges (drawn first, so nodes overlap them) -->
+  <g stroke="#1E3A5F" stroke-width="1.6" fill="none" stroke-linecap="round">
+    <line x1="172" y1="250" x2="362" y2="250" marker-end="url(#arrow-navy)"/>
+    <line x1="392" y1="250" x2="582" y2="250" marker-end="url(#arrow-navy)"/>
+    <line x1="612" y1="250" x2="802" y2="250" marker-end="url(#arrow-navy)"/>
+    <line x1="832" y1="250" x2="1022" y2="250" marker-end="url(#arrow-navy)"/>
+  </g>
+
+  <!-- Action labels (above each arrow) -->
+  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="12" fill="#7B6B47" font-style="italic">
+    <text x="270" y="237">chop_tree</text>
+    <text x="490" y="237">split_log</text>
+    <text x="710" y="237">stack_logs</text>
+    <text x="930" y="237">light_fire</text>
+  </g>
+
+  <!-- Action costs (below each arrow, small) -->
+  <g text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#C77F45">
+    <text x="270" y="278">cost 5</text>
+    <text x="490" y="278">cost 2</text>
+    <text x="710" y="278">cost 1</text>
+    <text x="930" y="278">cost 3</text>
+  </g>
+
+  <!-- States (large circles labelled with fact-set glyphs) -->
+  <g stroke="#1E3A5F" stroke-width="1.8">
+    <circle cx="148"  cy="250" r="24" fill="#FAF6E9"/>
+    <circle cx="378"  cy="250" r="24" fill="#FAF6E9"/>
+    <circle cx="598"  cy="250" r="24" fill="#FAF6E9"/>
+    <circle cx="818"  cy="250" r="24" fill="#FAF6E9"/>
+    <circle cx="1048" cy="250" r="26" fill="#C77F45"/>
+  </g>
+
+  <!-- State labels inside the circles -->
+  <g text-anchor="middle" font-family="Georgia, serif" font-size="15" font-style="italic" fill="#1E3A5F">
+    <text x="148"  y="255">S₀</text>
+    <text x="378"  y="255">S₁</text>
+    <text x="598"  y="255">S₂</text>
+    <text x="818"  y="255">S₃</text>
+  </g>
+  <g text-anchor="middle" font-family="Georgia, serif" font-size="15" font-style="italic" fill="#FAF6E9">
+    <text x="1048" y="255">G</text>
+  </g>
+
+  <!-- Goal flag flying out of the goal state -->
+  <g transform="translate(1080,210)">
+    <line x1="0" y1="0" x2="0" y2="40" stroke="#1E3A5F" stroke-width="1.5"/>
+    <path d="M0 0 L24 6 L18 12 L24 18 L0 14 Z" fill="#C77F45" stroke="#1E3A5F" stroke-width="1"/>
+  </g>
+</svg>

@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" preserveAspectRatio="xMidYMid meet" role="img" aria-label="grafo — the graph kernel">
+  <title>grafo</title>
+  <desc>Banner for the grafo crate: the title sits above a horizontal directed acyclic graph rendered in technical-blueprint style, with one shortest path highlighted in copper to evoke Dijkstra's search.</desc>
+
+  <defs>
+    <radialGradient id="parchment" cx="50%" cy="50%" r="65%">
+      <stop offset="0%"  stop-color="#FAF6E9"/>
+      <stop offset="80%" stop-color="#F1E9CD"/>
+      <stop offset="100%" stop-color="#E5DAB6"/>
+    </radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="16" cy="16" r="0.7" fill="#3A3530" fill-opacity="0.18"/>
+    </pattern>
+    <!-- Arrowhead marker for the path -->
+    <marker id="arrow-copper" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#C77F45"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#parchment)"/>
+  <rect width="1200" height="320" fill="url(#grid)"/>
+
+  <!-- Drafting frame -->
+  <rect x="20" y="20" width="1160" height="280" fill="none" stroke="#1E3A5F" stroke-width="0.6" stroke-opacity="0.55"/>
+  <rect x="28" y="28" width="1144" height="264" fill="none" stroke="#1E3A5F" stroke-width="0.4" stroke-opacity="0.4"/>
+
+  <!-- ============================================================
+       TITLE BLOCK (top half)
+       ============================================================ -->
+  <g text-anchor="middle">
+    <text x="600" y="118"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="84" font-weight="bold" fill="#1E3A5F" letter-spacing="-1">grafo</text>
+
+    <text x="600" y="160"
+          font-family="Georgia, 'Times New Roman', serif"
+          font-size="26" font-style="italic" fill="#C77F45">the graph kernel</text>
+
+    <text x="600" y="190"
+          font-family="'Helvetica Neue', Arial, sans-serif"
+          font-size="11" fill="#475569" letter-spacing="4">DIRECTED ACYCLIC GRAPHS  ·  DIJKSTRA SEARCH  ·  CSR STORAGE</text>
+  </g>
+
+  <!-- ============================================================
+       DAG (bottom half)
+       Source at far left (140), sink at far right (1060). The
+       highlighted copper path is the Dijkstra shortest path the
+       library would return.
+       ============================================================ -->
+
+  <!-- All edges (faint navy, the full graph) -->
+  <g stroke="#1E3A5F" stroke-width="1.2" fill="none" stroke-opacity="0.7">
+    <line x1="140" y1="250" x2="280" y2="220"/>
+    <line x1="140" y1="250" x2="280" y2="250"/>
+    <line x1="140" y1="250" x2="280" y2="285"/>
+
+    <line x1="280" y1="220" x2="450" y2="225"/>
+    <line x1="280" y1="220" x2="450" y2="265"/>
+    <line x1="280" y1="250" x2="450" y2="225"/>
+    <line x1="280" y1="250" x2="450" y2="265"/>
+    <line x1="280" y1="285" x2="450" y2="265"/>
+
+    <line x1="450" y1="225" x2="620" y2="235"/>
+    <line x1="450" y1="225" x2="620" y2="280"/>
+    <line x1="450" y1="265" x2="620" y2="235"/>
+    <line x1="450" y1="265" x2="620" y2="280"/>
+
+    <line x1="620" y1="235" x2="780" y2="225"/>
+    <line x1="620" y1="235" x2="780" y2="270"/>
+    <line x1="620" y1="280" x2="780" y2="270"/>
+
+    <line x1="780" y1="225" x2="930" y2="240"/>
+    <line x1="780" y1="270" x2="930" y2="240"/>
+    <line x1="780" y1="270" x2="930" y2="280"/>
+
+    <line x1="930" y1="240" x2="1060" y2="255"/>
+    <line x1="930" y1="280" x2="1060" y2="255"/>
+  </g>
+
+  <!-- Highlighted shortest path: source → top-mid → top-mid → top → mid → sink -->
+  <g stroke="#C77F45" stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="140" y1="250" x2="280" y2="220"/>
+    <line x1="280" y1="220" x2="450" y2="225"/>
+    <line x1="450" y1="225" x2="620" y2="235"/>
+    <line x1="620" y1="235" x2="780" y2="225"/>
+    <line x1="780" y1="225" x2="930" y2="240"/>
+    <line x1="930" y1="240" x2="1060" y2="255" marker-end="url(#arrow-copper)"/>
+  </g>
+
+  <!-- Nodes (drawn last so they sit on top of edges) -->
+  <g stroke="#1E3A5F" stroke-width="1.5">
+    <!-- Source (highlighted) -->
+    <circle cx="140"  cy="250" r="8"  fill="#C77F45"/>
+    <!-- Layer 1 -->
+    <circle cx="280"  cy="220" r="6"  fill="#C77F45"/>
+    <circle cx="280"  cy="250" r="5"  fill="#FAF6E9"/>
+    <circle cx="280"  cy="285" r="5"  fill="#FAF6E9"/>
+    <!-- Layer 2 -->
+    <circle cx="450"  cy="225" r="6"  fill="#C77F45"/>
+    <circle cx="450"  cy="265" r="5"  fill="#FAF6E9"/>
+    <!-- Layer 3 -->
+    <circle cx="620"  cy="235" r="6"  fill="#C77F45"/>
+    <circle cx="620"  cy="280" r="5"  fill="#FAF6E9"/>
+    <!-- Layer 4 -->
+    <circle cx="780"  cy="225" r="6"  fill="#C77F45"/>
+    <circle cx="780"  cy="270" r="5"  fill="#FAF6E9"/>
+    <!-- Layer 5 -->
+    <circle cx="930"  cy="240" r="6"  fill="#C77F45"/>
+    <circle cx="930"  cy="280" r="5"  fill="#FAF6E9"/>
+    <!-- Sink (highlighted) -->
+    <circle cx="1060" cy="255" r="8"  fill="#C77F45"/>
+  </g>
+
+  <!-- Labels: source / sink -->
+  <g font-family="'Courier New', monospace" font-size="10" fill="#475569" text-anchor="middle">
+    <text x="140"  y="278">src</text>
+    <text x="1060" y="283">dst</text>
+  </g>
+
+  <!-- Complexity annotation, top-right -->
+  <text x="1148" y="56" text-anchor="end"
+        font-family="'Courier New', monospace" font-size="11" fill="#7B6B47">
+    O((V + E) log V)
+  </text>
+</svg>

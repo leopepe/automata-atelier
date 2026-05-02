@@ -170,6 +170,7 @@ Pair every bench session with a flamegraph (see [`grafo/CLAUDE.md`](grafo/CLAUDE
 - [`goap-planner/README.md`](goap-planner/README.md) — planner library docs.
 - [`goap-planner/docs/performance.md`](goap-planner/docs/performance.md) — current planner benchmark summary and history.
 - [`goap-planner/examples/`](goap-planner/examples/) — runnable planner scenarios (`deploy`, `release`, `refactor`, `validate`, `watch`, `dependency`).
+- [`uncharles/README.md`](uncharles/README.md) — runtime CLI docs and example configs.
 - [`uncharles/configs/`](uncharles/configs/) — YAML configs showing sensor/action/goal patterns.
 - [`docs/performance-tests.md`](docs/performance-tests.md) — workspace-wide rules for benchmark suites and the CI gate.
 - [`docs/todo.md`](docs/todo.md) — deferred design notes and pending work.

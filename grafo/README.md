@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.svg" alt="grafo — the graph kernel" width="100%">
+</p>
+
 # Grafo
 
 A fast directed acyclic graph (DAG) library for Rust with shortest-path search and attribute-based path filtering inspired by Goal-Oriented Action Planning (GOAP).

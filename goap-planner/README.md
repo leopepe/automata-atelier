@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.svg" alt="goap-planner — goal-oriented action planning" width="100%">
+</p>
+
 # goap-planner
 
 Goal-Oriented Action Planning over a state-space graph built with [`grafo`](../grafo/). The first planner in the [Automata Atelier](../) workspace.
