@@ -127,13 +127,13 @@ Last measured 2026-05-02 on macOS / Rust stable.
 
 | Workload | Result |
 |---|---|
-| 5-step linear plan | **3.4 µs** |
-| 50-step linear plan | **33 µs** |
-| 128-action library, single correct branch | **362 µs** |
-| 16 redundant paths, picks the cheapest | **24 µs** |
-| Goal already satisfied (fast-path early return) | **6.9 ns** |
-| `Action::applicable` (preconditions met / unmet) | **17 ns / 14 ns** |
-| 64 concurrent plans via Rayon over `Arc<Planner>` | **145 µs** (5.4× faster than sequential) |
+| 5-step linear plan | **3.3 µs** |
+| 50-step linear plan | **32 µs** |
+| 128-action library, single correct branch | **337 µs** |
+| 16 redundant paths, picks the cheapest | **23 µs** |
+| Goal already satisfied (fast-path early return) | **7.2 ns** |
+| `Action::applicable` (preconditions met / unmet) | **16 ns / 13 ns** |
+| 64 concurrent plans via Rayon over `Arc<Planner>` | **148 µs** (5.2× faster than sequential) |
 
 Canonical summary: [`goap-planner/docs/performance.md`](goap-planner/docs/performance.md).
 
