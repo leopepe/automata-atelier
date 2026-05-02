@@ -34,12 +34,14 @@
 //! ```
 
 mod action;
+mod explore;
 mod goal;
 mod plan;
 mod planner;
 mod state;
 
 pub use action::Action;
+pub use explore::{StateEdge, StateGraph, StateNode};
 pub use goal::Goal;
 pub use plan::Plan;
 pub use planner::{Planner, PlannerError};

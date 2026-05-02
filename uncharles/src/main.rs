@@ -2,12 +2,17 @@
 //! YAML config. Named after the obsessive task-list-driven robot from
 //! Adrian Tchaikovsky's *Service Model*.
 //!
-//! Default mode is one-shot: load the config, run sensors, plan, print the
-//! plan, exit. Pass `--execute` to switch into the persistent loop that
-//! actually runs each action's `cmd`, re-senses, and replans until the
-//! goal is satisfied (or something goes wrong).
+//! Subcommands:
+//!
+//! - `run` — load the config, run sensors, plan, and (with `--execute`)
+//!   actually run the plan. The default subcommand for backward compatibility
+//!   — `uncharles --config X` is parsed as `uncharles run --config X`.
+//! - `inspect` — load the config and print the static structure plus the
+//!   bounded reachable state-action graph, *without* running sensors or
+//!   actions. For visual debugging.
 
 mod config;
+mod inspect;
 mod run;
 
 use std::fs;
@@ -16,7 +21,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 
 use config::Config;
 use run::{LoopEvent, LoopOutcome, Outcome, RunError, run_loop, sense_and_plan};
@@ -27,6 +32,24 @@ use run::{LoopEvent, LoopOutcome, Outcome, RunError, run_loop, sense_and_plan};
     about = "Sense → plan → act loop driving goap-planner from a YAML config"
 )]
 struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Run the sense → plan → act loop. Optionally executes actions
+    /// (`--execute`) and replans on divergence.
+    Run(RunArgs),
+    /// Inspect a config: print the sensors, actions, goal, simulated initial
+    /// state, the bounded reachable state-action graph, and a static-analysis
+    /// section flagging orphan actions, unreachable goal facts, and dead-end
+    /// states. Does not run any sensor or action commands.
+    Inspect(InspectArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+struct RunArgs {
     /// Path to the YAML config describing sensors, actions, and the goal.
     #[arg(short, long)]
     config: PathBuf,
@@ -63,13 +86,66 @@ struct Cli {
     dry_run: bool,
 }
 
-fn main() -> ExitCode {
-    let cli = Cli::parse();
+#[derive(Args, Debug)]
+struct InspectArgs {
+    /// Path to the YAML config to inspect.
+    #[arg(short, long)]
+    config: PathBuf,
 
-    let raw = match fs::read_to_string(&cli.config) {
+    /// Extra facts to layer on top of the simulated initial state. Useful
+    /// for "what does the planner see if I assume fact X is also true?".
+    #[arg(long, value_name = "FACT")]
+    have: Vec<String>,
+
+    /// Override the planner's `max_states` cap on state-space exploration.
+    /// When the cap is hit, the printed graph is marked TRUNCATED.
+    #[arg(long, value_name = "N")]
+    max_states: Option<usize>,
+}
+
+fn main() -> ExitCode {
+    // Backward compatibility: if the first arg is not a known subcommand or
+    // a help/version flag, insert "run" implicitly so `uncharles --config X`
+    // continues to work.
+    let argv = bridge_legacy_argv(std::env::args().collect());
+    let cli = Cli::parse_from(argv);
+
+    match cli.command {
+        Command::Run(args) => run_command(args),
+        Command::Inspect(args) => inspect_command(args),
+    }
+}
+
+/// If the first argument looks like a flag (starts with `-`) rather than a
+/// known subcommand, splice in `run` so the historical flat CLI keeps
+/// working: `uncharles --config X` → `uncharles run --config X`.
+fn bridge_legacy_argv(argv: Vec<String>) -> Vec<String> {
+    if argv.len() < 2 {
+        return argv;
+    }
+    let first = argv[1].as_str();
+    let known = ["run", "inspect", "help", "-h", "--help", "-V", "--version"];
+    if known.contains(&first) {
+        return argv;
+    }
+    // Anything else (most importantly, anything starting with `-`) is treated
+    // as legacy run-mode argv. Insert `run` in front of the first user arg.
+    let mut bridged = Vec::with_capacity(argv.len() + 1);
+    bridged.push(argv[0].clone());
+    bridged.push("run".to_string());
+    bridged.extend(argv.into_iter().skip(1));
+    bridged
+}
+
+// ---------------------------------------------------------------------------
+// `run` subcommand — the existing sense → plan → act behaviour
+// ---------------------------------------------------------------------------
+
+fn run_command(args: RunArgs) -> ExitCode {
+    let raw = match fs::read_to_string(&args.config) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("error: cannot read {}: {e}", cli.config.display());
+            eprintln!("error: cannot read {}: {e}", args.config.display());
             return ExitCode::from(2);
         }
     };
@@ -82,31 +158,31 @@ fn main() -> ExitCode {
         }
     };
 
-    if cli.dry_run {
-        emit_dry_run(&config, cli.pretty);
+    if args.dry_run {
+        emit_dry_run(&config, args.pretty);
         return ExitCode::SUCCESS;
     }
 
-    if cli.execute {
-        return run_execute_mode(&cli, &config);
+    if args.execute {
+        return run_execute_mode(&args, &config);
     }
 
-    match sense_and_plan(&config, cli.have) {
+    match sense_and_plan(&config, args.have) {
         Ok(outcome) => {
-            emit_outcome(&outcome, cli.pretty);
+            emit_outcome(&outcome, args.pretty);
             match outcome.plan {
                 Some(_) => ExitCode::SUCCESS,
                 None => ExitCode::from(1),
             }
         }
         Err(e) => {
-            emit_error(&e, cli.pretty);
+            emit_error(&e, args.pretty);
             ExitCode::from(2)
         }
     }
 }
 
-fn run_execute_mode(cli: &Cli, config: &Config) -> ExitCode {
+fn run_execute_mode(args: &RunArgs, config: &Config) -> ExitCode {
     let interrupted = Arc::new(AtomicBool::new(false));
     let signal_flag = Arc::clone(&interrupted);
     if let Err(e) = ctrlc::set_handler(move || {
@@ -116,12 +192,12 @@ fn run_execute_mode(cli: &Cli, config: &Config) -> ExitCode {
         return ExitCode::from(2);
     }
 
-    let pretty = cli.pretty;
+    let pretty = args.pretty;
     let result = run_loop(
         config,
-        cli.have.clone(),
-        cli.max_iterations,
-        cli.interval_ms,
+        args.have.clone(),
+        args.max_iterations,
+        args.interval_ms,
         Arc::clone(&interrupted),
         |event| emit_event(&event, pretty),
     );
@@ -143,6 +219,46 @@ fn run_execute_mode(cli: &Cli, config: &Config) -> ExitCode {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// `inspect` subcommand — issue #22
+// ---------------------------------------------------------------------------
+
+fn inspect_command(args: InspectArgs) -> ExitCode {
+    let raw = match fs::read_to_string(&args.config) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("error: cannot read {}: {e}", args.config.display());
+            return ExitCode::from(2);
+        }
+    };
+
+    let config: Config = match serde_yaml::from_str(&raw) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("error: invalid config: {e}");
+            return ExitCode::from(2);
+        }
+    };
+
+    let (initial, graph, analysis) = inspect::inspect(&config, &args.have, args.max_states);
+    let report = inspect::render_text(&config, &initial, &graph, &analysis);
+    print!("{report}");
+
+    if analysis.is_clean() {
+        ExitCode::SUCCESS
+    } else {
+        // Static-analysis findings still produce a useful report; surface
+        // them via a non-zero exit so `uncharles inspect` is usable as a
+        // lint pass in scripts. Exit code 1 means "issues found", distinct
+        // from 2 ("could not run").
+        ExitCode::from(1)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Existing emitters (unchanged)
+// ---------------------------------------------------------------------------
 
 fn emit_dry_run(config: &Config, pretty: bool) {
     let v = serde_json::json!({

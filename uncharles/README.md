@@ -25,17 +25,42 @@ cargo build -p uncharles --release
 
 ## Usage
 
+`uncharles` exposes two subcommands. The legacy flat form
+(`uncharles --config X`) still works — it is parsed as `uncharles run`.
+
+### `run` — sense, plan, optionally execute
+
 Plan a sequence and print it:
 
 ```sh
-cargo run -p uncharles -- --config uncharles/configs/deploy.yaml --pretty
+cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --pretty
 ```
 
 Execute the plan, re-sensing and replanning on divergence:
 
 ```sh
-cargo run -p uncharles -- --config uncharles/configs/deploy.yaml --execute --pretty
+cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --execute --pretty
 ```
+
+### `inspect` — visualise the state-action graph
+
+Load a config and print the static structure plus the bounded reachable
+state-action graph **without running any sensor or action commands**.
+Useful for debugging configs that produce no plan, surfacing typo'd fact
+names, orphan actions, unreachable goal facts, and dead-end states.
+
+```sh
+cargo run -p uncharles -- inspect --config uncharles/configs/deploy.yaml
+```
+
+The initial state is *simulated* — each sensor's `on_success` effects are
+applied in YAML declaration order without running anything. Use `--have
+<fact>` to layer additional facts on top, and `--max-states <N>` to override
+the planner's default exploration cap (10 000). Exit code is `0` when the
+config is clean, `1` when static analysis finds issues, `2` if the config
+could not be loaded.
+
+Implements [issue #22](https://github.com/leopepe/automata-atelier/issues/22).
 
 A minimal config:
 
