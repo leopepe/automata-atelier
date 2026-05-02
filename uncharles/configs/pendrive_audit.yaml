@@ -16,13 +16,13 @@
 #   brew install fswatch gitleaks trufflehog bulk_extractor
 #
 # On macOS with brew, the planner does this for you: the
-# `install_tools` action detects missing tools and runs
-# `brew install` for whatever's absent. On other systems (Linux, or
-# macOS without brew) the action no-ops and missing tools degrade
-# gracefully — start_copy_monitor falls back to a marker,
-# scan_secrets falls back to grep, scan_pii records "skipped". The
-# planner advances either way, so the config is runnable on a stock
-# machine even with no network.
+# `tools_installed` sensor checks each tool's presence on PATH, and
+# the `install_tools` action runs `brew install` for the missing
+# subset only. When everything is already present, install_tools is
+# absent from the plan entirely. When install isn't possible (Linux,
+# no brew, no network), the action drops a best-effort marker so the
+# sensor stops asking and graceful-degradation paths in scan_secrets
+# / scan_pii / start_copy_monitor take over.
 #
 # === Real-pendrive run ===
 #
@@ -43,6 +43,9 @@
 # === Audit artifacts under /tmp/uncharles-audit/ ===
 #
 #   install-tools.log           output of the auto-install attempt
+#                               (only created when install was needed)
+#   .install-best-effort        marker: install couldn't help further;
+#                               sensor accepts this as "tools ready"
 #   file-map.txt                sha256 + path of every file on the mount
 #   secrets.txt                 human-readable secrets summary
 #   secrets-gitleaks.json       gitleaks raw findings (when installed)
@@ -67,12 +70,23 @@ sensors:
   # Per-step progress markers. These are file-existence sensors so the
   # planner sees real progress between iterations rather than just
   # trusting the optimistic effects.
-  # Auto-install attempted this session. The action always succeeds
-  # (logging its decision regardless of OS / brew presence / tool
-  # availability), and the marker is the action's log file. Cleared on
-  # eject so reinsertion re-checks tool availability.
-  - name: tools_install_attempted
-    cmd: ["test", "-f", "/tmp/uncharles-audit/install-tools.log"]
+  # Tool availability. True when every required scan tool is on PATH,
+  # OR when install_tools has set the best-effort marker (couldn't
+  # install further — graceful degradation will handle the gap).
+  # Checked each iteration, so a `brew install` between sessions is
+  # picked up automatically. Marker is cleared on eject.
+  - name: tools_installed
+    cmd:
+      - sh
+      - -c
+      - |
+        for t in fswatch gitleaks trufflehog bulk_extractor; do
+          command -v "$t" >/dev/null 2>&1 || {
+            [ -f /tmp/uncharles-audit/.install-best-effort ] && exit 0
+            exit 1
+          }
+        done
+        exit 0
 
   - name: map_recorded
     cmd: ["test", "-f", "/tmp/uncharles-audit/file-map.txt"]
@@ -100,7 +114,7 @@ sensors:
         if [ -n "${PENDRIVE_MOUNT:-}" ] && [ -d "$PENDRIVE_MOUNT" ]; then
           exit 1
         fi
-        for f in monitor.pid sealed.txt file-map.txt secrets.txt pii.txt install-tools.log; do
+        for f in monitor.pid sealed.txt file-map.txt secrets.txt pii.txt; do
           [ -f "/tmp/uncharles-audit/$f" ] && exit 0
         done
         exit 1
@@ -115,7 +129,7 @@ sensors:
       - -c
       - |
         if [ -z "${PENDRIVE_MOUNT:-}" ] || [ ! -d "$PENDRIVE_MOUNT" ]; then
-          for f in monitor.pid sealed.txt file-map.txt secrets.txt pii.txt install-tools.log; do
+          for f in monitor.pid sealed.txt file-map.txt secrets.txt pii.txt; do
             [ -f "/tmp/uncharles-audit/$f" ] && exit 1
           done
           exit 0
@@ -123,41 +137,39 @@ sensors:
         [ -f /tmp/uncharles-audit/sealed.txt ]
 
 actions:
-  # Bring the toolchain up before scanning. Detects OS, checks brew
-  # availability, computes the missing-tool set, and runs `brew
-  # install` for whatever's absent — but only on Darwin/macOS with
-  # brew on PATH. On unsupported environments (Linux, no brew, etc.)
-  # the action logs its reason for skipping and exits cleanly so the
-  # graceful-degradation paths in the scan actions still run.
-  #
-  # The action always exits 0 — install failure is non-fatal because
-  # scan_secrets and scan_pii fall back to grep/skipped when their
-  # underlying tool is missing. Cost is high (5.0) so the planner
-  # never picks this when the marker is already set; combined with
-  # the marker-file sensor, it runs at most once per audit session.
+  # Install missing scan tools via brew (macOS only). Only fires when
+  # the `tools_installed` sensor is false, i.e. at least one tool is
+  # absent. On unsupported environments (Linux, no brew) or when brew
+  # can't install everything (network down, formula renamed), the
+  # action drops `.install-best-effort` so the sensor flips true and
+  # the planner stops re-running it. Either way the scan actions take
+  # the graceful-degradation path for whatever's still missing.
   - name: install_tools
     cost: 5.0
     requires: [pendrive_mounted]
-    adds: [tools_install_attempted]
+    adds: [tools_installed]
     cmd:
       - sh
       - -c
       - |
         mkdir -p /tmp/uncharles-audit
         log=/tmp/uncharles-audit/install-tools.log
+        marker=/tmp/uncharles-audit/.install-best-effort
         : > "$log"
 
         os=$(uname -s)
         echo "[install_tools] OS=$os" >> "$log"
+
         if [ "$os" != "Darwin" ]; then
           echo "[install_tools] only Darwin/macOS auto-install is supported" >> "$log"
-          echo "[install_tools] missing tools (if any) will degrade gracefully in scans" >> "$log"
+          touch "$marker"
           exit 0
         fi
 
         if ! command -v brew >/dev/null 2>&1; then
           echo "[install_tools] brew not on PATH; cannot auto-install" >> "$log"
           echo "[install_tools] install Homebrew from https://brew.sh, or rely on graceful fallbacks" >> "$log"
+          touch "$marker"
           exit 0
         fi
 
@@ -168,8 +180,10 @@ actions:
           fi
         done
 
+        # Sensor wouldn't have triggered us if everything were present,
+        # but guard against a stale-state race.
         if [ -z "$missing" ]; then
-          echo "[install_tools] all tools present, nothing to install" >> "$log"
+          echo "[install_tools] all tools present (sensor stale?); nothing to do" >> "$log"
           exit 0
         fi
 
@@ -178,13 +192,20 @@ actions:
         brew install $missing >> "$log" 2>&1 || true
 
         echo "[install_tools] post-install state:" >> "$log"
+        still_missing=0
         for t in fswatch gitleaks trufflehog bulk_extractor; do
           if command -v "$t" >/dev/null 2>&1; then
             echo "  $t: present" >> "$log"
           else
             echo "  $t: still missing" >> "$log"
+            still_missing=1
           fi
         done
+
+        if [ "$still_missing" -eq 1 ]; then
+          echo "[install_tools] flagging best-effort done" >> "$log"
+          touch "$marker"
+        fi
 
   # Hash every file on the drive. macOS `shasum -a 256` is built-in.
   # Skips macOS metadata directories (.fseventsd, .Spotlight-V100, .Trashes).
@@ -215,7 +236,7 @@ actions:
   # raw JSON outputs sit alongside for deeper inspection.
   - name: scan_secrets
     cost: 3.0
-    requires: [pendrive_mounted, map_recorded, tools_install_attempted]
+    requires: [pendrive_mounted, map_recorded, tools_installed]
     adds: [secrets_scanned]
     cmd:
       - sh
@@ -274,7 +295,7 @@ actions:
   # credentials." Skipped gracefully when bulk_extractor isn't installed.
   - name: scan_pii
     cost: 3.0
-    requires: [pendrive_mounted, map_recorded, tools_install_attempted]
+    requires: [pendrive_mounted, map_recorded, tools_installed]
     adds: [pii_scanned]
     cmd:
       - sh
@@ -358,7 +379,7 @@ actions:
     cost: 1.0
     requires: [eject_pending]
     adds: [idle]
-    removes: [monitor_active, map_recorded, secrets_scanned, pii_scanned, tools_install_attempted, audit_sealed]
+    removes: [monitor_active, map_recorded, secrets_scanned, pii_scanned, tools_installed, audit_sealed]
     cmd:
       - sh
       - -c
@@ -382,7 +403,8 @@ actions:
               /tmp/uncharles-audit/secrets-gitleaks.json \
               /tmp/uncharles-audit/secrets-trufflehog.ndjson \
               /tmp/uncharles-audit/pii.txt \
-              /tmp/uncharles-audit/install-tools.log
+              /tmp/uncharles-audit/install-tools.log \
+              /tmp/uncharles-audit/.install-best-effort
         rm -rf /tmp/uncharles-audit/bulk_extractor
 
 goal:
