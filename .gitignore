@@ -27,7 +27,13 @@ perf.data*
 *~
 
 # Claude Code workspace state — local-only settings, transcripts, memory.
-.claude/
+# Ignore the contents of .claude/ rather than the directory itself, so the
+# re-include below can take effect (git doesn't recurse into an ignored
+# directory).
+.claude/*
+# Exception: project-scoped skills are shared workspace tooling and do get
+# checked in. Anything else under .claude/ stays local.
+!.claude/skills/
 
 # --- OS junk --------------------------------------------------------------
 

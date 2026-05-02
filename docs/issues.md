@@ -8,7 +8,7 @@ Open an issue when:
 
 - A behaviour is broken or has regressed → **bug report**.
 - A new user-visible capability is wanted → **feature request**.
-- A design discussion needs durable capture (architectural choices, API shape, "we should reconsider X") → **design proposal**.
+- A design discussion needs durable capture (architectural choices, API shape, "we should reconsider X") → **design proposal**. Once such a discussion reaches a decision that meets the bar in [`adrs.md`](./adrs.md), record it as an ADR and reference the issue with `Refs #N`.
 
 If a thing is already a tiny PR you're about to open and the discussion fits in the PR description, skip the issue. Issues exist for things that need to be discussed, prioritised, or carried across multiple PRs.
 

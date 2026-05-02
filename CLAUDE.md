@@ -30,6 +30,7 @@ Specifically:
 - **Before writing or modifying any code**, read [`docs/coding-guidelines.md`](./docs/coding-guidelines.md). It is the source of truth for tests, lint and format gates, documentation duties, commit and PR conventions, and the "when in doubt" defaults.
 - **Before touching a core library's hot path** (currently `grafo` or `goap-planner`), read [`docs/performance-tests.md`](./docs/performance-tests.md).
 - **Before opening or updating a GitHub issue**, read [`docs/issues.md`](./docs/issues.md).
+- **Before taking a decision that touches architecture, core components, performance, security, or a user/integration interface**, read [`docs/adrs.md`](./docs/adrs.md). It defines when an Architecture Decision Record (ADR) is required, the MADR format we use, and the workflow for ratifying one.
 
 When new workspace-wide documentation is added under `docs/`, the index in `docs/CLAUDE.md` is updated to list it; check there first rather than guessing what exists.
 
