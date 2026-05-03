@@ -1,0 +1,320 @@
+# Spotify / YouTube playlist download pipeline driven by `spotdl` via
+# `uvx`. End-to-end happy path:
+#
+#   enumerate tracks from each playlist URL  →  download each as mp3  →
+#   verify it's real audio  →  notify the user  →  commit the cycle
+#
+# One uncharles invocation processes one cycle. Cold-start (no new
+# tracks) exits at iteration 1 with `idle` already true. Wrap in
+#
+#   while true; do uncharles run --config podcast_spotdl.yaml --execute; sleep 600; done
+#
+# to poll periodically.
+#
+# Pairs with the hermetic skeleton in `podcast.yaml`. That file stays
+# stub-driven so the in-tree e2e test (`cli.rs::execute_loop_drives
+# _podcast_pipeline_end_to_end`) can run without network. This file is
+# the production form.
+#
+# Scope note: spotdl resolves Spotify metadata to a YouTube match and
+# pulls audio from there. Music playlists and shows that mirror to
+# YouTube work. Spotify-exclusive talk podcasts won't resolve and will
+# surface as a `verify_episodes` failure once their pending entry has
+# no mp3 — that's expected; clean up the pending entry by hand.
+#
+# Prereqs (the `tools_available` sensor checks each on every cycle):
+#   - uvx        — runs spotdl without a permanent install (https://docs.astral.sh/uv/)
+#   - ffprobe    — verifies downloaded audio (ships with ffmpeg)
+#   - jq         — parses spotdl's JSON output
+#   - shasum     — slugifies track URLs (sha1sum is accepted as fallback)
+#
+# Inputs (two equivalent paths; both converge on `playlists.txt`):
+#
+#   Path A — file (canonical):
+#     mkdir -p .uncharles/state/podcast_spotdl
+#     printf '%s\n' \
+#       'https://open.spotify.com/playlist/<id>' \
+#       'https://www.youtube.com/playlist?list=<id>' \
+#       > .uncharles/state/podcast_spotdl/playlists.txt
+#
+#   Path B — inline in this YAML: edit the `seed_playlists_inline`
+#   block at the top of the discovery sensor below. Useful when the
+#   config is the single source of truth for what to track and you
+#   don't want a sidecar file.
+#
+# Sidecar state on disk (relative to cwd):
+#   .uncharles/state/podcast_spotdl/playlists.txt    # one URL per line; comments start with '#'
+#   .uncharles/state/podcast_spotdl/pending/<slug>   # pending track (file content = track URL)
+#   .uncharles/state/podcast_spotdl/downloaded.txt   # track URLs already archived
+#   .uncharles/state/podcast_spotdl/last-cycle.txt   # most recent notification summary
+#   .uncharles/library/podcast_spotdl/<slug>.mp3     # downloaded files
+#
+# Slug derivation: `shasum` of the track URL, first 16 hex chars.
+# Deterministic so re-runs see existing pending entries instead of
+# duplicating them, and short enough not to bump up against filesystem
+# name limits.
+#
+# Failure routing: `download_episodes` can fail on transient network
+# errors or per-track resolution failures. Its `on_failure` clause
+# flags `download_failed`, making the cheaper `await_download_retry`
+# eligible — the planner reroutes through it on the next iteration.
+# Persistent failures eventually surface via `verify_episodes`, which
+# exits non-zero when any pending entry lacks a corresponding mp3 and
+# terminates the cycle with `ActionFailed` so a human can investigate.
+
+sensors:
+  # Sensor order matters. `new_episodes_available` populates `pending/`,
+  # and `idle` reads that directory; discovery must run first so cold-
+  # start invocations don't see an empty `pending/`, conclude
+  # `idle = true`, and exit before the pipeline runs.
+
+  # `tools_available` — fail fast when any required external tool is
+  # missing on PATH. Every action requires this fact, so a missing
+  # tool surfaces as a clean `PlanFailed` instead of a cryptic
+  # mid-pipeline crash.
+  - name: tools_available
+    cmd:
+      - sh
+      - -c
+      - |
+        miss=
+        command -v uvx >/dev/null 2>&1 || miss="$miss uvx"
+        command -v ffprobe >/dev/null 2>&1 || miss="$miss ffprobe"
+        command -v jq >/dev/null 2>&1 || miss="$miss jq"
+        command -v shasum >/dev/null 2>&1 || command -v sha1sum >/dev/null 2>&1 || miss="$miss shasum/sha1sum"
+        if [ -n "$miss" ]; then
+          echo "[uncharles/podcast_spotdl] missing on PATH:$miss" >&2
+          exit 1
+        fi
+
+  # `new_episodes_available` — for each playlist URL in playlists.txt,
+  # ask `spotdl save` to enumerate the tracks, parse the JSON for each
+  # track's canonical URL, diff against downloaded.txt, and stage each
+  # new URL as a file in `pending/<slug>` whose content is the track
+  # URL itself.
+  #
+  # If playlists.txt is missing or empty, this sensor still flips true
+  # when `pending/` already has entries (a previous interrupted cycle):
+  # work-in-flight always recovers without needing the playlist file.
+  - name: new_episodes_available
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast_spotdl
+        PLAYLISTS="$STATE/playlists.txt"
+        mkdir -p "$STATE/pending"
+        touch "$STATE/downloaded.txt"
+
+        # seed_playlists_inline — Path B from the header. Uncomment and
+        # edit if you'd rather keep playlist URLs in this YAML than in
+        # a sidecar file. The file path wins if both are present.
+        #
+        # if [ ! -s "$PLAYLISTS" ]; then
+        #   cat > "$PLAYLISTS" <<'EOF'
+        # https://open.spotify.com/playlist/<id>
+        # https://www.youtube.com/playlist?list=<id>
+        # EOF
+        # fi
+
+        SHA=shasum
+        command -v shasum >/dev/null 2>&1 || SHA=sha1sum
+
+        if [ -s "$PLAYLISTS" ]; then
+          TMP=$(mktemp)
+          : > "$TMP"
+          while IFS= read -r url; do
+            [ -z "$url" ] && continue
+            case "$url" in '#'*) continue ;; esac
+            spec=$(mktemp)
+            if uvx spotdl save "$url" --save-file "$spec" >/dev/null 2>&1; then
+              jq -r '.[] | (.url // .download_url // empty)' "$spec" >> "$TMP" 2>/dev/null || true
+            else
+              echo "[uncharles/podcast_spotdl] failed to enumerate: $url" >&2
+            fi
+            rm -f "$spec"
+          done < "$PLAYLISTS"
+          while IFS= read -r turl; do
+            [ -z "$turl" ] && continue
+            if ! grep -qFx "$turl" "$STATE/downloaded.txt"; then
+              slug=$(printf '%s' "$turl" | "$SHA" | cut -c1-16)
+              [ -e "$STATE/pending/$slug" ] || printf '%s' "$turl" > "$STATE/pending/$slug"
+            fi
+          done < "$TMP"
+          rm -f "$TMP"
+        fi
+
+        [ "$(find "$STATE/pending" -maxdepth 1 -type f 2>/dev/null | wc -l)" -gt 0 ]
+
+  # `idle` — pending/ is empty (no work in flight). When true at sense
+  # time, the planner returns an empty plan and uncharles exits at
+  # iteration 1. After a full cycle, `commit_cycle` clears pending/
+  # and the next iteration's sensor flips this to true → exit cleanly.
+  - name: idle
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast_spotdl
+        mkdir -p "$STATE/pending"
+        [ "$(find "$STATE/pending" -maxdepth 1 -type f 2>/dev/null | wc -l)" -eq 0 ]
+
+  # `episodes_downloaded` — every staged track URL has a matching mp3
+  # in `library/podcast_spotdl/` with non-zero size. Lets a partially-
+  # downloaded cycle resume cleanly: re-running uncharles after an
+  # interrupt detects which files already exist and skips them.
+  - name: episodes_downloaded
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast_spotdl
+        LIB=.uncharles/library/podcast_spotdl
+        mkdir -p "$STATE/pending" "$LIB"
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] || exit 1
+        done
+
+actions:
+  # Download each pending track via `uvx spotdl download`. Per-track so
+  # individual failures isolate cleanly — one un-resolvable URL doesn't
+  # block the rest of the playlist. Idempotent: skips files that
+  # already exist with non-zero size.
+  #
+  # On any per-track failure, sets `download_failed`; the planner picks
+  # `await_download_retry` on the next iteration.
+  - name: download_episodes
+    cost: 5.0
+    requires: [tools_available, new_episodes_available]
+    adds: [episodes_downloaded]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast_spotdl
+        LIB=.uncharles/library/podcast_spotdl
+        mkdir -p "$LIB"
+        FAIL=0
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] && continue
+          turl=$(cat "$entry")
+          if ! uvx spotdl download "$turl" \
+              --format mp3 \
+              --output "$LIB/$slug.{output-ext}" \
+              >/dev/null 2>&1; then
+            echo "[uncharles/podcast_spotdl] download failed: $turl" >&2
+            FAIL=1
+          fi
+        done
+        [ $FAIL -eq 0 ]
+    on_failure:
+      add: [download_failed]
+
+  # Recovery alternative. Cheaper than `download_episodes` so once
+  # `download_failed` is set, Dijkstra prefers this path. Backs off
+  # briefly, retries the same URLs (skipping any that completed). The
+  # optimistic `+episodes_downloaded` is corrected by the sensor on the
+  # next iteration if files are still missing — same await pattern as
+  # release_watch's `await_deploy`.
+  - name: await_download_retry
+    cost: 1.0
+    requires: [tools_available, download_failed]
+    adds: [episodes_downloaded]
+    cmd:
+      - sh
+      - -c
+      - |
+        sleep 1
+        STATE=.uncharles/state/podcast_spotdl
+        LIB=.uncharles/library/podcast_spotdl
+        mkdir -p "$LIB"
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] && continue
+          turl=$(cat "$entry")
+          uvx spotdl download "$turl" \
+            --format mp3 \
+            --output "$LIB/$slug.{output-ext}" \
+            >/dev/null 2>&1 || true
+        done
+
+  # Verify each downloaded file is real audio with `ffprobe`. Action
+  # failure (any file missing or unreadable as audio) terminates the
+  # loop with `ActionFailed`. There's no on_failure here because
+  # corrupt or unresolvable downloads warrant human attention, not
+  # silent retry.
+  - name: verify_episodes
+    cost: 2.0
+    requires: [tools_available, episodes_downloaded]
+    adds: [episodes_verified]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast_spotdl
+        LIB=.uncharles/library/podcast_spotdl
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          slug=$(basename "$entry")
+          [ -s "$LIB/$slug.mp3" ] || exit 1
+          ffprobe -loglevel error -show_streams "$LIB/$slug.mp3" >/dev/null 2>&1 || exit 1
+        done
+
+  # Notify the user. Writes a per-cycle summary to `last-cycle.txt`
+  # (parseable, tail-able) and best-effort echoes to /dev/tty.
+  # uncharles silences action stdout, so /dev/tty is the only direct
+  # channel to an interactive console; the redirect quietly fails in
+  # non-tty contexts (CI, pipes) without affecting the exit code.
+  - name: notify_user
+    cost: 1.0
+    requires: [tools_available, episodes_verified]
+    adds: [user_notified]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast_spotdl
+        LIB=.uncharles/library/podcast_spotdl
+        LOG="$STATE/last-cycle.txt"
+        {
+          echo "[uncharles/podcast_spotdl] new episodes downloaded:"
+          for entry in "$STATE/pending"/*; do
+            [ -f "$entry" ] || continue
+            slug=$(basename "$entry")
+            turl=$(cat "$entry")
+            size=$(wc -c < "$LIB/$slug.mp3" 2>/dev/null | tr -d ' ' || echo 0)
+            printf '  - %s  (%s bytes)\n' "$turl" "$size"
+          done
+        } > "$LOG"
+        if [ -w /dev/tty ]; then
+          cat "$LOG" > /dev/tty 2>/dev/null || true
+        fi
+        exit 0
+
+  # Commit the cycle: append track URLs to downloaded.txt, clear
+  # pending/. The optimistic `+idle` is confirmed by the sensor at the
+  # top of the next iteration (pending/ now empty → idle = true →
+  # goal satisfied → exit 0).
+  - name: commit_cycle
+    cost: 1.0
+    requires: [tools_available, user_notified]
+    adds: [idle]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/podcast_spotdl
+        for entry in "$STATE/pending"/*; do
+          [ -f "$entry" ] || continue
+          turl=$(cat "$entry")
+          echo "$turl" >> "$STATE/downloaded.txt"
+          rm -f "$entry"
+        done
+
+goal:
+  requires: [idle]

@@ -144,7 +144,8 @@ Real configs covering different domains — read them as a tour of what the runt
 | [`release_watch.yaml`](configs/release_watch.yaml) | Long-lived release-tagging watcher |
 | [`tofu_drift_watch.yaml`](configs/tofu_drift_watch.yaml) | Post-apply OpenTofu/IaC convergence watcher (drift detection, readonly creds — see [ADR 0002](../docs/adrs/0002-uncharles-as-post-apply-iac-convergence-watcher.md)) |
 | [`merge_gate.yaml`](configs/merge_gate.yaml) | PR-merge gate with status-check sensors |
-| [`podcast.yaml`](configs/podcast.yaml) | Podcast-episode download pipeline (RSS → fetch → archive) |
+| [`podcast.yaml`](configs/podcast.yaml) | Podcast-episode download pipeline (RSS → fetch → archive), hermetic skeleton |
+| [`podcast_spotdl.yaml`](configs/podcast_spotdl.yaml) | Spotify / YouTube playlist download pipeline driven by `uvx spotdl` (per-track, ffprobe-verified) |
 | [`repo_validate.yaml`](configs/repo_validate.yaml) | Repo-validation pipeline (fmt + clippy + test) |
 | [`smoke_loop.yaml`](configs/smoke_loop.yaml) / [`smoke_recover.yaml`](configs/smoke_recover.yaml) / [`smoke_failure.yaml`](configs/smoke_failure.yaml) | Side-effect-free smoke configs used by the integration tests |
 
