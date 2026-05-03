@@ -118,12 +118,21 @@ jobs:
             --save-baseline pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-base.txt
 
       - name: Compare PR head against baseline
+        # `--baseline-lenient` (instead of `--baseline`) silently skips
+        # the comparison for any HEAD bench whose name has no
+        # corresponding baseline entry — for everything else the gate
+        # behaves identically. Without it, criterion panics with
+        # "Baseline 'pr-base' must exist before comparison is allowed"
+        # the moment a PR renames or adds a bench. Renaming is a
+        # legitimate move (see PR #41 for the `_x32` batching rename),
+        # and the panic kills the whole comparison step rather than
+        # just skipping the new bench.
         if: steps.baseline-check.outputs.available == 'true'
         run: |
           set -euo pipefail
           git checkout "${{ github.sha }}"
           cargo bench -p ${{ matrix.crate }} --bench performance -- \
-            --baseline pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-head.txt
+            --baseline-lenient pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-head.txt
 
       - name: Run PR head benches (introductory, no baseline)
         # Bootstrap path: bench the PR head with no comparison. This

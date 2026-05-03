@@ -149,6 +149,44 @@ under each crate use criterion defaults — the higher-precision profile
 is the right one for capturing canonical baselines and writing
 comparison summaries.
 
+### Sub-50ns benches: per-batch IDs and size-aware threshold
+
+Two kinds of bench live in the suites: real workloads (planning, search,
+concurrent queries — µs to ms range) and primitive canaries that exist
+to flag accidental slowdowns of `Action::applicable`, `State::contains`,
+`Goal::satisfied_by`, etc. The canaries are sub-30 ns single calls,
+which is below the absolute jitter floor of GitHub-hosted Azure VMs
+(~2-5 ns of cache + scheduling drift between consecutive runs). At
+that scale, identical code measured back-to-back can show ±30-40 %
+"regressions" purely from runner state shifts — see PR #40 for the
+diagnosis.
+
+Two layered mitigations keep these benches usable in CI:
+
+1. **Per-batch bench IDs.** Each canary's inner work is wrapped in a
+   `for _ in 0..NANO_BATCH` loop (`NANO_BATCH = 32`) and the bench ID
+   carries an `_x32` suffix. Observed time becomes 100-1000 ns, where
+   the same 2-5 ns of physical jitter shrinks to ≤ 5 % relative. To
+   recover per-call ns from a `_x32` bench, divide reported time by 32.
+2. **Size-aware threshold floor.** `detect-bench-regression.py` widens
+   the regression threshold for any bench under ~20 ns observed median,
+   using `effective = max(base_pct, NOISE_FLOOR_NS / observed_ns × 100)`
+   with `NOISE_FLOOR_NS = 2.0`. This is a safety net for any future
+   bench that lands under the comfort zone before someone wraps it.
+
+Reliability summary you can rely on:
+
+- Above ~50 ns observed: gate is precise to ~5 %; a 10 % regression is real.
+- Sub-50 ns observed (canaries): use the `_x32` ID; gate is precise to ~5 %.
+- Bare sub-15 ns benches: avoid them. The size-aware floor provides
+  partial protection, but real signal in this range needs a dedicated
+  bench runner — out of scope for the current shared-runner setup.
+
+For sub-percent precision investigations (e.g. "did this micro-op move
+by 1 %?") the answer is local runs with the canonical workflow, not the
+CI gate. The gate's job is to catch ≥ 10 % regressions on real
+workloads, and that's what it's calibrated for.
+
 ### CI bench-case subset
 
 Multi-size sweeps in each crate's `benches/performance.rs`

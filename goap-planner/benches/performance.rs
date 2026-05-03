@@ -46,6 +46,29 @@ fn ci_sample_sizes<T: Copy>(sizes: &[T]) -> Vec<T> {
 }
 
 // ---------------------------------------------------------------------------
+// Nano-bench batching
+// ---------------------------------------------------------------------------
+
+/// Inner-loop batch size for benches whose single-call cost is below ~50 ns.
+///
+/// Criterion's per-sample variance on shared CI runners has an absolute
+/// floor of 2-5 ns (cache warm-up state, scheduling slack, neighbour
+/// activity in the Azure VM), independent of the bench's per-iter cost.
+/// On a 7-30 ns op that's 7-50 % relative noise — large enough that the
+/// regression gate fires on identical code between runs.
+///
+/// Wrapping each call in `for _ in 0..NANO_BATCH` multiplies the
+/// observed time by 32, pushing the bench to 200-1000 ns per iter
+/// where the same 2-5 ns of absolute jitter shrinks to 0.5-2.5 %
+/// relative — comfortably below the 10 % gate. Per-call ns can be
+/// derived locally by dividing the reported per-iter time by 32.
+///
+/// Bench IDs carry an `_x32` suffix so future readers (and criterion's
+/// baseline matching) treat them as distinct from any past unbatched
+/// runs.
+const NANO_BATCH: usize = 32;
+
+// ---------------------------------------------------------------------------
 // Scenario factories
 //
 // Each factory returns (actions, initial_state, goal). The topology is
@@ -235,17 +258,23 @@ fn bench_planning_redundant(c: &mut Criterion) {
 fn bench_planning_boundaries(c: &mut Criterion) {
     let mut group = c.benchmark_group("planning/boundaries");
 
-    // Already satisfied — fast path.
+    // Already satisfied — fast path. Batched (see `NANO_BATCH`): the
+    // pre-BFS check returns in ~7 ns, well below the runner's noise
+    // floor.
     let (actions, _, _) = chain_plan(10);
     let initial = State::from_facts(["already_done"]);
     let goal = Goal::new().requires("already_done");
     let planner = Planner::new(actions);
-    group.bench_function("already_satisfied", |b| {
+    group.bench_function("already_satisfied_x32", |b| {
         b.iter(|| {
-            planner
-                .plan(black_box(&initial), black_box(&goal))
-                .unwrap()
-                .unwrap()
+            for _ in 0..NANO_BATCH {
+                black_box(
+                    planner
+                        .plan(black_box(&initial), black_box(&goal))
+                        .unwrap()
+                        .unwrap(),
+                );
+            }
         })
     });
 
@@ -271,13 +300,24 @@ fn bench_planning_boundaries(c: &mut Criterion) {
 fn bench_state_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("ops/state");
 
-    // contains — hit and miss paths against a 100-fact state.
+    // contains — hit and miss paths against a 100-fact state. Batched
+    // (see `NANO_BATCH`) because a single hash lookup at ~8 ns is below
+    // the runner's noise floor; per-batch reporting keeps the gate
+    // signal clean.
     let large_state = State::from_facts((0..100).map(|i| format!("fact_{i}")));
-    group.bench_function("contains_hit", |b| {
-        b.iter(|| black_box(&large_state).contains(black_box("fact_42")))
+    group.bench_function("contains_hit_x32", |b| {
+        b.iter(|| {
+            for _ in 0..NANO_BATCH {
+                black_box(black_box(&large_state).contains(black_box("fact_42")));
+            }
+        })
     });
-    group.bench_function("contains_miss", |b| {
-        b.iter(|| black_box(&large_state).contains(black_box("nope")))
+    group.bench_function("contains_miss_x32", |b| {
+        b.iter(|| {
+            for _ in 0..NANO_BATCH {
+                black_box(black_box(&large_state).contains(black_box("nope")));
+            }
+        })
     });
 
     // insert — single-fact mutation cost.
@@ -339,12 +379,25 @@ fn bench_action_ops(c: &mut Criterion) {
     let met_state = State::from_facts(["a", "b", "c", "noise_1", "noise_2"]);
     let unmet_state = State::from_facts(["a", "b", "noise_1", "noise_2"]);
 
-    group.bench_function("applicable_met", |b| {
-        b.iter(|| black_box(&action).applicable(black_box(&met_state)))
+    // applicable_* are batched (see `NANO_BATCH`): the precondition scan
+    // runs at ~25 ns per call, low enough that single-call noise on
+    // shared CI runners exceeds the regression gate's threshold by
+    // itself. `apply` clones the State and is two orders of magnitude
+    // slower, so it is not batched.
+    group.bench_function("applicable_met_x32", |b| {
+        b.iter(|| {
+            for _ in 0..NANO_BATCH {
+                black_box(black_box(&action).applicable(black_box(&met_state)));
+            }
+        })
     });
 
-    group.bench_function("applicable_unmet", |b| {
-        b.iter(|| black_box(&action).applicable(black_box(&unmet_state)))
+    group.bench_function("applicable_unmet_x32", |b| {
+        b.iter(|| {
+            for _ in 0..NANO_BATCH {
+                black_box(black_box(&action).applicable(black_box(&unmet_state)));
+            }
+        })
     });
 
     group.bench_function("apply", |b| {
@@ -365,9 +418,17 @@ fn bench_goal_check(c: &mut Criterion) {
 
     let state = State::from_facts((0..50).map(|i| format!("fact_{i}")));
 
+    // All three goal benches are batched (see `NANO_BATCH`): even the
+    // compound case at ~140 ns is cheap enough that runner-to-runner
+    // jitter shows up as multi-percent drift; batching gets every goal
+    // bench above 200 ns where the gate is precise.
     let trivial = Goal::new().requires("fact_0");
-    group.bench_function("trivial_one_required", |b| {
-        b.iter(|| black_box(&trivial).satisfied_by(black_box(&state)))
+    group.bench_function("trivial_one_required_x32", |b| {
+        b.iter(|| {
+            for _ in 0..NANO_BATCH {
+                black_box(black_box(&trivial).satisfied_by(black_box(&state)));
+            }
+        })
     });
 
     let mut compound = Goal::new();
@@ -377,13 +438,21 @@ fn bench_goal_check(c: &mut Criterion) {
     for i in 50..60 {
         compound = compound.forbids(format!("fact_{i}"));
     }
-    group.bench_function("compound_10_req_10_forbid", |b| {
-        b.iter(|| black_box(&compound).satisfied_by(black_box(&state)))
+    group.bench_function("compound_10_req_10_forbid_x32", |b| {
+        b.iter(|| {
+            for _ in 0..NANO_BATCH {
+                black_box(black_box(&compound).satisfied_by(black_box(&state)));
+            }
+        })
     });
 
     let unmet = Goal::new().requires("fact_999");
-    group.bench_function("unmet_required", |b| {
-        b.iter(|| black_box(&unmet).satisfied_by(black_box(&state)))
+    group.bench_function("unmet_required_x32", |b| {
+        b.iter(|| {
+            for _ in 0..NANO_BATCH {
+                black_box(black_box(&unmet).satisfied_by(black_box(&state)));
+            }
+        })
     });
 
     group.finish();
