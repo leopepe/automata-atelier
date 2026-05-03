@@ -1,0 +1,45 @@
+# Side-effect-free config used to smoke-test the value-carrying-fact
+# mechanism (ADR 0003). Sensors capture stdout into a runtime `Values` map;
+# downstream actions read the value via `UNCHARLES_FACT_<NAME>` env vars.
+#
+# Observability: actions echo the injected env var to stderr so the runtime
+# captures it in `ActionResult.stderr`, which lands in the NDJSON `executed`
+# event. Integration tests assert on that to prove the round-trip works
+# end-to-end through the compiled binary.
+
+sensors:
+  # Sets the fact `heartbeat` (default behaviour: success → add named fact).
+  - name: heartbeat
+    cmd: ["true"]
+
+  # `capture: stdout` opts this sensor into value capture. On success, the
+  # trimmed stdout (here `abc-123`) is stored under `target` in the runtime
+  # Values map.
+  - name: target
+    cmd: ["sh", "-c", "echo abc-123"]
+    capture: stdout
+
+actions:
+  # Requires `target`, so when this action's cmd is executed the runtime
+  # injects `UNCHARLES_FACT_TARGET=abc-123` into the child environment. The
+  # cmd echoes it to stderr — observable in the executed event.
+  - name: emit_value
+    cost: 1.0
+    requires: [heartbeat, target]
+    adds: [value_emitted]
+    cmd: ["sh", "-c", "echo \"$UNCHARLES_FACT_TARGET\" >&2"]
+
+  # No `requires: [target]`, so the env var is NOT injected here even though
+  # `target` has a value. Echo the lookup with a default so the test can
+  # assert the env var is unset (privacy invariant from ADR 0003).
+  - name: finalize
+    cost: 1.0
+    requires: [value_emitted]
+    adds: [finished]
+    cmd:
+      - sh
+      - -c
+      - 'printf "<%s>" "${UNCHARLES_FACT_TARGET-unset}" >&2'
+
+goal:
+  requires: [finished]

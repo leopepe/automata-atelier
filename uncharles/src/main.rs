@@ -343,6 +343,12 @@ fn emit_outcome(outcome: &Outcome, pretty: bool) {
         for fact in &outcome.state_facts {
             println!("  {fact}");
         }
+        if !outcome.values.is_empty() {
+            println!("\n--- values ---");
+            for (k, v) in &outcome.values {
+                println!("  {k}={v}");
+            }
+        }
         println!("\n--- plan ---");
         match &outcome.plan {
             Some(plan) if plan.steps.is_empty() => {
@@ -367,8 +373,10 @@ fn emit_outcome(outcome: &Outcome, pretty: bool) {
             "success": r.success,
             "added": r.added,
             "removed": r.removed,
+            "captured_value": r.captured_value,
         })).collect::<Vec<_>>(),
         "state": outcome.state_facts,
+        "values": outcome.values,
         "plan": outcome.plan.as_ref().map(|p| serde_json::json!({
             "steps": p.steps,
             "cost": p.cost,
@@ -384,6 +392,7 @@ fn emit_event(event: &LoopEvent, pretty: bool) {
                 iteration,
                 readings,
                 state,
+                values,
             } => {
                 let ok_count = readings.iter().filter(|r| r.success).count();
                 println!(
@@ -393,6 +402,11 @@ fn emit_event(event: &LoopEvent, pretty: bool) {
                     state.len(),
                     state.join(", "),
                 );
+                if !values.is_empty() {
+                    let pairs: Vec<String> =
+                        values.iter().map(|(k, v)| format!("{k}={v}")).collect();
+                    println!("      values   {}", pairs.join(", "),);
+                }
             }
             LoopEvent::Planned { iteration, plan } => match plan {
                 None => println!("[{iteration:>3}] plan     no plan exists"),
@@ -424,6 +438,7 @@ fn emit_event(event: &LoopEvent, pretty: bool) {
             iteration,
             readings,
             state,
+            values,
         } => serde_json::json!({
             "event": "sensed",
             "iteration": iteration,
@@ -432,8 +447,10 @@ fn emit_event(event: &LoopEvent, pretty: bool) {
                 "success": r.success,
                 "added": r.added,
                 "removed": r.removed,
+                "captured_value": r.captured_value,
             })).collect::<Vec<_>>(),
             "state": state,
+            "values": values,
         }),
         LoopEvent::Planned { iteration, plan } => serde_json::json!({
             "event": "planned",

@@ -134,6 +134,33 @@ at config-load time as a `ConfigError::ActionContradiction` (the action
 would be structurally unsatisfiable). See `pendrive_audit.yaml` for a
 real-world migration of two synthetic-sensor proxies onto `forbids`.
 
+Sensors can also opt into **value capture** — `capture: stdout` stores the
+sensor command's trimmed stdout under the sensor's name. Action commands
+whose `requires` list mentions a fact with a captured value receive it as
+`UNCHARLES_FACT_<UPPER_SNAKE_CASE_NAME>=<value>` in their environment.
+Replaces sidecar-file workarounds for "carry this string to the next step"
+patterns. See [ADR 0003](../docs/adrs/0003-value-carrying-facts-runtime-side.md):
+
+```yaml
+sensors:
+  - name: target_sha
+    cmd: ["git", "rev-parse", "origin/main"]
+    capture: stdout
+
+actions:
+  - name: deploy
+    cost: 5.0
+    requires: [target_sha]
+    adds: [deployed]
+    # cmd reads $UNCHARLES_FACT_TARGET_SHA from its env
+    cmd: ["sh", "-c", 'gh workflow run deploy.yml --ref "$UNCHARLES_FACT_TARGET_SHA"']
+```
+
+The planner stays Boolean over fact presence — values do not influence
+planning. They flow runtime-side from sensors → action env vars; lifetime is
+one invocation. Removing a fact (via `Action::removes` or sensor
+`on_failure.remove`) drops its value atomically.
+
 ## Example configs
 
 Real configs covering different domains — read them as a tour of what the runtime can express:
@@ -146,7 +173,7 @@ Real configs covering different domains — read them as a tour of what the runt
 | [`merge_gate.yaml`](configs/merge_gate.yaml) | PR-merge gate with status-check sensors |
 | [`podcast.yaml`](configs/podcast.yaml) | Podcast-episode download pipeline (RSS → fetch → archive) |
 | [`repo_validate.yaml`](configs/repo_validate.yaml) | Repo-validation pipeline (fmt + clippy + test) |
-| [`smoke_loop.yaml`](configs/smoke_loop.yaml) / [`smoke_recover.yaml`](configs/smoke_recover.yaml) / [`smoke_failure.yaml`](configs/smoke_failure.yaml) | Side-effect-free smoke configs used by the integration tests |
+| [`smoke_loop.yaml`](configs/smoke_loop.yaml) / [`smoke_recover.yaml`](configs/smoke_recover.yaml) / [`smoke_failure.yaml`](configs/smoke_failure.yaml) / [`smoke_capture.yaml`](configs/smoke_capture.yaml) | Side-effect-free smoke configs used by the integration tests |
 
 ## Architecture
 

@@ -36,6 +36,16 @@ sensors:
         [ -f .uncharles/state/in_flight_sha ] && exit 1
         [ "$remote" = "$last" ]
 
+  # `target_sha` — captures the current `origin/main` SHA into the runtime
+  # `Values` map (ADR 0003). `idle` above has already done `git fetch`, so
+  # this is just a local rev-parse. Downstream actions that want the SHA
+  # read `UNCHARLES_FACT_TARGET_SHA` from their environment instead of
+  # re-running `git rev-parse origin/main` themselves — fewer subshells per
+  # iteration and a single source of truth.
+  - name: target_sha
+    cmd: ["git", "rev-parse", "origin/main"]
+    capture: stdout
+
   # `new_commit_available` — origin/main differs from last_seen_sha and we
   # haven't already triggered a deploy for it. Mutually exclusive with
   # `deploy_in_flight` so the planner doesn't try to re-trigger.
@@ -70,9 +80,12 @@ sensors:
 actions:
   # Record the target SHA and dispatch the workflow. Subsequent iterations
   # see deploy_in_flight=true and the planner picks await_deploy next.
+  # `target_sha` in `requires` causes uncharles to inject
+  # `UNCHARLES_FACT_TARGET_SHA=<sha>` into the cmd's environment (ADR 0003)
+  # — replaces the previous `sha=$(git rev-parse origin/main)` subshell.
   - name: trigger_deploy
     cost: 5.0
-    requires: [new_commit_available]
+    requires: [new_commit_available, target_sha]
     adds: [deploy_in_flight]
     cmd:
       - sh
@@ -80,9 +93,8 @@ actions:
       - |
         set -e
         mkdir -p .uncharles/state
-        sha=$(git rev-parse origin/main)
-        echo "$sha" > .uncharles/state/in_flight_sha
-        gh workflow run deploy.yml --ref "$sha"
+        echo "$UNCHARLES_FACT_TARGET_SHA" > .uncharles/state/in_flight_sha
+        gh workflow run deploy.yml --ref "$UNCHARLES_FACT_TARGET_SHA"
 
   # Pacing step. The sensor decides whether `deploy_succeeded` is real;
   # the optimistic effect here is corrected by the next iteration's sensor

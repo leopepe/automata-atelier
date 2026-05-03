@@ -1,0 +1,212 @@
+planning/chain/steps/5  time:   [3.2182 µs 3.2335 µs 3.2483 µs]
+                        change: [-1.3145% -0.9665% -0.5678%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+planning/chain/steps/10 time:   [5.9177 µs 5.9447 µs 5.9730 µs]
+                        change: [-0.0570% +0.5071% +1.0776%] (p = 0.07 > 0.05)
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) low mild
+  2 (2.00%) high mild
+planning/chain/steps/20 time:   [11.619 µs 11.650 µs 11.681 µs]
+                        change: [+1.2841% +1.6558% +2.0604%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+planning/chain/steps/50 time:   [32.415 µs 32.523 µs 32.641 µs]
+                        change: [+0.8683% +1.2027% +1.5626%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 8 outliers among 100 measurements (8.00%)
+  4 (4.00%) low mild
+  4 (4.00%) high mild
+
+planning/wide/branches/8
+                        time:   [10.221 µs 10.271 µs 10.322 µs]
+                        change: [-0.1196% +0.3894% +0.9393%] (p = 0.14 > 0.05)
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+planning/wide/branches/32
+                        time:   [50.668 µs 51.074 µs 51.422 µs]
+                        change: [+3.3512% +3.9242% +4.5484%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+planning/wide/branches/128
+                        time:   [357.58 µs 358.62 µs 359.80 µs]
+                        change: [+3.0073% +3.3757% +3.7649%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 8 outliers among 100 measurements (8.00%)
+  1 (1.00%) low severe
+  1 (1.00%) low mild
+  4 (4.00%) high mild
+  2 (2.00%) high severe
+planning/wide/branches/512
+                        time:   [5.4232 ms 5.4340 ms 5.4455 ms]
+                        change: [+1.3497% +1.5923% +1.8488%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  5 (5.00%) high mild
+
+planning/redundant_paths/paths/2
+                        time:   [3.2156 µs 3.2428 µs 3.2726 µs]
+                        change: [+3.4442% +4.1201% +4.8083%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+planning/redundant_paths/paths/4
+                        time:   [5.8595 µs 5.8789 µs 5.9007 µs]
+                        change: [+2.1023% +2.5270% +2.9862%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+planning/redundant_paths/paths/8
+                        time:   [11.338 µs 11.379 µs 11.420 µs]
+                        change: [+1.7386% +2.1429% +2.5408%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) low mild
+  1 (1.00%) high mild
+planning/redundant_paths/paths/16
+                        time:   [23.502 µs 23.583 µs 23.659 µs]
+                        change: [+0.8043% +1.1895% +1.5560%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 4 outliers among 100 measurements (4.00%)
+  1 (1.00%) low severe
+  3 (3.00%) low mild
+planning/redundant_paths/paths/32
+                        time:   [51.295 µs 51.516 µs 51.729 µs]
+                        change: [+0.4193% +0.8410% +1.2644%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low severe
+  1 (1.00%) low mild
+
+planning/boundaries/already_satisfied_x32
+                        time:   [204.35 ns 204.92 ns 205.60 ns]
+                        change: [+1.0890% +1.4551% +1.8405%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+planning/boundaries/unreachable
+                        time:   [3.5267 µs 3.5411 µs 3.5553 µs]
+                        change: [+0.7989% +1.2691% +1.6993%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) low severe
+  1 (1.00%) low mild
+
+ops/state/contains_hit_x32
+                        time:   [172.13 ns 174.99 ns 178.83 ns]
+                        change: [+1.3056% +2.4275% +3.8570%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 19 outliers among 100 measurements (19.00%)
+  7 (7.00%) low mild
+  6 (6.00%) high mild
+  6 (6.00%) high severe
+ops/state/contains_miss_x32
+                        time:   [87.468 ns 87.539 ns 87.611 ns]
+                        change: [-0.3101% -0.1215% +0.0666%] (p = 0.21 > 0.05)
+                        No change in performance detected.
+Found 6 outliers among 100 measurements (6.00%)
+  1 (1.00%) high mild
+  5 (5.00%) high severe
+ops/state/insert        time:   [41.350 ns 42.539 ns 43.635 ns]
+                        change: [-13.968% -8.8899% -3.9047%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+ops/state/from_facts/1  time:   [33.537 ns 33.672 ns 33.817 ns]
+                        change: [+1.1031% +1.5089% +1.9079%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+ops/state/from_facts/10 time:   [222.85 ns 224.71 ns 226.72 ns]
+                        change: [+2.6434% +3.8372% +5.0411%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+ops/state/from_facts/100
+                        time:   [2.2210 µs 2.2301 µs 2.2391 µs]
+                        change: [+0.6453% +1.2896% +1.9141%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low mild
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+
+ops/action/applicable_met_x32
+                        time:   [534.36 ns 536.38 ns 538.38 ns]
+                        change: [+0.4924% +1.0640% +1.6679%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+ops/action/applicable_unmet_x32
+                        time:   [455.94 ns 459.14 ns 462.30 ns]
+                        change: [-0.3840% +0.1810% +0.7599%] (p = 0.55 > 0.05)
+                        No change in performance detected.
+ops/action/apply        time:   [127.36 ns 127.84 ns 128.35 ns]
+                        change: [+1.4783% +1.8788% +2.2649%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) low mild
+  2 (2.00%) high mild
+
+ops/goal/trivial_one_required_x32
+                        time:   [202.09 ns 202.72 ns 203.35 ns]
+                        change: [+1.1366% +1.5580% +1.9822%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high mild
+ops/goal/compound_10_req_10_forbid_x32
+                        time:   [2.4383 µs 2.4461 µs 2.4545 µs]
+                        change: [-6.5734% -0.5596% +3.0227%] (p = 0.85 > 0.05)
+                        No change in performance detected.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+ops/goal/unmet_required_x32
+                        time:   [116.24 ns 116.42 ns 116.61 ns]
+                        change: [+2.4160% +2.8116% +3.2189%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low severe
+  1 (1.00%) low mild
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+concurrent_plans/sequential_64
+                        time:   [767.22 µs 769.56 µs 772.10 µs]
+                        change: [+4.4663% +4.9669% +5.4584%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) low mild
+concurrent_plans/parallel_64_rayon
+                        time:   [149.64 µs 151.04 µs 153.04 µs]
+                        change: [+1.2396% +2.0484% +2.8049%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 11 outliers among 100 measurements (11.00%)
+  2 (2.00%) low mild
+  5 (5.00%) high mild
+  4 (4.00%) high severe
+concurrent_plans/parallel_rayon/8
+                        time:   [54.032 µs 54.566 µs 55.128 µs]
+                        change: [+3.5531% +4.9502% +6.4926%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  5 (5.00%) high mild
+concurrent_plans/parallel_rayon/32
+                        time:   [98.146 µs 98.638 µs 99.155 µs]
+                        change: [+0.4966% +1.1586% +1.8536%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+concurrent_plans/parallel_rayon/128
+                        time:   [234.10 µs 235.20 µs 236.55 µs]
+                        change: [+3.2781% +4.0264% +4.8442%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 6 outliers among 100 measurements (6.00%)
+  3 (3.00%) high mild
+  3 (3.00%) high severe
+
