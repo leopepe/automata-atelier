@@ -103,6 +103,16 @@ the cost of one `Goal::satisfied_by` call.
 
 ## Micro-ops — `State`
 
+> Sub-50 ns ops are exposed via `_x32` bench IDs (`contains_hit_x32`,
+> `contains_miss_x32`) that batch 32 calls per criterion iteration to
+> escape the runner's clock-quantum noise band. The numbers in this
+> table are **per call** — derive them locally with
+> `cargo bench -p goap-planner -- ops/state/contains_hit_x32` and
+> divide reported time by 32. See [`docs/performance-tests.md`](
+> ../../docs/performance-tests.md#sub-50ns-benches-per-batch-ids-and-size-aware-threshold)
+> for the full rationale. The same convention applies to the
+> `Action` and `Goal` micro-op tables below.
+
 | Operation               | Time     |
 |-------------------------|----------|
 | `contains` (hit)        | 5.08 ns  |
