@@ -170,7 +170,8 @@ Real configs covering different domains — read them as a tour of what the runt
 | [`deploy.yaml`](configs/deploy.yaml) | Service deployment pipeline (test → build → push → deploy → smoke) |
 | [`release_watch.yaml`](configs/release_watch.yaml) | Long-lived release-tagging watcher |
 | [`tofu_drift_watch.yaml`](configs/tofu_drift_watch.yaml) | Post-apply OpenTofu/IaC convergence watcher (drift detection, readonly creds — see [ADR 0002](../docs/adrs/0002-uncharles-as-post-apply-iac-convergence-watcher.md)) |
-| [`merge_gate.yaml`](configs/merge_gate.yaml) | PR-merge gate with status-check sensors |
+| [`merge_gate.yaml`](configs/merge_gate.yaml) | PR-merge gate with status-check sensors (single PR, driven by `$PR_NUMBER`) |
+| [`dep_pr_automerge.yaml`](configs/dep_pr_automerge.yaml) | Dependabot/Renovate auto-merge watcher: merges CLEAN bot PRs one at a time, comments `@dependabot rebase` on BEHIND ones, halts on post-merge regression of main CI |
 | [`podcast.yaml`](configs/podcast.yaml) | Podcast-episode download pipeline (RSS → fetch → archive), hermetic skeleton |
 | [`podcast_spotdl.yaml`](configs/podcast_spotdl.yaml) | Spotify / YouTube playlist download pipeline driven by `uvx spotdl` (per-track, ffprobe-verified) |
 | [`repo_validate.yaml`](configs/repo_validate.yaml) | Repo-validation pipeline (fmt + clippy + test) |

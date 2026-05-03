@@ -1,0 +1,422 @@
+# Dependabot / Renovate auto-merge watcher with post-merge regression
+# detection. Per cycle, the planner picks at most one substantive
+# action from this list:
+#
+#   1. Verify the previous merge — if a prior cycle merged a PR, query
+#      main's CI for that commit. Green → forget the marker. Red →
+#      flip into regression-block (no further merges until human ack).
+#   2. Notify on regression — exactly once per incident, write a
+#      summary to last-cycle.txt; best-effort `gh issue create` for a
+#      durable channel. Subsequent cycles stay idle until the human
+#      removes the marker.
+#   3. Merge one CLEAN bot PR — exactly one per cycle (squash). On
+#      success, record the merge commit SHA so the next cycle's
+#      verification has something to check.
+#   4. Request rebase on one BEHIND Dependabot PR — only when there
+#      are no CLEAN PRs to merge in this cycle (cheaper but lower
+#      priority); posts `@dependabot rebase` once per PR.
+#   5. Otherwise → idle.
+#
+# Pairs with `merge_gate.yaml`, which gates a single specific PR
+# through to merge driven by `$PR_NUMBER`. This config is the
+# higher-level loop over many bot PRs.
+#
+# Run from the target repo:
+#
+#   uncharles run --config dep_pr_automerge.yaml --execute
+#
+# Wrap in a polling loop:
+#
+#   while true; do
+#     uncharles run --config dep_pr_automerge.yaml --execute
+#     sleep 600
+#   done
+#
+# Scope (v1 — explicit non-goals):
+#   - Author allowlist hardcoded: dependabot[bot], renovate[bot].
+#     Configurable allowlist is a follow-up.
+#   - Merge style hardcoded: --squash --delete-branch.
+#   - Conflict resolution (mergeStateStatus = DIRTY): out of scope.
+#     A separate AI-driven resolver config handles that.
+#   - Renovate rebase trigger: out of scope. Renovate auto-rebases on
+#     its own schedule when behind, so we only enqueue Dependabot
+#     PRs for explicit `@dependabot rebase` comments.
+#
+# Prereqs (the `tools_available` sensor checks each):
+#   - gh        — GitHub CLI, authenticated against the target repo
+#                 (`gh auth status` must succeed)
+#   - jq        — JSON shaping
+#
+# Sidecar state on disk (relative to cwd):
+#   .uncharles/state/dep_pr_automerge/clean/<pr-num>      # eligible to merge this cycle (file content = author@sha)
+#   .uncharles/state/dep_pr_automerge/behind/<pr-num>     # Dependabot PR needing rebase
+#   .uncharles/state/dep_pr_automerge/last-merge.json     # post-merge verification pending: {pr, sha, at}
+#   .uncharles/state/dep_pr_automerge/regression_block    # CI on main went red after a merge — halts further merges
+#   .uncharles/state/dep_pr_automerge/regression_notified # per-incident notification debounce
+#   .uncharles/state/dep_pr_automerge/merged.txt          # log of merged PR numbers (pr,sha,merged_at)
+#   .uncharles/state/dep_pr_automerge/rebased.txt         # log of (pr,timestamp) for rebase comments posted
+#   .uncharles/state/dep_pr_automerge/last-cycle.txt      # most recent cycle summary
+#
+# Recovery from a regression:
+#   1. Investigate the failing run on main (link in last-cycle.txt).
+#   2. Land the fix on main (or revert the offending merge).
+#   3. rm .uncharles/state/dep_pr_automerge/regression_block \
+#         .uncharles/state/dep_pr_automerge/regression_notified
+#   4. Re-run uncharles. Discovery will refresh and merging resumes.
+
+sensors:
+  # Sensor order matters: `bot_prs_scanned` writes the per-cycle
+  # clean/ and behind/ classifications; the `bot_prs_clean` and
+  # `bot_prs_behind` sensors below read them.
+
+  # `tools_available` — fail fast when prereqs are missing on PATH or
+  # gh is not authenticated. Every action requires this fact, so a
+  # missing tool surfaces as PlanFailed (not a mid-pipeline crash).
+  - name: tools_available
+    cmd:
+      - sh
+      - -c
+      - |
+        miss=
+        command -v gh >/dev/null 2>&1 || miss="$miss gh"
+        command -v jq >/dev/null 2>&1 || miss="$miss jq"
+        if [ -n "$miss" ]; then
+          echo "[uncharles/dep_pr_automerge] missing on PATH:$miss" >&2
+          exit 1
+        fi
+        if ! gh auth status >/dev/null 2>&1; then
+          echo "[uncharles/dep_pr_automerge] gh is not authenticated; run \`gh auth login\`" >&2
+          exit 1
+        fi
+
+  # `verification_pending` — a previous merge wrote last-merge.json and
+  # we haven't confirmed main's CI for that SHA yet. While true, no new
+  # merges or rebases are scheduled.
+  - name: verification_pending
+    cmd:
+      - sh
+      - -c
+      - '[ -f .uncharles/state/dep_pr_automerge/last-merge.json ]'
+
+  # `regression_block` — main CI went red after our last merge. While
+  # true, all merge/rebase actions are forbidden; only `notify_user`
+  # runs (once) before the loop goes idle pending human intervention.
+  - name: regression_block
+    cmd:
+      - sh
+      - -c
+      - '[ -f .uncharles/state/dep_pr_automerge/regression_block ]'
+
+  # `regression_notified` — debounce marker. Set once `notify_user`
+  # has surfaced the regression (last-cycle.txt + best-effort issue);
+  # prevents re-notifying every cycle while the block persists.
+  - name: regression_notified
+    cmd:
+      - sh
+      - -c
+      - '[ -f .uncharles/state/dep_pr_automerge/regression_notified ]'
+
+  # `bot_prs_scanned` — discovery side-effect sensor. Wipes per-cycle
+  # clean/ and behind/, then queries gh for open Dependabot/Renovate
+  # PRs and re-classifies each by mergeStateStatus. Skips work
+  # entirely when verification or a regression are pending — those
+  # paths must complete before we touch new PRs.
+  #
+  # Only CLEAN PRs go to clean/; only BEHIND Dependabot PRs go to
+  # behind/. DIRTY (conflict), BLOCKED (failing required check / no
+  # review), UNSTABLE (failing optional check), HAS_HOOKS, UNKNOWN are
+  # all skipped — the bot reruns checks asynchronously and we'll see
+  # them on a future cycle when they settle.
+  - name: bot_prs_scanned
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        mkdir -p "$STATE/clean" "$STATE/behind"
+        # Reset per-cycle classification so a PR that flipped state
+        # since the last cycle (e.g. CLEAN → BEHIND after another
+        # merge landed) doesn't keep its stale entry.
+        find "$STATE/clean" -maxdepth 1 -type f -delete 2>/dev/null
+        find "$STATE/behind" -maxdepth 1 -type f -delete 2>/dev/null
+
+        # Halt discovery while a verify or regression decision is
+        # outstanding — we don't want to enqueue more work that
+        # actions are forbidden from touching anyway.
+        if [ -f "$STATE/last-merge.json" ] || [ -f "$STATE/regression_block" ]; then
+          exit 0
+        fi
+
+        command -v gh >/dev/null 2>&1 || exit 0
+        command -v jq >/dev/null 2>&1 || exit 0
+
+        # GitHub bots all have logins ending in [bot]; the regex
+        # catches dependabot[bot] and renovate[bot] without depending
+        # on the search-syntax `app/` prefix that varies by install.
+        gh pr list --state open --limit 100 \
+          --json number,author,mergeStateStatus,headRefOid 2>/dev/null \
+          | jq -c '.[] | select(.author.login | test("^(dependabot|renovate)\\[bot\\]$"))' \
+          | while IFS= read -r pr; do
+              num=$(printf '%s' "$pr" | jq -r '.number')
+              author=$(printf '%s' "$pr" | jq -r '.author.login')
+              sha=$(printf '%s' "$pr" | jq -r '.headRefOid')
+              status=$(printf '%s' "$pr" | jq -r '.mergeStateStatus')
+              case "$status" in
+                CLEAN)
+                  printf '%s@%s' "$author" "$sha" > "$STATE/clean/$num"
+                  ;;
+                BEHIND)
+                  # Only Dependabot has an explicit comment-driven
+                  # rebase command we can issue. Renovate rebases on
+                  # its own cadence — leave its BEHIND PRs alone.
+                  if [ "$author" = "dependabot[bot]" ]; then
+                    printf '%s@%s' "$author" "$sha" > "$STATE/behind/$num"
+                  fi
+                  ;;
+              esac
+            done
+
+  # `bot_prs_clean` — at least one CLEAN bot PR is staged.
+  - name: bot_prs_clean
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        mkdir -p "$STATE/clean"
+        [ "$(find "$STATE/clean" -maxdepth 1 -type f 2>/dev/null | wc -l)" -gt 0 ]
+
+  # `bot_prs_behind` — at least one BEHIND Dependabot PR is staged.
+  - name: bot_prs_behind
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        mkdir -p "$STATE/behind"
+        [ "$(find "$STATE/behind" -maxdepth 1 -type f 2>/dev/null | wc -l)" -gt 0 ]
+
+  # `idle` — the goal. True when:
+  #   - regression_block + regression_notified (already raised, await human), OR
+  #   - no verification pending AND no clean/ AND no behind/ (cold idle)
+  - name: idle
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        mkdir -p "$STATE/clean" "$STATE/behind"
+        if [ -f "$STATE/regression_block" ] && [ -f "$STATE/regression_notified" ]; then
+          exit 0
+        fi
+        if [ -f "$STATE/last-merge.json" ]; then
+          exit 1
+        fi
+        if [ -f "$STATE/regression_block" ]; then
+          exit 1
+        fi
+        clean=$(find "$STATE/clean" -maxdepth 1 -type f 2>/dev/null | wc -l)
+        behind=$(find "$STATE/behind" -maxdepth 1 -type f 2>/dev/null | wc -l)
+        [ "$clean" -eq 0 ] && [ "$behind" -eq 0 ]
+
+actions:
+  # Verify main's CI for the SHA recorded by the previous merge.
+  # Outcomes:
+  #   - all runs success → remove last-merge.json (cycle continues
+  #     toward idle on the next iteration)
+  #   - any run failure  → write regression_block + clear
+  #     regression_notified, so the next iteration's notify_user fires
+  #   - in-progress / no-runs-yet → no-op, retry next cycle
+  - name: verify_post_merge_ci
+    cost: 2.0
+    requires: [tools_available, verification_pending]
+    forbids: [regression_block]
+    adds: [idle]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        sha=$(jq -r '.sha // empty' "$STATE/last-merge.json" 2>/dev/null || true)
+        if [ -z "$sha" ]; then
+          echo "[uncharles/dep_pr_automerge] last-merge.json missing or unreadable; clearing" >&2
+          rm -f "$STATE/last-merge.json"
+          exit 0
+        fi
+
+        runs=$(gh run list --branch main --limit 50 \
+                 --json conclusion,status,headSha 2>/dev/null \
+               | jq --arg sha "$sha" '[.[] | select(.headSha == $sha)]')
+        total=$(printf '%s' "$runs" | jq 'length')
+        in_prog=$(printf '%s' "$runs" | jq '[.[] | select(.status != "completed")] | length')
+        bad=$(printf '%s' "$runs" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "cancelled" or .conclusion == "timed_out" or .conclusion == "startup_failure")] | length')
+
+        if [ "$total" -eq 0 ] || [ "$in_prog" -gt 0 ]; then
+          # CI hasn't started yet, or some runs are still going. Wait.
+          exit 0
+        fi
+        if [ "$bad" -gt 0 ]; then
+          touch "$STATE/regression_block"
+          rm -f "$STATE/regression_notified"
+          echo "[uncharles/dep_pr_automerge] post-merge regression on main for sha $sha" >&2
+          exit 0
+        fi
+        # All runs completed successfully.
+        rm -f "$STATE/last-merge.json"
+
+  # Surface a regression once and only once per incident. Writes
+  # last-cycle.txt with details, and best-effort opens a `gh issue`
+  # for a durable channel. Failure to create the issue (no perms,
+  # rate limit, etc.) does not fail the action — last-cycle.txt is
+  # always written.
+  - name: notify_user
+    cost: 1.0
+    requires: [tools_available, regression_block]
+    forbids: [regression_notified]
+    adds: [idle, regression_notified]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        LOG="$STATE/last-cycle.txt"
+        sha=$(jq -r '.sha // "unknown"' "$STATE/last-merge.json" 2>/dev/null || echo "unknown")
+        pr=$(jq -r '.pr // "unknown"' "$STATE/last-merge.json" 2>/dev/null || echo "unknown")
+        repo=$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || echo "unknown/unknown")
+        body="Post-merge regression: main CI is failing for sha \`$sha\` (last merged PR: #$pr).
+
+        Auto-merge of dependency PRs is halted until the regression is
+        resolved. To resume:
+
+        1. Investigate failing runs: https://github.com/$repo/actions
+        2. Land a fix or revert on main.
+        3. From this repo:
+
+               rm .uncharles/state/dep_pr_automerge/regression_block \\
+                  .uncharles/state/dep_pr_automerge/regression_notified
+
+        4. Re-run uncharles."
+
+        {
+          echo "[uncharles/dep_pr_automerge] regression detected"
+          echo "  repo:       $repo"
+          echo "  last pr:    #$pr"
+          echo "  failing sha: $sha"
+          echo
+          echo "$body"
+        } > "$LOG"
+
+        if [ -w /dev/tty ]; then
+          cat "$LOG" > /dev/tty 2>/dev/null || true
+        fi
+
+        gh issue create \
+          --title "[uncharles] dep PR auto-merge halted: regression on main ($sha)" \
+          --body "$body" \
+          --label "type:bug,scope:ci" \
+          >/dev/null 2>&1 || echo "[uncharles/dep_pr_automerge] could not create regression issue (continuing)" >&2
+
+        touch "$STATE/regression_notified"
+
+  # Merge exactly one CLEAN bot PR. The first entry in clean/ wins
+  # (lexical PR number ordering — small numbers first). Records the
+  # squash commit SHA in last-merge.json so the next cycle's
+  # verify_post_merge_ci has something to check.
+  #
+  # Idempotent against interrupts: if the merge happened but we
+  # crashed before writing last-merge.json, the next cycle's
+  # discovery won't see this PR (it's MERGED, not OPEN); the merge
+  # commit goes unverified, which is mildly bad but bounded — the
+  # operator sees the PR closed-as-merged and can fall back to
+  # eyeballing main CI.
+  - name: merge_one_pr
+    cost: 5.0
+    requires: [tools_available, bot_prs_clean]
+    forbids: [regression_block, verification_pending]
+    adds: [idle]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        mkdir -p "$STATE"
+        # Pick the lowest PR number — stable ordering, oldest first.
+        target=$(find "$STATE/clean" -maxdepth 1 -type f 2>/dev/null \
+                 | xargs -n1 basename 2>/dev/null \
+                 | sort -n | head -n1)
+        if [ -z "$target" ]; then
+          # Sensor said clean was non-empty; if we got here with
+          # nothing, treat it as a transient race and exit clean.
+          exit 0
+        fi
+
+        # Final pre-merge sanity check via gh — guards against the
+        # PR having been merged or closed since discovery ran.
+        state=$(gh pr view "$target" --json state -q '.state' 2>/dev/null || echo "UNKNOWN")
+        if [ "$state" != "OPEN" ]; then
+          rm -f "$STATE/clean/$target"
+          exit 0
+        fi
+
+        if ! gh pr merge "$target" --squash --delete-branch >/dev/null 2>&1; then
+          echo "[uncharles/dep_pr_automerge] merge failed for PR #$target" >&2
+          rm -f "$STATE/clean/$target"
+          exit 1
+        fi
+
+        # Capture the squash commit SHA on main for verification.
+        sha=$(gh pr view "$target" --json mergeCommit \
+              -q '.mergeCommit.oid' 2>/dev/null || echo "")
+        ts=$(date '+%Y-%m-%dT%H:%M:%S%z')
+        printf '{"pr":%s,"sha":"%s","at":"%s"}\n' \
+          "$target" "$sha" "$ts" > "$STATE/last-merge.json"
+        echo "$target,$sha,$ts" >> "$STATE/merged.txt"
+        rm -f "$STATE/clean/$target"
+    on_failure:
+      add: [merge_failed]
+
+  # Comment `@dependabot rebase` on one BEHIND Dependabot PR.
+  # Forbids `bot_prs_clean` so this only fires when there's nothing
+  # to merge — when both are eligible we always prefer to drain the
+  # mergeable PRs first (Dependabot will auto-rebase the rest after
+  # the merge anyway).
+  #
+  # Idempotent: scans existing PR comments for an `@dependabot rebase`
+  # we already posted and skips re-posting.
+  - name: request_rebase_one
+    cost: 1.0
+    requires: [tools_available, bot_prs_behind]
+    forbids: [regression_block, verification_pending, bot_prs_clean]
+    adds: [idle]
+    cmd:
+      - sh
+      - -c
+      - |
+        STATE=.uncharles/state/dep_pr_automerge
+        target=$(find "$STATE/behind" -maxdepth 1 -type f 2>/dev/null \
+                 | xargs -n1 basename 2>/dev/null \
+                 | sort -n | head -n1)
+        if [ -z "$target" ]; then
+          exit 0
+        fi
+
+        # Skip if a rebase comment from us is already present —
+        # Dependabot may still be working on it.
+        existing=$(gh pr view "$target" --json comments \
+                    -q '[.comments[] | select(.body == "@dependabot rebase")] | length' \
+                    2>/dev/null || echo 0)
+        if [ "$existing" -gt 0 ]; then
+          rm -f "$STATE/behind/$target"
+          exit 0
+        fi
+
+        if gh pr comment "$target" --body "@dependabot rebase" >/dev/null 2>&1; then
+          ts=$(date '+%Y-%m-%dT%H:%M:%S%z')
+          echo "$target,$ts" >> "$STATE/rebased.txt"
+        else
+          echo "[uncharles/dep_pr_automerge] could not post rebase comment on PR #$target" >&2
+        fi
+        rm -f "$STATE/behind/$target"
+
+goal:
+  requires: [idle]
