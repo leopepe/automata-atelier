@@ -157,6 +157,9 @@ pub fn build_actions(specs: &[ActionSpec]) -> Vec<Action> {
             for fact in &s.requires {
                 a = a.requires(fact);
             }
+            for fact in &s.forbids {
+                a = a.forbids(fact);
+            }
             for fact in &s.adds {
                 a = a.adds(fact);
             }
@@ -398,6 +401,7 @@ mod tests {
             name: name.into(),
             cost: 1.0,
             requires: requires.iter().map(|s| s.to_string()).collect(),
+            forbids: Vec::new(),
             adds: adds.iter().map(|s| s.to_string()).collect(),
             removes: Vec::new(),
             cmd: Some(cmd.iter().map(|s| s.to_string()).collect()),
@@ -498,6 +502,7 @@ mod tests {
             name: "no_cmd".into(),
             cost: 1.0,
             requires: Vec::new(),
+            forbids: Vec::new(),
             adds: Vec::new(),
             removes: Vec::new(),
             cmd: None,
@@ -717,6 +722,7 @@ mod tests {
                     name: "loop_action".into(),
                     cost: 1.0,
                     requires: vec!["heartbeat".into()],
+                    forbids: Vec::new(),
                     adds: vec!["progress".into()],
                     removes: Vec::new(),
                     cmd: Some(vec!["true".into()]),
@@ -788,6 +794,7 @@ mod tests {
                     name: "try_fast".into(),
                     cost: 1.0,
                     requires: vec!["heartbeat".into(), "fast_path_available".into()],
+                    forbids: Vec::new(),
                     adds: vec!["finished".into()],
                     removes: Vec::new(),
                     cmd: Some(vec!["false".into()]),
@@ -800,6 +807,7 @@ mod tests {
                     name: "try_slow".into(),
                     cost: 5.0,
                     requires: vec!["slow_path_unlocked".into()],
+                    forbids: Vec::new(),
                     adds: vec!["finished".into()],
                     removes: Vec::new(),
                     cmd: Some(vec!["true".into()]),
@@ -858,6 +866,7 @@ mod tests {
                 name: "only_path".into(),
                 cost: 1.0,
                 requires: vec!["heartbeat".into(), "available".into()],
+                forbids: Vec::new(),
                 adds: vec!["done".into()],
                 removes: Vec::new(),
                 cmd: Some(vec!["false".into()]),

@@ -22,8 +22,15 @@ runtime crate), never here.
   existing builders over introducing new entry points.
 - Every public item carries a doctest that compiles and asserts behaviour.
   Doctests are part of the test suite — a broken example is a broken test.
-- Builder methods (`Action::new(...).requires(...).adds(...)`) return `Self`
-  by value; preserve that ergonomic when extending.
+- Builder methods (`Action::new(...).requires(...).forbids(...).adds(...)`)
+  return `Self` by value; preserve that ergonomic when extending.
+- `Action::applicable(&state)` is a conjunction over both positive
+  preconditions (`requires` — every fact must be present) and negative
+  preconditions (`forbids` — every fact must be absent). The library
+  is loose about overlap: a fact in both `requires` and `forbidden`
+  makes the action unsatisfiable but is not rejected at this layer;
+  `uncharles::Config::validate` rejects it at config-load time
+  instead.
 
 ## Tests
 
