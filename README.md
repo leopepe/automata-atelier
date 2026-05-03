@@ -39,9 +39,77 @@ The boundaries are deliberate: `grafo` knows nothing about planning, planners kn
 
 Each layer is a swap-point. Add a new planner and existing automatons can use it; build a new automaton and it can pick whichever planner fits its domain. The kernel underneath stays the same.
 
-## Quick start
+## uncharles — the YAML-driven automaton
 
-### As a library — plan a sequence of actions with `goap-planner`
+`uncharles` is the user-facing CLI built on top of this stack. Point it at a YAML config that declares **sensors** (shell commands that read the world), **actions** (shell commands with preconditions, effects, and a cost), and a **goal** (a set of facts to reach). uncharles asks `goap-planner` for the cheapest plan, then either prints it (`--pretty`) or runs it step by step (`--execute`) — re-sensing between every action so unexpected world state triggers a replan rather than blind execution.
+
+### What it's good for
+
+- **CI/CD glue** — express deploy / release / merge-gate pipelines as preconditions and effects rather than imperative scripts. Replan-on-divergence handles the half-broken cases the script never wrote a branch for.
+- **Long-running watchers** — point a config at something that should converge (a release tag, an OpenTofu state, a deploy) and let uncharles loop on it. Each cycle is independent; the loop stops cleanly when the goal is reached or on `Ctrl+C` between steps (never mid-action).
+- **Pre-flight static analysis** — `uncharles inspect` loads a config and prints the bounded reachable state-action graph **without running any sensor or action commands**. Catches typo'd fact names, orphan actions, unreachable goals, and dead-end states before you ever execute. Output is `text` (default), `dot` (Graphviz), `mermaid`, or `json`.
+
+### A minimal config
+
+```yaml
+# repo_validate.yaml — a snippet from uncharles/configs/repo_validate.yaml
+sensors:
+  - name: code_present
+    cmd: ["test", "-f", "Cargo.toml"]
+  - name: formatted
+    cmd: ["cargo", "fmt", "--check", "--quiet"]
+
+actions:
+  - name: format
+    cost: 1.0
+    requires: [code_present]
+    adds: [formatted]
+    cmd: ["cargo", "fmt"]
+
+  - name: lint
+    cost: 2.0
+    requires: [formatted]
+    adds: [linted]
+    cmd: ["cargo", "clippy", "--quiet"]
+
+goal:
+  requires: [linted]
+```
+
+Plan only, then execute:
+
+```sh
+# Plan and print — no shell commands run.
+cargo run -p uncharles -- run --config uncharles/configs/repo_validate.yaml --pretty
+
+# Execute, re-sensing between steps and replanning on divergence.
+cargo run -p uncharles -- run --config uncharles/configs/repo_validate.yaml --execute --pretty
+
+# Inspect — dump the static structure and reachable state-action graph
+# as Graphviz, no shell commands run. Pipe to dot or graph-easy to render.
+cargo run -p uncharles -- inspect --config uncharles/configs/deploy.yaml --format dot \
+  | dot -Tpng | imgcat   # iTerm2; or `chafa -` for terminal-only viewing
+```
+
+### Example configs
+
+Real configs covering different domains — read them as a tour of what the runtime can express:
+
+| Config | What it does |
+|---|---|
+| [`deploy.yaml`](uncharles/configs/deploy.yaml) | Service deployment pipeline (test → build → push → deploy → smoke) |
+| [`merge_gate.yaml`](uncharles/configs/merge_gate.yaml) | PR-merge gate: resolve threads → rebase → rerun CI → request review → merge, cost-ordered, idempotent steps, branches on rebase conflict |
+| [`release_watch.yaml`](uncharles/configs/release_watch.yaml) | Long-lived watcher: detect a new `origin/main` commit → trigger deploy workflow → integration-test the deployed API → archive evidence |
+| [`tofu_drift_watch.yaml`](uncharles/configs/tofu_drift_watch.yaml) | Post-apply OpenTofu drift watcher (read-only `tofu plan -refresh-only`); never plans/applies, surfaces drift for a human to triage |
+| [`pendrive_audit.yaml`](uncharles/configs/pendrive_audit.yaml) | Removable-drive secret/PII audit (gitleaks + trufflehog + bulk_extractor) with seal-and-eject step |
+| [`podcast.yaml`](uncharles/configs/podcast.yaml) | Podcast-episode download pipeline (RSS → fetch → archive) |
+| [`repo_validate.yaml`](uncharles/configs/repo_validate.yaml) | Local repo-validation pipeline (fmt → clippy → check → test → build → publish dry-run) |
+
+For the full config schema, error semantics, the legacy flat-form CLI, and per-feature docs, see [`uncharles/README.md`](uncharles/README.md).
+
+## Embedding the planner directly
+
+If you want the planner without uncharles' YAML/shell surface — e.g. inside a different runtime or a Rust application — `goap-planner` is a pure library:
 
 ```rust
 use goap_planner::{Action, Goal, Planner, State};
@@ -62,48 +130,7 @@ assert_eq!(plan.steps, vec!["chop_tree", "split_log"]);
 assert_eq!(plan.cost, 7.0);
 ```
 
-### As a CLI — run `uncharles`, the YAML-driven shell automaton
-
-Describe sensors (shell probes that read the world) and actions (shell commands with preconditions, effects, and a cost):
-
-```yaml
-# deploy.yaml
-sensors:
-  - name: code_committed
-    cmd: ["git", "diff", "--quiet", "HEAD"]
-
-actions:
-  - name: run_tests
-    cost: 2.0
-    requires: [code_committed]
-    adds: [tests_pass]
-    cmd: ["cargo", "test"]
-
-  - name: build_image
-    cost: 5.0
-    requires: [tests_pass]
-    adds: [image_built]
-    cmd: ["docker", "build", "-t", "api:latest", "."]
-
-  # ...
-
-goal:
-  requires: [smoke_tests_pass]
-```
-
-Plan once and print the steps:
-
-```sh
-cargo run -p uncharles -- --config uncharles/configs/deploy.yaml --pretty
-```
-
-Or actually execute, re-sense, and replan until the goal is satisfied (or something breaks):
-
-```sh
-cargo run -p uncharles -- --config uncharles/configs/deploy.yaml --execute --pretty
-```
-
-More example configs live in [`uncharles/configs/`](uncharles/configs/).
+No I/O, no async, no shell — `goap-planner` is pure CPU work over `State`/`Action`/`Goal`. Pair it with whatever sensing and execution layer fits your domain.
 
 ## Performance
 
