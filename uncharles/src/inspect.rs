@@ -1229,6 +1229,7 @@ mod tests {
                 remove: vec![],
             }),
             on_failure: None,
+            capture: None,
         }];
         let actions = vec![ActionSpec {
             name: "act".into(),

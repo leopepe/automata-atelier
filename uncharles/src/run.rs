@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -5,7 +6,15 @@ use std::time::{Duration, Instant};
 
 use goap_planner::{Action, Goal, Planner, State};
 
-use crate::config::{ActionSpec, Config, SensorSpec};
+use crate::config::{ActionSpec, Capture, Config, SensorSpec};
+
+/// Per-cycle map of fact name → captured string value.
+///
+/// Populated by sensors that opt into [`Capture::Stdout`] and consumed by
+/// [`execute_action`] as `UNCHARLES_FACT_<NAME>` env vars on the child
+/// process. Lives alongside [`State`] but is invisible to `goap-planner`'s
+/// BFS — see ADR 0003 for the layering rationale.
+pub type Values = BTreeMap<String, String>;
 
 #[derive(Debug, Clone)]
 pub struct SensorReading {
@@ -13,6 +22,9 @@ pub struct SensorReading {
     pub success: bool,
     pub added: Vec<String>,
     pub removed: Vec<String>,
+    /// Trimmed stdout when the sensor declared `capture: stdout` and exited
+    /// successfully; `None` otherwise.
+    pub captured_value: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -60,25 +72,60 @@ impl std::fmt::Display for RunError {
 
 impl std::error::Error for RunError {}
 
-pub fn run_sensor(spec: &SensorSpec, state: &mut State) -> Result<SensorReading, RunError> {
+pub fn run_sensor(
+    spec: &SensorSpec,
+    state: &mut State,
+    values: &mut Values,
+) -> Result<SensorReading, RunError> {
     let cmd_name = spec.cmd.first().cloned().unwrap_or_default();
-    let status = Command::new(&cmd_name)
-        .args(spec.cmd.iter().skip(1))
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map_err(|e| RunError::SensorExec {
-            name: spec.name.clone(),
-            error: e.to_string(),
-        })?;
+    let mut command = Command::new(&cmd_name);
+    command.args(spec.cmd.iter().skip(1)).stderr(Stdio::null());
 
-    let success = status.success();
+    let (success, captured_value) = match spec.capture {
+        Some(Capture::Stdout) => {
+            let output =
+                command
+                    .stdout(Stdio::piped())
+                    .output()
+                    .map_err(|e| RunError::SensorExec {
+                        name: spec.name.clone(),
+                        error: e.to_string(),
+                    })?;
+            let success = output.status.success();
+            let captured = if success {
+                Some(
+                    String::from_utf8_lossy(&output.stdout)
+                        .trim_end()
+                        .to_string(),
+                )
+            } else {
+                None
+            };
+            (success, captured)
+        }
+        None => {
+            let status =
+                command
+                    .stdout(Stdio::null())
+                    .status()
+                    .map_err(|e| RunError::SensorExec {
+                        name: spec.name.clone(),
+                        error: e.to_string(),
+                    })?;
+            (status.success(), None)
+        }
+    };
+
     let effects = spec.effects_for(success);
     for fact in &effects.add {
         state.insert(fact.clone());
     }
+    if let Some(ref v) = captured_value {
+        values.insert(spec.name.clone(), v.clone());
+    }
     for fact in &effects.remove {
         state.remove(fact);
+        values.remove(fact);
     }
 
     Ok(SensorReading {
@@ -86,10 +133,11 @@ pub fn run_sensor(spec: &SensorSpec, state: &mut State) -> Result<SensorReading,
         success,
         added: effects.add,
         removed: effects.remove,
+        captured_value,
     })
 }
 
-pub fn execute_action(spec: &ActionSpec) -> Result<ActionResult, RunError> {
+pub fn execute_action(spec: &ActionSpec, values: &Values) -> Result<ActionResult, RunError> {
     let cmd = spec
         .cmd
         .as_ref()
@@ -97,15 +145,25 @@ pub fn execute_action(spec: &ActionSpec) -> Result<ActionResult, RunError> {
             name: spec.name.clone(),
         })?;
     let cmd_name = cmd.first().cloned().unwrap_or_default();
-    let output = Command::new(&cmd_name)
+    let mut command = Command::new(&cmd_name);
+    command
         .args(cmd.iter().skip(1))
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| RunError::ActionExec {
-            name: spec.name.clone(),
-            error: e.to_string(),
-        })?;
+        .stderr(Stdio::piped());
+
+    // Inject UNCHARLES_FACT_<NAME>=<value> for each `requires` fact that has
+    // a captured value. Facts without values produce no env var (not an
+    // empty one). See ADR 0003 for the contract.
+    for fact in &spec.requires {
+        if let Some(value) = values.get(fact) {
+            command.env(fact_env_var(fact), value);
+        }
+    }
+
+    let output = command.output().map_err(|e| RunError::ActionExec {
+        name: spec.name.clone(),
+        error: e.to_string(),
+    })?;
 
     Ok(ActionResult {
         name: spec.name.clone(),
@@ -115,6 +173,26 @@ pub fn execute_action(spec: &ActionSpec) -> Result<ActionResult, RunError> {
             .trim_end()
             .to_string(),
     })
+}
+
+/// Map a fact name to the env-var name used for value injection.
+///
+/// `target_sha` → `UNCHARLES_FACT_TARGET_SHA`. Non-ASCII-alphanumeric
+/// characters collapse to `_`. The mapping is lossy on purpose: two distinct
+/// fact names that collide here would clash in the child environment, but
+/// such names are exotic enough that the collision is acceptable
+/// (documented in ADR 0003).
+pub(crate) fn fact_env_var(fact: &str) -> String {
+    let mut s = String::with_capacity("UNCHARLES_FACT_".len() + fact.len());
+    s.push_str("UNCHARLES_FACT_");
+    for c in fact.chars() {
+        if c.is_ascii_alphanumeric() {
+            s.push(c.to_ascii_uppercase());
+        } else {
+            s.push('_');
+        }
+    }
+    s
 }
 
 /// Sleep for up to `total_ms` milliseconds, waking early if `interrupted`
@@ -185,15 +263,17 @@ pub fn build_goal(spec: &crate::config::GoalSpec) -> Goal {
 pub struct Outcome {
     pub readings: Vec<SensorReading>,
     pub state_facts: Vec<String>,
+    pub values: Values,
     pub plan: Option<goap_planner::Plan>,
 }
 
 pub fn sense_and_plan(config: &Config, seed: Vec<String>) -> Result<Outcome, RunError> {
     let mut state = State::from_facts(seed);
+    let mut values = Values::new();
 
     let mut readings = Vec::with_capacity(config.sensors.len());
     for sensor in &config.sensors {
-        readings.push(run_sensor(sensor, &mut state)?);
+        readings.push(run_sensor(sensor, &mut state, &mut values)?);
     }
 
     let actions = build_actions(&config.actions);
@@ -208,6 +288,7 @@ pub fn sense_and_plan(config: &Config, seed: Vec<String>) -> Result<Outcome, Run
     Ok(Outcome {
         readings,
         state_facts,
+        values,
         plan,
     })
 }
@@ -218,6 +299,7 @@ pub enum LoopEvent {
         iteration: usize,
         readings: Vec<SensorReading>,
         state: Vec<String>,
+        values: Values,
     },
     Planned {
         iteration: usize,
@@ -294,6 +376,7 @@ pub fn run_loop(
     mut on_event: impl FnMut(LoopEvent),
 ) -> Result<LoopOutcome, RunError> {
     let mut state = State::from_facts(seed);
+    let mut values = Values::new();
     let actions = build_actions(&config.actions);
     let goal = build_goal(&config.goal);
     let planner = Planner::new(actions);
@@ -314,7 +397,7 @@ pub fn run_loop(
 
         let mut readings = Vec::with_capacity(config.sensors.len());
         for sensor in &config.sensors {
-            readings.push(run_sensor(sensor, &mut state)?);
+            readings.push(run_sensor(sensor, &mut state, &mut values)?);
         }
         let mut state_facts: Vec<String> = state.facts().map(String::from).collect();
         state_facts.sort();
@@ -322,6 +405,7 @@ pub fn run_loop(
             iteration,
             readings,
             state: state_facts,
+            values: values.clone(),
         });
 
         let plan = planner.plan(&state, &goal).map_err(RunError::Planner)?;
@@ -338,7 +422,7 @@ pub fn run_loop(
             Some(p) => {
                 let next = &p.steps[0];
                 let spec = find_action_spec(&config.actions, next)?;
-                let result = execute_action(spec)?;
+                let result = execute_action(spec, &values)?;
                 let result_for_event = result.clone();
                 on_event(LoopEvent::Executed {
                     iteration,
@@ -359,6 +443,7 @@ pub fn run_loop(
                     // success-path contract, not the failure aftermath.
                     for fact in &failure_effects.remove {
                         state.remove(fact);
+                        values.remove(fact);
                     }
                     for fact in &failure_effects.add {
                         state.insert(fact.clone());
@@ -370,8 +455,11 @@ pub fn run_loop(
                 // next iteration plans from the expected post-state. Sensors
                 // run again at the top of the next iteration and will correct
                 // the state if reality disagrees — that's the replan trigger.
+                // Removing a fact also drops its captured value: ADR 0003
+                // commits to atomic fact-and-value lifetimes.
                 for fact in &spec.removes {
                     state.remove(fact);
+                    values.remove(fact);
                 }
                 for fact in &spec.adds {
                     state.insert(fact.clone());
@@ -393,6 +481,7 @@ mod tests {
             cmd: cmd.iter().map(|s| s.to_string()).collect(),
             on_success: None,
             on_failure: None,
+            capture: None,
         }
     }
 
@@ -416,17 +505,21 @@ mod tests {
     #[test]
     fn sensor_success_adds_fact_named_after_sensor() {
         let mut state = State::new();
-        let reading = run_sensor(&sensor("ready", &["true"]), &mut state).unwrap();
+        let mut values = Values::new();
+        let reading = run_sensor(&sensor("ready", &["true"]), &mut state, &mut values).unwrap();
         assert!(reading.success);
         assert_eq!(reading.added, vec!["ready"]);
         assert!(reading.removed.is_empty());
+        assert!(reading.captured_value.is_none());
         assert!(state.contains("ready"));
+        assert!(values.is_empty());
     }
 
     #[test]
     fn sensor_failure_removes_fact_named_after_sensor() {
         let mut state = State::from_facts(["ready"]);
-        let reading = run_sensor(&sensor("ready", &["false"]), &mut state).unwrap();
+        let mut values = Values::new();
+        let reading = run_sensor(&sensor("ready", &["false"]), &mut state, &mut values).unwrap();
         assert!(!reading.success);
         assert_eq!(reading.removed, vec!["ready"]);
         assert!(reading.added.is_empty());
@@ -436,6 +529,7 @@ mod tests {
     #[test]
     fn sensor_custom_on_success_overrides_default() {
         let mut state = State::new();
+        let mut values = Values::new();
         let spec = SensorSpec {
             name: "build".into(),
             cmd: vec!["true".into()],
@@ -444,9 +538,10 @@ mod tests {
                 remove: vec!["build_failing".into()],
             }),
             on_failure: None,
+            capture: None,
         };
         let mut state_with_failing = State::from_facts(["build_failing"]);
-        let reading = run_sensor(&spec, &mut state_with_failing).unwrap();
+        let reading = run_sensor(&spec, &mut state_with_failing, &mut values).unwrap();
         assert!(reading.success);
         assert!(state_with_failing.contains("build_ok"));
         assert!(state_with_failing.contains("tests_pass"));
@@ -459,20 +554,93 @@ mod tests {
             cmd: vec!["true".into()],
             on_success: Some(Effects::default()),
             on_failure: None,
+            capture: None,
         };
-        run_sensor(&suppress, &mut state).unwrap();
+        run_sensor(&suppress, &mut state, &mut values).unwrap();
         assert!(!state.contains("noisy"));
     }
 
     #[test]
     fn sensor_missing_command_returns_sensor_exec_error() {
         let mut state = State::new();
+        let mut values = Values::new();
         let err = run_sensor(
             &sensor("ghost", &["definitely-not-a-real-binary-xyz123"]),
             &mut state,
+            &mut values,
         )
         .unwrap_err();
         assert!(matches!(err, RunError::SensorExec { ref name, .. } if name == "ghost"));
+    }
+
+    // ---------------------------------------------------------------------
+    // run_sensor — capture: stdout (ADR 0003)
+    // ---------------------------------------------------------------------
+
+    #[test]
+    fn sensor_with_capture_stdout_stores_trimmed_value_on_success() {
+        let mut state = State::new();
+        let mut values = Values::new();
+        let spec = SensorSpec {
+            name: "target_sha".into(),
+            cmd: vec!["sh".into(), "-c".into(), "printf 'abc123\\n'".into()],
+            on_success: None,
+            on_failure: None,
+            capture: Some(Capture::Stdout),
+        };
+        let reading = run_sensor(&spec, &mut state, &mut values).unwrap();
+        assert!(reading.success);
+        assert_eq!(reading.captured_value.as_deref(), Some("abc123"));
+        assert_eq!(values.get("target_sha").map(String::as_str), Some("abc123"));
+        assert!(state.contains("target_sha"));
+    }
+
+    #[test]
+    fn sensor_with_capture_stdout_does_not_store_value_on_failure() {
+        let mut state = State::from_facts(["target_sha"]);
+        let mut values = Values::new();
+        values.insert("target_sha".into(), "stale".into());
+        let spec = SensorSpec {
+            name: "target_sha".into(),
+            cmd: vec!["false".into()],
+            on_success: None,
+            on_failure: None,
+            capture: Some(Capture::Stdout),
+        };
+        let reading = run_sensor(&spec, &mut state, &mut values).unwrap();
+        assert!(!reading.success);
+        assert!(reading.captured_value.is_none());
+        // Default on_failure removes the named fact, which atomically drops
+        // its value too — ADR 0003's atomic-remove rule.
+        assert!(!state.contains("target_sha"));
+        assert!(!values.contains_key("target_sha"));
+    }
+
+    #[test]
+    fn sensor_without_capture_does_not_populate_values() {
+        let mut state = State::new();
+        let mut values = Values::new();
+        let spec = sensor("ready", &["sh", "-c", "echo would-have-been-captured"]);
+        let reading = run_sensor(&spec, &mut state, &mut values).unwrap();
+        assert!(reading.success);
+        assert!(reading.captured_value.is_none());
+        assert!(values.is_empty());
+    }
+
+    #[test]
+    fn sensor_capture_overwrites_prior_value() {
+        let mut state = State::new();
+        let mut values = Values::new();
+        values.insert("target_sha".into(), "old".into());
+        let spec = SensorSpec {
+            name: "target_sha".into(),
+            cmd: vec!["sh".into(), "-c".into(), "echo new".into()],
+            on_success: None,
+            on_failure: None,
+            capture: Some(Capture::Stdout),
+        };
+        run_sensor(&spec, &mut state, &mut values).unwrap();
+        assert_eq!(values.get("target_sha").map(String::as_str), Some("new"));
     }
 
     // ---------------------------------------------------------------------
@@ -481,7 +649,8 @@ mod tests {
 
     #[test]
     fn execute_action_success_returns_zero_exit() {
-        let result = execute_action(&action("noop", &["true"], &[], &[])).unwrap();
+        let values = Values::new();
+        let result = execute_action(&action("noop", &["true"], &[], &[]), &values).unwrap();
         assert!(result.success);
         assert_eq!(result.exit_code, Some(0));
         assert!(result.stderr.is_empty());
@@ -490,10 +659,83 @@ mod tests {
     #[test]
     fn execute_action_failure_captures_exit_and_stderr() {
         let spec = action("failing", &["sh", "-c", "echo boom >&2; exit 7"], &[], &[]);
-        let result = execute_action(&spec).unwrap();
+        let values = Values::new();
+        let result = execute_action(&spec, &values).unwrap();
         assert!(!result.success);
         assert_eq!(result.exit_code, Some(7));
         assert_eq!(result.stderr, "boom");
+    }
+
+    #[test]
+    fn execute_action_injects_uncharles_fact_env_for_required_facts() {
+        // Action with `requires: [target_sha]`. The cmd reads the env var
+        // and prints it to stderr (which `execute_action` captures), so
+        // the round-trip is observable via ActionResult.stderr.
+        let spec = action(
+            "deploy",
+            &["sh", "-c", "echo $UNCHARLES_FACT_TARGET_SHA >&2"],
+            &["target_sha"],
+            &[],
+        );
+        let mut values = Values::new();
+        values.insert("target_sha".into(), "abc123".into());
+        let result = execute_action(&spec, &values).unwrap();
+        assert!(
+            result.success,
+            "exit={:?} stderr={:?}",
+            result.exit_code, result.stderr
+        );
+        assert_eq!(result.stderr, "abc123");
+    }
+
+    #[test]
+    fn execute_action_does_not_inject_env_for_facts_without_values() {
+        // `requires` mentions `available`, but no value exists for it.
+        // The env var must be unset (printf prints empty).
+        let spec = action(
+            "noop",
+            &[
+                "sh",
+                "-c",
+                "printf '<%s>' \"${UNCHARLES_FACT_AVAILABLE-unset}\" >&2",
+            ],
+            &["available"],
+            &[],
+        );
+        let values = Values::new();
+        let result = execute_action(&spec, &values).unwrap();
+        assert!(result.success);
+        assert_eq!(result.stderr, "<unset>");
+    }
+
+    #[test]
+    fn execute_action_does_not_inject_env_for_non_required_facts() {
+        // Value exists for `target_sha` but the action does not require
+        // it. Env var must NOT be set (privacy: an action cannot peek at
+        // values it didn't declare a dependency on).
+        let spec = action(
+            "noop",
+            &[
+                "sh",
+                "-c",
+                "printf '<%s>' \"${UNCHARLES_FACT_TARGET_SHA-unset}\" >&2",
+            ],
+            &[],
+            &[],
+        );
+        let mut values = Values::new();
+        values.insert("target_sha".into(), "abc123".into());
+        let result = execute_action(&spec, &values).unwrap();
+        assert!(result.success);
+        assert_eq!(result.stderr, "<unset>");
+    }
+
+    #[test]
+    fn fact_env_var_uppercases_and_replaces_non_alphanumeric() {
+        assert_eq!(fact_env_var("target_sha"), "UNCHARLES_FACT_TARGET_SHA");
+        assert_eq!(fact_env_var("plan_clean"), "UNCHARLES_FACT_PLAN_CLEAN");
+        assert_eq!(fact_env_var("a-b.c"), "UNCHARLES_FACT_A_B_C");
+        assert_eq!(fact_env_var("simple"), "UNCHARLES_FACT_SIMPLE");
     }
 
     #[test]
@@ -508,14 +750,16 @@ mod tests {
             cmd: None,
             on_failure: None,
         };
-        let err = execute_action(&spec).unwrap_err();
+        let values = Values::new();
+        let err = execute_action(&spec, &values).unwrap_err();
         assert!(matches!(err, RunError::ActionMissingCmd { ref name } if name == "no_cmd"));
     }
 
     #[test]
     fn execute_action_unknown_binary_returns_action_exec_error() {
         let spec = action("ghost", &["definitely-not-a-real-binary-xyz123"], &[], &[]);
-        let err = execute_action(&spec).unwrap_err();
+        let values = Values::new();
+        let err = execute_action(&spec, &values).unwrap_err();
         assert!(matches!(err, RunError::ActionExec { ref name, .. } if name == "ghost"));
     }
 

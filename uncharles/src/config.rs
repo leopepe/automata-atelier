@@ -17,6 +17,12 @@ pub struct Config {
 ///
 /// Override either side to model richer outcomes (e.g. a build sensor that
 /// adds `tests_failing` on failure rather than just removing `tests_passing`).
+///
+/// Set `capture: stdout` to opt the sensor into value capture: when the
+/// command exits successfully, its trimmed stdout is stored in the runtime
+/// `Values` map under this sensor's `name`. Action commands then receive the
+/// value as `UNCHARLES_FACT_<NAME>=<value>` whenever the action's `requires`
+/// list mentions a fact with a captured value. See ADR 0003.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SensorSpec {
@@ -26,6 +32,21 @@ pub struct SensorSpec {
     pub on_success: Option<Effects>,
     #[serde(default)]
     pub on_failure: Option<Effects>,
+    #[serde(default)]
+    pub capture: Option<Capture>,
+}
+
+/// Source of a sensor's captured value.
+///
+/// `stdout` is the only variant in v1: when the sensor command exits
+/// successfully, its stdout (trimmed of trailing whitespace) becomes the
+/// captured value. Future variants (`stderr`, structured shapes) would extend
+/// this enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase", deny_unknown_fields)]
+pub enum Capture {
+    /// Capture the trimmed stdout of the sensor command.
+    Stdout,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -299,6 +320,7 @@ mod tests {
             cmd: vec!["true".into()],
             on_success: None,
             on_failure: None,
+            capture: None,
         };
         let effects = spec.effects_for(true);
         assert_eq!(effects.add, vec!["ready"]);
@@ -312,6 +334,7 @@ mod tests {
             cmd: vec!["false".into()],
             on_success: None,
             on_failure: None,
+            capture: None,
         };
         let effects = spec.effects_for(false);
         assert!(effects.add.is_empty());
@@ -328,6 +351,7 @@ mod tests {
                 remove: vec!["cold".into()],
             }),
             on_failure: None,
+            capture: None,
         };
         let effects = spec.effects_for(true);
         assert_eq!(effects.add, vec!["ok", "warm"]);
@@ -421,6 +445,57 @@ mod tests {
         "#;
         let config: Config = serde_yaml::from_str(yaml).unwrap();
         assert!(config.actions[0].on_failure.is_none());
+    }
+
+    #[test]
+    fn parses_sensor_with_capture_stdout() {
+        let yaml = r#"
+            sensors:
+              - name: target_sha
+                cmd: ["git", "rev-parse", "origin/main"]
+                capture: stdout
+            actions: []
+            goal:
+              requires: [target_sha]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(config.sensors[0].capture, Some(Capture::Stdout));
+    }
+
+    #[test]
+    fn sensor_capture_defaults_to_none() {
+        let yaml = r#"
+            sensors:
+              - name: ready
+                cmd: ["true"]
+            actions: []
+            goal:
+              requires: [done]
+        "#;
+        let config: Config = serde_yaml::from_str(yaml).unwrap();
+        assert!(config.sensors[0].capture.is_none());
+    }
+
+    #[test]
+    fn rejects_unknown_capture_variant() {
+        // ADR 0003 commits to `stdout` as the only v1 variant. Future
+        // variants (`stderr`, structured) are reserved; mistypes must fail
+        // loudly at config-load time rather than silently disabling capture.
+        let yaml = r#"
+            sensors:
+              - name: target_sha
+                cmd: ["true"]
+                capture: bogus
+            actions: []
+            goal:
+              requires: [target_sha]
+        "#;
+        let err = serde_yaml::from_str::<Config>(yaml).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("bogus") || msg.contains("variant"),
+            "expected unknown-variant error, got: {msg}",
+        );
     }
 
     #[test]

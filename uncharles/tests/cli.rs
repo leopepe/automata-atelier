@@ -181,6 +181,7 @@ fn release_watch_dry_run_emits_expected_schema() {
         sensor_names,
         vec![
             "idle",
+            "target_sha",
             "new_commit_available",
             "deploy_in_flight",
             "deploy_succeeded",
@@ -365,6 +366,69 @@ fn tofu_drift_watch_dry_run_pins_post_apply_watcher_design() {
             );
         }
     }
+}
+
+#[test]
+fn execute_loop_captures_sensor_stdout_and_injects_into_action_env() {
+    // ADR 0003 round-trip: sensor `target` captures stdout into the runtime
+    // values map; `emit_value` requires `target` and reads
+    // UNCHARLES_FACT_TARGET to stderr (which lands in the executed event);
+    // `finalize` does NOT require `target` so its env var is unset (privacy
+    // invariant: actions only see values for facts they declared).
+    let output = Command::new(binary())
+        .arg("run")
+        .arg("--config")
+        .arg(config_path("smoke_capture.yaml"))
+        .arg("--execute")
+        .output()
+        .expect("failed to spawn uncharles");
+    assert!(
+        output.status.success(),
+        "expected exit 0, got {:?}, stderr={}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let events: Vec<serde_json::Value> = stdout
+        .lines()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect();
+
+    // Final outcome is goal-satisfied.
+    let last = events.last().unwrap();
+    assert_eq!(last["outcome"], "goal_satisfied");
+
+    // `target` sensor reports its captured value on every iteration. Use
+    // the first sensed event for assertion stability.
+    let first_sensed = events
+        .iter()
+        .find(|e| e["event"] == "sensed")
+        .expect("expected a sensed event");
+    let target_reading = first_sensed["readings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["name"] == "target")
+        .expect("target sensor reading missing");
+    assert_eq!(target_reading["captured_value"], "abc-123");
+    assert_eq!(target_reading["success"], true);
+    assert_eq!(first_sensed["values"]["target"], "abc-123");
+
+    // emit_value's stderr proves UNCHARLES_FACT_TARGET was injected.
+    let emit_executed = events
+        .iter()
+        .find(|e| e["event"] == "executed" && e["result"]["name"] == "emit_value")
+        .expect("emit_value executed event missing");
+    assert_eq!(emit_executed["result"]["success"], true);
+    assert_eq!(emit_executed["result"]["stderr"], "abc-123");
+
+    // finalize does NOT require `target`, so env var must be unset.
+    let final_executed = events
+        .iter()
+        .find(|e| e["event"] == "executed" && e["result"]["name"] == "finalize")
+        .expect("finalize executed event missing");
+    assert_eq!(final_executed["result"]["stderr"], "<unset>");
 }
 
 #[test]
