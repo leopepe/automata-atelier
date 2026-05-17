@@ -16,7 +16,7 @@ next free number.
 | 0001 | [Relax `main` ruleset for solo-contributor workflow](./0001-relax-main-ruleset-for-solo-contributor.md) | accepted | 2026-05-02 |
 | 0002 | [Use uncharles as a post-apply IaC convergence watcher, not a CI replacement](./0002-uncharles-as-post-apply-iac-convergence-watcher.md) | accepted | 2026-05-03 |
 | 0003 | [Value-carrying facts live in the uncharles runtime, not in goap-planner's State](./0003-value-carrying-facts-runtime-side.md) | accepted | 2026-05-03 |
-| 0004 | [Publish `uncharles` to nixpkgs](./0004-publish-uncharles-to-nixpkgs.md) | proposed | 2026-05-17 |
+| 0004 | [Publish `uncharles` to nixpkgs](./0004-publish-uncharles-to-nixpkgs.md) | accepted | 2026-05-17 |
 
 ## Status legend
 
