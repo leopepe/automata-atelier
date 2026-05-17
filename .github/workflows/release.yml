@@ -19,9 +19,11 @@
 # name stays `grafo` via `[lib].name`.
 #
 # Crates publish in dependency order: grafo-dag → goap-planner → uncharles.
-# Each downstream dry-run will fail until the upstream crate exists on
-# crates.io for real, since cargo resolves the version from the registry once
-# `version` is set on the path dep. That's expected on the first release.
+# All three are published in a single `cargo publish` invocation; cargo 1.91+
+# resolves intra-workspace path deps through a temporary local registry
+# during dry-run (so downstream dry-runs work even before grafo-dag exists
+# on crates.io) and waits for crates.io indexing between steps on a real
+# publish.
 #
 # For the first nixpkgs submission, this workflow only produces the tag and
 # Release. The nixpkgs PR itself is opened by hand against `nixos/nixpkgs`
@@ -62,31 +64,20 @@ jobs:
             exit 1
           fi
 
-      - name: Publish grafo-dag
+      - name: Publish workspace crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          # `-p` matches the [package].name. The grafo crate publishes as
-          # `grafo-dag` on crates.io (the bare `grafo` name is owned by an
-          # unrelated GPU library); the `[lib].name = "grafo"` keeps the
-          # in-source crate name unchanged for consumers.
-          flags="-p grafo-dag"
-          if [ "${{ inputs.dry-run }}" = "true" ]; then flags="$flags --dry-run"; fi
-          cargo publish $flags
-
-      - name: Publish goap-planner
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          flags="-p goap-planner"
-          if [ "${{ inputs.dry-run }}" = "true" ]; then flags="$flags --dry-run"; fi
-          cargo publish $flags
-
-      - name: Publish uncharles
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          flags="-p uncharles"
+          # One invocation publishes all three crates. cargo orders them
+          # automatically (grafo-dag → goap-planner → uncharles) by walking
+          # the path-dep graph; on dry-run it resolves the intra-workspace
+          # deps via a temporary local registry, so the downstream packages
+          # validate even when grafo-dag is not yet on crates.io. `-p`
+          # matches `[package].name`: the grafo crate publishes as
+          # `grafo-dag` (the bare `grafo` name is owned by an unrelated
+          # GPU library), with `[lib].name = "grafo"` preserving the
+          # in-source crate name for consumers.
+          flags="-p grafo-dag -p goap-planner -p uncharles"
           if [ "${{ inputs.dry-run }}" = "true" ]; then flags="$flags --dry-run"; fi
           cargo publish $flags
 

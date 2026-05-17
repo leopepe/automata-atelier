@@ -6,6 +6,9 @@ license = "MIT"
 description = "Goal-Oriented Action Planning over a state-space graph. The first planner in the Automata Atelier workspace."
 keywords = ["goap", "planning", "ai", "agent", "automation"]
 categories = ["algorithms", "game-development"]
+repository = "https://github.com/leopepe/automata-atelier"
+homepage = "https://github.com/leopepe/automata-atelier"
+readme = "README.md"
 
 [dependencies]
 grafo = { package = "grafo-dag", path = "../grafo", version = "0.1" }
