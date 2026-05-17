@@ -8,7 +8,7 @@ keywords = ["goap", "planning", "automation", "agent", "cli"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-goap-planner = { path = "../goap-planner" }
+goap-planner = { path = "../goap-planner", version = "0.1" }
 clap = { version = "4", features = ["derive"] }
 ctrlc = { version = "3", features = ["termination"] }
 serde = { version = "1", features = ["derive"] }
