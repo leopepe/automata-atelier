@@ -1,4 +1,6 @@
-# Publishes the workspace crates to crates.io.
+# Publishes the workspace crates to crates.io and tags an `uncharles` GitHub
+# Release. The Release is what `nixpkgs-update` watches to auto-PR new
+# versions of `uncharles` into nixpkgs (per ADR 0004).
 #
 # Manual trigger only — this workflow is intentionally not wired to tag pushes
 # yet. Before flipping it on for real publishes, you need to:
@@ -11,13 +13,20 @@
 #      and confirm none collide with existing crates.
 #   3. Generate a crates.io API token scoped to publish + create new crates,
 #      and add it as the repo secret `CARGO_REGISTRY_TOKEN`.
-#   4. Run this workflow once with `dry-run=true` to verify packaging.
-#   5. Run again with `dry-run=false` to actually publish.
+#   4. Run this workflow once with `dry-run=true` to verify packaging. The
+#      Nix tag + Release steps are also skipped under dry-run.
+#   5. Run again with `dry-run=false` to actually publish. crates.io publish
+#      runs first; on success, an `uncharles-v<version>` tag is pushed and a
+#      GitHub Release is created.
 #
 # Crates publish in dependency order: grafo → goap-planner → uncharles.
 # Each downstream dry-run will fail until the upstream crate exists on
 # crates.io for real, since cargo resolves the version from the registry once
 # `version` is set on the path dep. That's expected on the first release.
+#
+# For the first nixpkgs submission, this workflow only produces the tag and
+# Release. The nixpkgs PR itself is opened by hand against `nixos/nixpkgs`
+# the first time; subsequent versions are picked up by `nixpkgs-update`.
 
 name: Release
 
@@ -36,6 +45,11 @@ jobs:
   publish:
     name: publish to crates.io
     runs-on: ubuntu-latest
+    # `contents: write` is required to push the `uncharles-v<version>` tag and
+    # create the GitHub Release. `actions/checkout`'s default token has read
+    # access only.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -72,3 +86,36 @@ jobs:
           flags="-p uncharles"
           if [ "${{ inputs.dry-run }}" = "true" ]; then flags="$flags --dry-run"; fi
           cargo publish $flags
+
+      # Tag + Release happen only on a real publish. The tag is the signal
+      # `nixpkgs-update` watches to auto-PR new versions into nixpkgs
+      # (ADR 0004).
+      - name: Resolve uncharles version
+        if: ${{ inputs.dry-run == false }}
+        id: version
+        run: |
+          version=$(cargo metadata --format-version=1 --no-deps \
+            | jq -r '.packages[] | select(.name == "uncharles") | .version')
+          if [ -z "$version" ] || [ "$version" = "null" ]; then
+            echo "::error::Failed to resolve uncharles version from cargo metadata"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=uncharles-v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Tag and create GitHub Release for uncharles
+        if: ${{ inputs.dry-run == false }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          version="${{ steps.version.outputs.version }}"
+          if git rev-parse "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists; refusing to re-release."
+            exit 1
+          fi
+          git tag "$tag"
+          git push origin "$tag"
+          gh release create "$tag" \
+            --title "uncharles v$version" \
+            --generate-notes
