@@ -53,6 +53,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `crate` is the workspace member's *directory name* — used for the
+        # baseline-availability check (`<crate>/benches/performance.rs`),
+        # the `--manifest-path <crate>/Cargo.toml` cargo invocations below,
+        # and the cache + artifact keys. It does not have to match the
+        # crate's `[package].name` in Cargo.toml; the `grafo` directory
+        # publishes as `grafo-dag` on crates.io while keeping its
+        # directory name and in-source crate name. Using manifest-path
+        # rather than `cargo bench -p <name>` keeps this gate stable
+        # across publishing-name changes.
         crate: [grafo, goap-planner]
     steps:
       - name: Checkout PR head
@@ -114,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           git checkout "${{ steps.base-sha.outputs.sha }}"
-          cargo bench -p ${{ matrix.crate }} --bench performance -- \
+          cargo bench --manifest-path ${{ matrix.crate }}/Cargo.toml --bench performance -- \
             --save-baseline pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-base.txt
 
       - name: Compare PR head against baseline
@@ -131,7 +140,7 @@ jobs:
         run: |
           set -euo pipefail
           git checkout "${{ github.sha }}"
-          cargo bench -p ${{ matrix.crate }} --bench performance -- \
+          cargo bench --manifest-path ${{ matrix.crate }}/Cargo.toml --bench performance -- \
             --baseline-lenient pr-base $CRITERION_CI_FLAGS 2>&1 | tee bench-head.txt
 
       - name: Run PR head benches (introductory, no baseline)
@@ -142,7 +151,7 @@ jobs:
         if: steps.baseline-check.outputs.available == 'false'
         run: |
           set -euo pipefail
-          cargo bench -p ${{ matrix.crate }} --bench performance -- \
+          cargo bench --manifest-path ${{ matrix.crate }}/Cargo.toml --bench performance -- \
             $CRITERION_CI_FLAGS 2>&1 | tee bench-head.txt
 
       - name: Detect regressions
