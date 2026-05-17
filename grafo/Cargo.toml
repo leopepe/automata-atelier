@@ -1,9 +1,10 @@
 [package]
 # `grafo` is taken on crates.io by an unrelated GPU rendering library, so
-# this crate publishes as `atelier-grafo`. Consumers in this workspace
-# (goap-planner) alias it back to `grafo` via the `package =` field so
-# source code keeps reading `use grafo::...`.
-name = "atelier-grafo"
+# this crate publishes as `grafo-dag`. `[lib] name = "grafo"` keeps the
+# in-source crate name unchanged; consumers in this workspace alias it
+# back to `grafo` via the `package =` field so source code keeps reading
+# `use grafo::...`.
+name = "grafo-dag"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
