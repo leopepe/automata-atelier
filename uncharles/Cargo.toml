@@ -6,6 +6,9 @@ license = "MIT"
 description = "Sense → plan → act runtime that drives goap-planner from a YAML config to automate shell tasks. The first automaton built in the Automata Atelier workspace."
 keywords = ["goap", "planning", "automation", "agent", "cli"]
 categories = ["command-line-utilities"]
+repository = "https://github.com/leopepe/automata-atelier"
+homepage = "https://github.com/leopepe/automata-atelier"
+readme = "README.md"
 
 [dependencies]
 goap-planner = { path = "../goap-planner", version = "0.1" }

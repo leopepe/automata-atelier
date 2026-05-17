@@ -11,6 +11,9 @@ license = "MIT"
 description = "Fast directed-acyclic-graph library with Dijkstra search and attribute-based path filtering. The graph kernel of the Automata Atelier workspace."
 keywords = ["graph", "dag", "dijkstra", "shortest-path", "csr"]
 categories = ["algorithms", "data-structures"]
+repository = "https://github.com/leopepe/automata-atelier"
+homepage = "https://github.com/leopepe/automata-atelier"
+readme = "README.md"
 
 [lib]
 name = "grafo"
