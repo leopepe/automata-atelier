@@ -15,10 +15,18 @@ rustPlatform.buildRustPackage rec {
     hash = lib.fakeHash;
   };
 
+  __structuredAttrs = true;
+
   cargoLock.lockFile = ./Cargo.lock;
 
-  cargoBuildFlags = [ "-p" "uncharles" ];
-  cargoTestFlags = [ "-p" "uncharles" ];
+  cargoBuildFlags = [
+    "-p"
+    "uncharles"
+  ];
+  cargoTestFlags = [
+    "-p"
+    "uncharles"
+  ];
 
   meta = {
     description = "Sense → plan → act runtime that drives goap-planner from a YAML config to automate shell tasks";
