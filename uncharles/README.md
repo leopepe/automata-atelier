@@ -17,7 +17,42 @@ Sense → plan → act runtime that drives [`goap-planner`](../goap-planner/) fr
 
 ## Installation
 
-This crate is a workspace member, not yet published to crates.io.
+### From crates.io
+
+```sh
+cargo install uncharles
+```
+
+The workspace's three crates publish in dependency order: `grafo-dag`,
+`goap-planner`, then `uncharles`. The first published release is `0.1.0`;
+publishing is triggered via the `Release` workflow.
+
+### Install via Nix
+
+> **Status:** pending first nixpkgs PR.
+>
+> Per [ADR 0004](../docs/adrs/0004-publish-uncharles-to-nixpkgs.md),
+> `uncharles` is being submitted to nixpkgs as
+> `pkgs/by-name/un/uncharles/package.nix`. Until that PR merges and propagates
+> to `nixpkgs-unstable`, this section is a placeholder — use [the
+> from-source path](#from-source) below in the meantime.
+>
+> Once landed, the install command will be:
+>
+> ```sh
+> # legacy CLI
+> nix-env -iA nixpkgs.uncharles
+>
+> # flake-style
+> nix profile install nixpkgs#uncharles
+> ```
+>
+> Binaries are served by `cache.nixos.org`; no flake input or third-party
+> cache is required. The in-repo mirror of the derivation lives at
+> [`nix/package.nix`](../nix/package.nix) and is built on every PR by
+> [`ci.yml`](../.github/workflows/ci.yml)'s `nix-build` job.
+
+### From source
 
 ```sh
 cargo build -p uncharles --release

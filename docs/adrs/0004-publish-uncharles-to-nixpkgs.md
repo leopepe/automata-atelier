@@ -19,8 +19,8 @@ the release trigger relative to the existing crates.io flow. The framing
 constraint, supplied during design discussion, is that `uncharles` should
 be installable by Nix users with the same ergonomics as any other "official"
 tool — one command, no flake knowledge required, prebuilt binaries from a
-trusted cache. An issue tracking this work is filed alongside this ADR —
-link inserted on PR review.
+trusted cache. The implementation of this ADR is tracked in
+[issue #52](https://github.com/leopepe/automata-atelier/issues/52).
 
 ## Decision Drivers
 
@@ -243,8 +243,8 @@ Compliance is verified by four gates:
 ## More Information
 
 * **Driving discussion**: in-conversation request to publish `uncharles`
-  as an official Nix tool, no clone, no local build. A `type:design`
-  issue is filed alongside this ADR's PR; link inserted on review.
+  as an official Nix tool, no clone, no local build. Tracking issue:
+  [#52](https://github.com/leopepe/automata-atelier/issues/52).
 * **Implementation PR (planned, this repo)**: introduces
   `nix/package.nix` (the mirror), a Nix build job in `ci.yml`, the
   tag/release step in `release.yml`, and a placeholder install section
