@@ -8,7 +8,7 @@ keywords = ["goap", "planning", "ai", "agent", "automation"]
 categories = ["algorithms", "game-development"]
 
 [dependencies]
-grafo = { path = "../grafo" }
+grafo = { package = "atelier-grafo", path = "../grafo", version = "0.1" }
 rustc-hash = "2"
 
 [dev-dependencies]

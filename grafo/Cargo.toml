@@ -1,11 +1,18 @@
 [package]
-name = "grafo"
+# `grafo` is taken on crates.io by an unrelated GPU rendering library, so
+# this crate publishes as `atelier-grafo`. Consumers in this workspace
+# (goap-planner) alias it back to `grafo` via the `package =` field so
+# source code keeps reading `use grafo::...`.
+name = "atelier-grafo"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
 description = "Fast directed-acyclic-graph library with Dijkstra search and attribute-based path filtering. The graph kernel of the Automata Atelier workspace."
 keywords = ["graph", "dag", "dijkstra", "shortest-path", "csr"]
 categories = ["algorithms", "data-structures"]
+
+[lib]
+name = "grafo"
 
 [dependencies]
 rayon = "1"
