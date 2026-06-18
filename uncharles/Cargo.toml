@@ -13,7 +13,15 @@ readme = "README.md"
 [dependencies]
 goap-planner = { path = "../goap-planner", version = "0.1" }
 clap = { version = "4", features = ["derive"] }
-ctrlc = { version = "3", features = ["termination"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+# Actor runtime (ADR 0005). kameo runs on tokio; the `remote`/libp2p feature
+# is off by default, keeping the dependency surface modest. Pinned to 0.20.x
+# because kameo is pre-1.0 and churns between minor releases — the `actors`
+# module isolates the API so an upgrade (or framework swap) is contained.
+kameo = "0.20"
+# Multi-threaded runtime is what gives sensors real OS-thread parallelism.
+# `process` for async sensor/action shell-outs, `time` for poll timers,
+# `signal` for graceful ctrl-c drain, `sync` for the output channel.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time", "signal", "sync"] }

@@ -23,7 +23,7 @@ pub struct Config {
 /// `Values` map under this sensor's `name`. Action commands then receive the
 /// value as `UNCHARLES_FACT_<NAME>=<value>` whenever the action's `requires`
 /// list mentions a fact with a captured value. See ADR 0003.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SensorSpec {
     pub name: String,
@@ -58,7 +58,7 @@ pub struct Effects {
     pub remove: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ActionSpec {
     pub name: String,

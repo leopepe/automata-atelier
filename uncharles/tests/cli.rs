@@ -7,7 +7,6 @@
 
 use std::path::PathBuf;
 use std::process::Command;
-use std::time::{Duration, Instant};
 
 fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_uncharles")
@@ -43,7 +42,11 @@ fn one_shot_emits_json_plan_and_exits_zero() {
 }
 
 #[test]
-fn execute_loop_drives_smoke_config_to_goal() {
+fn execute_reactive_runtime_drives_smoke_config_to_goal() {
+    // The reactive runtime (ADR 0005) replans after each action's effects land,
+    // walking do_a → do_b → do_c to the goal. Exact event *counts* are no
+    // longer pinned (sensing is continuous), but the executed-action sequence
+    // and terminal outcome are deterministic for this `true`-only config.
     let output = Command::new(binary())
         .arg("--config")
         .arg(config_path("smoke_loop.yaml"))
@@ -56,15 +59,25 @@ fn execute_loop_drives_smoke_config_to_goal() {
         output.status
     );
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let last_line = stdout
+    let events: Vec<serde_json::Value> = stdout
         .lines()
-        .last()
-        .expect("expected at least one NDJSON line");
-    let final_event: serde_json::Value =
-        serde_json::from_str(last_line).expect("final line must be JSON");
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect();
+
+    let final_event = events.last().expect("expected at least one NDJSON event");
     assert_eq!(final_event["event"], "complete");
     assert_eq!(final_event["outcome"], "goal_satisfied");
-    assert_eq!(final_event["iterations"], 4);
+
+    let executed: Vec<&str> = events
+        .iter()
+        .filter(|e| e["event"] == "executed")
+        .map(|e| e["result"]["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        executed,
+        vec!["do_a", "do_b", "do_c"],
+        "expected the replan loop to execute the three actions in order"
+    );
 }
 
 #[test]
@@ -128,25 +141,23 @@ fn missing_config_file_exits_two() {
 }
 
 #[test]
-fn execute_loop_with_interval_ms_paces_iterations() {
-    // smoke_loop runs 3 actions; with --interval-ms=120 the inter-iteration
-    // sleep fires after each successful exec, so wall clock should be at
-    // least 360 ms (3 × 120 ms). Loose upper bound to keep CI noise out.
-    let start = Instant::now();
+fn execute_with_sensor_poll_interval_still_reaches_goal() {
+    // Under the reactive runtime (ADR 0005) `--interval-ms` is the per-sensor
+    // poll cadence, not an inter-action sleep — action execution is no longer
+    // gated by it. The flag must still parse and the run must drive to goal.
     let output = Command::new(binary())
         .arg("--config")
         .arg(config_path("smoke_loop.yaml"))
         .arg("--execute")
         .arg("--interval-ms")
-        .arg("120")
+        .arg("50")
         .output()
         .expect("failed to spawn uncharles");
-    let elapsed = start.elapsed();
     assert!(output.status.success(), "expected exit 0 (goal satisfied)");
-    assert!(
-        elapsed >= Duration::from_millis(360),
-        "expected ≥360 ms wall clock with --interval-ms=120, got {elapsed:?}"
-    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let last_line = stdout.lines().last().unwrap();
+    let final_event: serde_json::Value = serde_json::from_str(last_line).unwrap();
+    assert_eq!(final_event["outcome"], "goal_satisfied");
 }
 
 #[test]
@@ -399,21 +410,15 @@ fn execute_loop_captures_sensor_stdout_and_injects_into_action_env() {
     let last = events.last().unwrap();
     assert_eq!(last["outcome"], "goal_satisfied");
 
-    // `target` sensor reports its captured value on every iteration. Use
-    // the first sensed event for assertion stability.
-    let first_sensed = events
+    // Sensed events are now per-sensor (ADR 0005). Find the `target` sensor's
+    // first reading and assert it captured its stdout into the values map.
+    let target_sensed = events
         .iter()
-        .find(|e| e["event"] == "sensed")
-        .expect("expected a sensed event");
-    let target_reading = first_sensed["readings"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|r| r["name"] == "target")
-        .expect("target sensor reading missing");
-    assert_eq!(target_reading["captured_value"], "abc-123");
-    assert_eq!(target_reading["success"], true);
-    assert_eq!(first_sensed["values"]["target"], "abc-123");
+        .find(|e| e["event"] == "sensed" && e["sensor"] == "target")
+        .expect("expected a sensed event for the target sensor");
+    assert_eq!(target_sensed["captured_value"], "abc-123");
+    assert_eq!(target_sensed["success"], true);
+    assert_eq!(target_sensed["values"]["target"], "abc-123");
 
     // emit_value's stderr proves UNCHARLES_FACT_TARGET was injected.
     let emit_executed = events
