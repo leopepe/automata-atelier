@@ -121,12 +121,25 @@ The runtime contract this establishes:
   planning inside `goap-planner`.
 * **A root `AgentSupervisor`** links all of the above, applies the supervision
   strategy (restart a crashed sensor; escalate a crashed world-state), and
-  translates `tokio::signal::ctrl_c` into a graceful drain.
+  translates stop signals into a graceful drain.
+* **uncharles is a daemon: the run loop is perpetual by default.** Under
+  `--execute` the automaton senses continuously, plans and acts toward the goal
+  when the world diverges, and on reaching the goal **returns to sensing** — it
+  does not exit. Goal-satisfied and no-plan are non-terminal; only an
+  unrecoverable action failure, the action-cap, or a stop signal end the
+  process. As a service it drains on **SIGTERM** (systemd/Docker `stop`) as well
+  as SIGINT, and a signal-driven shutdown exits 0 (a clean stop, not an error).
+  `--once` opts into a one-shot drive-to-goal-and-exit run for CI/scripting,
+  where goal-satisfied exits 0 and an unreachable goal exits 1. This replaces
+  the previous external `run.sh` `while true; sleep` polling wrapper — the loop
+  now lives inside the automaton, which is where the maintainer placed it as the
+  core concept of the agent.
 
-Scope: this ADR covers the concurrency foundation and the reactive-sensing
-behaviour. Plugins (IPC wire protocol), concurrent multi-goal arbitration
-policy, and config hot-reload are explicitly **out of scope** here — the
-topology is designed to absorb them, but each gets its own ADR when built.
+Scope: this ADR covers the concurrency foundation, the perpetual reactive-sensing
+behaviour, and the service lifecycle (perpetual default, `--once`, SIGINT/SIGTERM
+drain). Plugins (IPC wire protocol), concurrent multi-goal arbitration policy,
+and config hot-reload are explicitly **out of scope** here — the topology is
+designed to absorb them, but each gets its own ADR when built.
 
 ### Consequences
 
@@ -222,11 +235,10 @@ The 2026-06-12 front-runner, reversed here.
 
 ## More Information
 
-* **Driving issues**: #17 (`--watch` mode for long-lived configs) and #19
-  (sensor ordering as a foot-gun) are both subsumed by the reactive runtime.
-  A dedicated `type:design` tracking issue for the broader actor pivot
-  (plugins / multi-goal / hot-reload) should be opened to host the follow-up
-  ADRs.
+* **Driving issues**: #17 (long-lived watcher mode) and #19 (sensor ordering as
+  a foot-gun) are both subsumed by the reactive runtime — watcher behaviour is
+  now the *default* (perpetual daemon), not an opt-in flag. The actor-pivot
+  tracking issue is #58.
 * **Composes with ADR 0003**: the runtime `Values` map keeps living in
   `uncharles`, now owned by `WorldStateActor` and travelling beside `State`
   through `ApplyReading`/snapshot messages. No change to ADR 0003's contract.

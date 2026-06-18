@@ -62,11 +62,13 @@ struct RunArgs {
     #[arg(long, value_name = "FACT")]
     have: Vec<String>,
 
-    /// Execute the plan: start the reactive runtime (ADR 0005) — sensors poll
-    /// continuously and in parallel, world-state changes trigger replanning,
-    /// and the executor runs the freshest plan, applying each action's effects
-    /// and replanning until the goal is satisfied (or, with `--watch`, forever).
-    /// Without this flag, uncharles does a single sense → plan and exits.
+    /// Run the automaton (ADR 0005). This is a **perpetual** sense → plan →
+    /// act → sense loop: sensors poll continuously and in parallel, a change to
+    /// the world state triggers a replan, the executor drives the freshest plan
+    /// to the goal, and once the goal is reached the automaton returns to
+    /// sensing — waiting for the world to diverge again. It runs until SIGINT
+    /// (or an unrecoverable action failure). Without this flag, uncharles does a
+    /// single sense → plan and exits. See `--once` to drive to the goal and exit.
     #[arg(long)]
     execute: bool,
 
@@ -75,17 +77,18 @@ struct RunArgs {
     max_iterations: usize,
 
     /// Per-sensor poll cadence in milliseconds when `--execute` is set.
-    /// `0` (the default) polls as fast as each shell-out allows, which suits
-    /// "drive to goal" configs. Set a non-zero value to pace "watch the world"
-    /// configs whose sensors hit an external API.
+    /// `0` (the default) polls as fast as each shell-out allows. Set a non-zero
+    /// value to pace sensors that hit an external API every cycle.
     #[arg(long, default_value_t = 0, value_name = "MS")]
     interval_ms: u64,
 
-    /// Keep running after the goal is satisfied (or no plan exists): stay up,
-    /// keep sensing, and act again when the world next diverges. Only
-    /// meaningful with `--execute`. SIGINT stops the watcher cleanly.
+    /// One-shot mode: drive to the goal once and exit instead of the default
+    /// perpetual loop. With `--once`, a satisfied goal exits 0 and an
+    /// unreachable goal exits 1 (no-plan) — useful for CI and scripting where
+    /// you want a definitive outcome rather than a long-lived automaton. Only
+    /// meaningful with `--execute`.
     #[arg(long)]
-    watch: bool,
+    once: bool,
 
     /// Human-readable output. Defaults to JSON (or NDJSON in execute mode).
     #[arg(long)]
@@ -236,7 +239,8 @@ fn run_execute_mode(args: &RunArgs, config: &Config) -> ExitCode {
         seed: args.have.clone(),
         interval_ms: args.interval_ms,
         max_actions: args.max_iterations,
-        watch: args.watch,
+        // Perpetual by default; `--once` opts into drive-to-goal-and-exit.
+        watch: !args.once,
     };
 
     let outcome = runtime.block_on(AgentRuntime::run(config, params, |event| {
@@ -244,11 +248,13 @@ fn run_execute_mode(args: &RunArgs, config: &Config) -> ExitCode {
     }));
 
     match outcome {
-        RuntimeOutcome::GoalSatisfied => ExitCode::SUCCESS,
+        // A signal-driven drain is a clean service stop (systemd/Docker send
+        // SIGTERM to stop a daemon), as is reaching the goal in `--once` mode.
+        RuntimeOutcome::GoalSatisfied | RuntimeOutcome::Interrupted => ExitCode::SUCCESS,
+        // `--once`-only terminals: the goal is unreachable or the cap was hit.
         RuntimeOutcome::NoPlan
         | RuntimeOutcome::ActionFailed { .. }
-        | RuntimeOutcome::MaxActionsReached { .. }
-        | RuntimeOutcome::Interrupted => ExitCode::from(1),
+        | RuntimeOutcome::MaxActionsReached { .. } => ExitCode::from(1),
         RuntimeOutcome::Error { .. } => ExitCode::from(2),
     }
 }

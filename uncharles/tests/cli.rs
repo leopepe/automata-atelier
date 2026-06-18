@@ -51,6 +51,7 @@ fn execute_reactive_runtime_drives_smoke_config_to_goal() {
         .arg("--config")
         .arg(config_path("smoke_loop.yaml"))
         .arg("--execute")
+        .arg("--once")
         .output()
         .expect("failed to spawn uncharles");
     assert!(
@@ -86,6 +87,7 @@ fn execute_loop_stops_on_action_failure_and_exits_nonzero() {
         .arg("--config")
         .arg(config_path("smoke_failure.yaml"))
         .arg("--execute")
+        .arg("--once")
         .output()
         .expect("failed to spawn uncharles");
     assert_eq!(
@@ -149,6 +151,7 @@ fn execute_with_sensor_poll_interval_still_reaches_goal() {
         .arg("--config")
         .arg(config_path("smoke_loop.yaml"))
         .arg("--execute")
+        .arg("--once")
         .arg("--interval-ms")
         .arg("50")
         .output()
@@ -391,6 +394,7 @@ fn execute_loop_captures_sensor_stdout_and_injects_into_action_env() {
         .arg("--config")
         .arg(config_path("smoke_capture.yaml"))
         .arg("--execute")
+        .arg("--once")
         .output()
         .expect("failed to spawn uncharles");
     assert!(
@@ -466,6 +470,7 @@ fn execute_loop_drives_podcast_pipeline_end_to_end() {
         .arg("--config")
         .arg(config_path("podcast.yaml"))
         .arg("--execute")
+        .arg("--once")
         .output()
         .expect("failed to spawn uncharles");
 
@@ -555,6 +560,7 @@ fn execute_loop_recovers_via_action_on_failure() {
         .arg("--config")
         .arg(config_path("smoke_recover.yaml"))
         .arg("--execute")
+        .arg("--once")
         .arg("--have")
         .arg("fast_path_available")
         .output()

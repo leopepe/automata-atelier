@@ -34,8 +34,33 @@ pub struct RuntimeParams {
     pub interval_ms: u64,
     /// Safety cap on actions executed before the run stops.
     pub max_actions: usize,
-    /// Keep running past goal-satisfied / no-plan (watcher mode, issue #17).
+    /// Run as a perpetual automaton: when the goal is satisfied (or no plan
+    /// currently exists) the runtime returns to sensing and waits for the world
+    /// to diverge again, rather than exiting. This is the daemon default;
+    /// `--once` sets it to `false` for a one-shot drive-to-goal-and-exit run.
     pub watch: bool,
+}
+
+/// Completes on the first service-stop signal.
+///
+/// On Unix that is SIGINT **or** SIGTERM — the signals an operator, systemd, or
+/// Docker uses to stop a daemon — so uncharles drains gracefully on either
+/// rather than being killed abruptly. Elsewhere it falls back to Ctrl-C.
+async fn shutdown_signal() {
+    // SIGINT is handled portably via `ctrl_c()`; SIGTERM needs the Unix-only
+    // stream. If the SIGTERM handler can't be installed we still honour SIGINT.
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        if let Ok(mut sigterm) = signal(SignalKind::terminate()) {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = sigterm.recv() => {}
+            }
+            return;
+        }
+    }
+    let _ = tokio::signal::ctrl_c().await;
 }
 
 /// Entry point for the actor runtime.
@@ -128,12 +153,17 @@ impl AgentRuntime {
         // 6. Kick the first plan from the swept initial state.
         let _ = world.tell(Bootstrap).send().await;
 
-        // 7. Render events until a terminal outcome or SIGINT.
+        // 7. Render events until a terminal outcome or a stop signal. uncharles
+        //    runs as a long-lived service, so it drains on SIGTERM (systemd /
+        //    Docker `stop`) as well as SIGINT. The signal future is created once
+        //    and polled by reference so handlers aren't re-registered per event.
+        let shutdown = shutdown_signal();
+        tokio::pin!(shutdown);
         let outcome = loop {
             tokio::select! {
                 biased;
                 res = &mut done_rx => break res.unwrap_or(RuntimeOutcome::Interrupted),
-                _ = tokio::signal::ctrl_c() => break RuntimeOutcome::Interrupted,
+                () = &mut shutdown => break RuntimeOutcome::Interrupted,
                 maybe = ev_rx.recv() => {
                     if let Some(ev) = maybe {
                         on_event(&ev);

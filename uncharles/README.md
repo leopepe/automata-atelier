@@ -6,14 +6,13 @@
 
 Sense → plan → act runtime that drives [`goap-planner`](../goap-planner/) from a YAML config. The first automaton built in the [Automata Atelier](../) workspace.
 
-`uncharles` reads a config that declares **sensors** (shell probes that read the world) and **actions** (shell commands with preconditions, effects, and a cost). Without `--execute` it does a single sense → plan and prints the cheapest plan to the goal. With `--execute` it runs the **reactive runtime** ([ADR 0005](../docs/adrs/0005-actor-based-reactive-runtime.md)): sensors poll continuously and in parallel, a change to the world state triggers a replan, and an executor runs the freshest plan one action at a time — re-sensing and replanning so divergence reroutes execution rather than blindly continuing.
+`uncharles` reads a config that declares **sensors** (shell probes that read the world) and **actions** (shell commands with preconditions, effects, and a cost). Without `--execute` it does a single sense → plan and prints the cheapest plan to the goal. With `--execute` it runs as a **perpetual automaton** ([ADR 0005](../docs/adrs/0005-actor-based-reactive-runtime.md)) — a long-lived daemon that senses the environment continuously and in parallel, and when it detects a change it plans and acts toward the goal; once the goal is reached it returns to sensing, waiting for the world to diverge again. It runs until stopped (SIGINT/SIGTERM). Use `--once` to drive to the goal a single time and exit (CI/scripting).
 
 ## Features
 
 - **YAML-first** — describe the world in declarative `sensors` / `actions` / `goal` lists. No Rust required for new automatons.
-- **Reactive actor runtime** — under `--execute`, sensors run continuously and in parallel ([`kameo`](https://docs.rs/kameo) actors on `tokio`); world-state changes edge-trigger replanning and the executor always runs the freshest plan. See [ADR 0005](../docs/adrs/0005-actor-based-reactive-runtime.md).
-- **Plan-only or execute** — without `--execute`, prints the plan (`--pretty` for human-readable); `--execute` runs it. Same config, two modes.
-- **Watcher mode** — `--execute --watch` stays up past goal-satisfied, acting again whenever the world next diverges.
+- **Perpetual automaton (daemon)** — `--execute` runs a long-lived service ([`kameo`](https://docs.rs/kameo) actors on `tokio`): sensors poll continuously and in parallel, world-state changes edge-trigger replanning, the executor drives the freshest plan to the goal, then it returns to sensing. Drains gracefully on SIGINT/SIGTERM. See [ADR 0005](../docs/adrs/0005-actor-based-reactive-runtime.md).
+- **Plan-only, run, or one-shot** — without `--execute`, prints the plan (`--pretty` for human-readable); `--execute` runs the daemon; `--execute --once` drives to the goal a single time and exits (definitive exit code for CI/scripting).
 - **Graceful shutdown** — `Ctrl+C` drains the runtime cleanly between actions, never mid-action.
 
 ## Installation
@@ -72,18 +71,19 @@ Plan a sequence and print it:
 cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --pretty
 ```
 
-Execute via the reactive runtime, re-sensing and replanning on divergence:
-
-```sh
-cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --execute --pretty
-```
-
-Stay up as a watcher (act again whenever the world next diverges), pacing
-sensor polls to once a second:
+Run as a daemon — sense continuously, act on divergence, return to sensing
+(pacing sensor polls to once a second). Stop with Ctrl+C / SIGTERM:
 
 ```sh
 cargo run -p uncharles -- run --config uncharles/configs/podcast.yaml \
-  --execute --watch --interval-ms 1000
+  --execute --interval-ms 1000
+```
+
+One-shot: drive to the goal a single time and exit (CI/scripting) — exits 0
+on goal-satisfied, 1 if the goal is unreachable:
+
+```sh
+cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --execute --once --pretty
 ```
 
 Under `--execute`, `--interval-ms` is the per-sensor poll cadence and
