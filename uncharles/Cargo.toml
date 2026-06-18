@@ -1,6 +1,6 @@
 [package]
 name = "uncharles"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 description = "Sense → plan → act runtime that drives goap-planner from a YAML config to automate shell tasks. The first automaton built in the Automata Atelier workspace."
