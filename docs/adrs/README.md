@@ -17,6 +17,7 @@ next free number.
 | 0002 | [Use uncharles as a post-apply IaC convergence watcher, not a CI replacement](./0002-uncharles-as-post-apply-iac-convergence-watcher.md) | accepted | 2026-05-03 |
 | 0003 | [Value-carrying facts live in the uncharles runtime, not in goap-planner's State](./0003-value-carrying-facts-runtime-side.md) | accepted | 2026-05-03 |
 | 0004 | [Publish `uncharles` to nixpkgs](./0004-publish-uncharles-to-nixpkgs.md) | accepted | 2026-05-17 |
+| 0005 | [Actor-based reactive runtime for uncharles (kameo)](./0005-actor-based-reactive-runtime.md) | proposed | 2026-06-18 |
 
 ## Status legend
 

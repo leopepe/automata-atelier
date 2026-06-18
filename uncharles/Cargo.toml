@@ -1,6 +1,6 @@
 [package]
 name = "uncharles"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 description = "Sense → plan → act runtime that drives goap-planner from a YAML config to automate shell tasks. The first automaton built in the Automata Atelier workspace."
@@ -13,7 +13,37 @@ readme = "README.md"
 [dependencies]
 goap-planner = { path = "../goap-planner", version = "0.1" }
 clap = { version = "4", features = ["derive"] }
-ctrlc = { version = "3", features = ["termination"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+# Actor runtime (ADR 0005). kameo runs on tokio; the `remote`/libp2p feature
+# is off by default, keeping the dependency surface modest. Pinned to 0.20.x
+# because kameo is pre-1.0 and churns between minor releases — the `actors`
+# module isolates the API so an upgrade (or framework swap) is contained.
+kameo = "0.20"
+# Multi-threaded runtime is what gives sensors real OS-thread parallelism.
+# `process` for async sensor/action shell-outs, `time` for poll timers,
+# `signal` for graceful ctrl-c drain, `sync` for the output channel.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time", "signal", "sync"] }
+
+# Pedantic lint posture, scoped to uncharles only — this is the crate with the
+# async actor runtime, so its memory / async / parallelism surface gets the
+# strictest scrutiny. The sibling library crates (grafo, goap-planner) keep
+# their own lighter posture; pedantic is deliberately not applied there.
+#
+# `warn` here, promoted to errors by the CI clippy gate (`-D warnings`).
+# `priority = -1` lets the individual allows below win over the group default.
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Subjective / domain-intentional lints, allowed with intent so the gate stays
+# signal-rich rather than noisy. None touch the memory/async/parallelism surface
+# pedantic+nursery scrutinise — those stay fully enforced.
+struct_excessive_bools = "allow"   # CLI arg structs legitimately carry several flags
+float_cmp = "allow"                # tests compare exact, small, integer-valued plan costs
+too_many_lines = "allow"           # a couple of end-to-end test fns are long by nature
+similar_names = "allow"            # e.g. `argv`/`args` in CLI plumbing read fine
+
+[lints.rust]
+unused = { level = "warn", priority = -1 }
+rust_2018_idioms = { level = "warn", priority = -1 }

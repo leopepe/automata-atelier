@@ -5,12 +5,17 @@
 //! Subcommands:
 //!
 //! - `run` — load the config, run sensors, plan, and (with `--execute`)
-//!   actually run the plan. The default subcommand for backward compatibility
-//!   — `uncharles --config X` is parsed as `uncharles run --config X`.
+//!   drive the actor-based reactive runtime (ADR 0005): sensors poll
+//!   continuously and in parallel, world-state changes trigger replanning, and
+//!   the executor runs the freshest plan. Without `--execute` it does a single
+//!   sense → plan and prints the result. The default subcommand for backward
+//!   compatibility — `uncharles --config X` is parsed as `uncharles run
+//!   --config X`.
 //! - `inspect` — load the config and print the static structure plus the
 //!   bounded reachable state-action graph, *without* running sensors or
 //!   actions. For visual debugging.
 
+mod actors;
 mod config;
 mod inspect;
 mod run;
@@ -18,13 +23,12 @@ mod run;
 use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use actors::{AgentRuntime, RuntimeEvent, RuntimeOutcome, RuntimeParams};
 use config::Config;
-use run::{LoopEvent, LoopOutcome, Outcome, RunError, run_loop, sense_and_plan};
+use run::{Outcome, RunError, sense_and_plan};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -58,24 +62,33 @@ struct RunArgs {
     #[arg(long, value_name = "FACT")]
     have: Vec<String>,
 
-    /// Execute the plan: actually run each action's `cmd`, re-sense, replan,
-    /// and continue until the goal is satisfied. Without this flag,
-    /// uncharles only prints the plan and exits.
+    /// Run the automaton (ADR 0005). This is a **perpetual** sense → plan →
+    /// act → sense loop: sensors poll continuously and in parallel, a change to
+    /// the world state triggers a replan, the executor drives the freshest plan
+    /// to the goal, and once the goal is reached the automaton returns to
+    /// sensing — waiting for the world to diverge again. It runs until SIGINT
+    /// (or an unrecoverable action failure). Without this flag, uncharles does a
+    /// single sense → plan and exits. See `--once` to drive to the goal and exit.
     #[arg(long)]
     execute: bool,
 
-    /// Safety cap on loop iterations when `--execute` is set. Each iteration
-    /// runs all sensors, plans, and executes one action.
+    /// Safety cap on the number of actions executed when `--execute` is set.
     #[arg(long, default_value_t = 100)]
     max_iterations: usize,
 
-    /// Minimum delay (milliseconds) between iterations of the execute loop.
-    /// `0` (the default) runs as fast as work allows, which suits "drive to
-    /// goal" configs. Set a non-zero value to pace "watch the world" configs
-    /// where sensors poll an external API. The sleep is interruptible —
-    /// SIGINT wakes it within ~50 ms regardless of the configured value.
+    /// Per-sensor poll cadence in milliseconds when `--execute` is set.
+    /// `0` (the default) polls as fast as each shell-out allows. Set a non-zero
+    /// value to pace sensors that hit an external API every cycle.
     #[arg(long, default_value_t = 0, value_name = "MS")]
     interval_ms: u64,
+
+    /// One-shot mode: drive to the goal once and exit instead of the default
+    /// perpetual loop. With `--once`, a satisfied goal exits 0 and an
+    /// unreachable goal exits 1 (no-plan) — useful for CI and scripting where
+    /// you want a definitive outcome rather than a long-lived automaton. Only
+    /// meaningful with `--execute`.
+    #[arg(long)]
+    once: bool,
 
     /// Human-readable output. Defaults to JSON (or NDJSON in execute mode).
     #[arg(long)]
@@ -131,7 +144,7 @@ fn main() -> ExitCode {
 
     match cli.command {
         Command::Run(args) => run_command(args),
-        Command::Inspect(args) => inspect_command(args),
+        Command::Inspect(args) => inspect_command(&args),
     }
 }
 
@@ -207,40 +220,42 @@ fn run_command(args: RunArgs) -> ExitCode {
 }
 
 fn run_execute_mode(args: &RunArgs, config: &Config) -> ExitCode {
-    let interrupted = Arc::new(AtomicBool::new(false));
-    let signal_flag = Arc::clone(&interrupted);
-    if let Err(e) = ctrlc::set_handler(move || {
-        signal_flag.store(true, Ordering::Relaxed);
-    }) {
-        eprintln!("error: failed to install signal handler: {e}");
-        return ExitCode::from(2);
-    }
+    // The reactive runtime needs a multi-threaded runtime so sensors get real
+    // OS-thread parallelism (ADR 0005). `enable_all` turns on the timer and
+    // signal drivers the poll loop and graceful ctrl-c drain depend on.
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("error: failed to start async runtime: {e}");
+            return ExitCode::from(2);
+        }
+    };
 
     let pretty = args.pretty;
-    let result = run_loop(
-        config,
-        args.have.clone(),
-        args.max_iterations,
-        args.interval_ms,
-        Arc::clone(&interrupted),
-        |event| emit_event(&event, pretty),
-    );
+    let params = RuntimeParams {
+        seed: args.have.clone(),
+        interval_ms: args.interval_ms,
+        max_actions: args.max_iterations,
+        // Perpetual by default; `--once` opts into drive-to-goal-and-exit.
+        watch: !args.once,
+    };
 
-    match result {
-        Ok(outcome) => {
-            emit_loop_outcome(&outcome, pretty);
-            match outcome {
-                LoopOutcome::GoalSatisfied { .. } => ExitCode::SUCCESS,
-                LoopOutcome::NoPlan { .. }
-                | LoopOutcome::ActionFailed { .. }
-                | LoopOutcome::MaxIterationsReached { .. }
-                | LoopOutcome::Interrupted { .. } => ExitCode::from(1),
-            }
-        }
-        Err(e) => {
-            emit_error(&e, pretty);
-            ExitCode::from(2)
-        }
+    let outcome = runtime.block_on(AgentRuntime::run(config, params, |event| {
+        emit_runtime_event(event, pretty);
+    }));
+
+    match outcome {
+        // A signal-driven drain is a clean service stop (systemd/Docker send
+        // SIGTERM to stop a daemon), as is reaching the goal in `--once` mode.
+        RuntimeOutcome::GoalSatisfied | RuntimeOutcome::Interrupted => ExitCode::SUCCESS,
+        // `--once`-only terminals: the goal is unreachable or the cap was hit.
+        RuntimeOutcome::NoPlan
+        | RuntimeOutcome::ActionFailed { .. }
+        | RuntimeOutcome::MaxActionsReached { .. } => ExitCode::from(1),
+        RuntimeOutcome::Error { .. } => ExitCode::from(2),
     }
 }
 
@@ -248,7 +263,7 @@ fn run_execute_mode(args: &RunArgs, config: &Config) -> ExitCode {
 // `inspect` subcommand — issue #22
 // ---------------------------------------------------------------------------
 
-fn inspect_command(args: InspectArgs) -> ExitCode {
+fn inspect_command(args: &InspectArgs) -> ExitCode {
     let raw = match fs::read_to_string(&args.config) {
         Ok(s) => s,
         Err(e) => {
@@ -385,115 +400,72 @@ fn emit_outcome(outcome: &Outcome, pretty: bool) {
     println!("{v}");
 }
 
-fn emit_event(event: &LoopEvent, pretty: bool) {
+/// Render one reactive-runtime event (ADR 0005) as pretty text or NDJSON.
+///
+/// `sensed` events are now per-sensor (sensors no longer run as a batched
+/// sweep) and carry a `changed` flag — whether the reading moved the world and
+/// triggered a replan. `planned`/`executed`/`complete` keep their previous JSON
+/// tags; the terminal `complete` event is emitted once, last.
+fn emit_runtime_event(event: &RuntimeEvent, pretty: bool) {
     if pretty {
-        match event {
-            LoopEvent::Sensed {
-                iteration,
-                readings,
-                state,
-                values,
-            } => {
-                let ok_count = readings.iter().filter(|r| r.success).count();
-                println!(
-                    "[{iteration:>3}] sense    {}/{} ok → state({}): {}",
-                    ok_count,
-                    readings.len(),
-                    state.len(),
-                    state.join(", "),
-                );
-                if !values.is_empty() {
-                    let pairs: Vec<String> =
-                        values.iter().map(|(k, v)| format!("{k}={v}")).collect();
-                    println!("      values   {}", pairs.join(", "),);
-                }
+        emit_runtime_event_pretty(event);
+    } else {
+        println!("{}", runtime_event_json(event));
+    }
+}
+
+fn emit_runtime_event_pretty(event: &RuntimeEvent) {
+    match event {
+        RuntimeEvent::Sensed {
+            sensor,
+            success,
+            changed,
+            state,
+            values,
+            ..
+        } => {
+            let status = if *success { "ok" } else { "fail" };
+            let mark = if *changed { "Δ" } else { " " };
+            println!(
+                "{mark} sense    {sensor} [{status}] → state({}): {}",
+                state.len(),
+                state.join(", "),
+            );
+            if *changed && !values.is_empty() {
+                let pairs: Vec<String> = values.iter().map(|(k, v)| format!("{k}={v}")).collect();
+                println!("      values   {}", pairs.join(", "));
             }
-            LoopEvent::Planned { iteration, plan } => match plan {
-                None => println!("[{iteration:>3}] plan     no plan exists"),
-                Some(p) if p.steps.is_empty() => {
-                    println!("[{iteration:>3}] plan     goal satisfied");
-                }
-                Some(p) => println!(
-                    "[{iteration:>3}] plan     {} steps, cost {:.1}: {}",
-                    p.steps.len(),
-                    p.cost,
-                    p.steps.join(" → "),
-                ),
-            },
-            LoopEvent::Executed { iteration, result } => {
-                let status = if result.success { "ok" } else { "FAIL" };
-                println!("[{iteration:>3}] exec     {} ... {status}", result.name);
-                if !result.success && !result.stderr.is_empty() {
-                    for line in result.stderr.lines().take(5) {
-                        println!("            stderr: {line}");
-                    }
+        }
+        RuntimeEvent::Planned { plan } => match plan {
+            None => println!("  plan     no plan exists"),
+            Some(p) if p.steps.is_empty() => println!("  plan     goal satisfied"),
+            Some(p) => println!(
+                "  plan     {} steps, cost {:.1}: {}",
+                p.steps.len(),
+                p.cost,
+                p.steps.join(" → "),
+            ),
+        },
+        RuntimeEvent::Executed { result } => {
+            let status = if result.success { "ok" } else { "FAIL" };
+            println!("  exec     {} ... {status}", result.name);
+            if !result.success && !result.stderr.is_empty() {
+                for line in result.stderr.lines().take(5) {
+                    println!("            stderr: {line}");
                 }
             }
         }
-        return;
-    }
-
-    let v = match event {
-        LoopEvent::Sensed {
-            iteration,
-            readings,
-            state,
-            values,
-        } => serde_json::json!({
-            "event": "sensed",
-            "iteration": iteration,
-            "readings": readings.iter().map(|r| serde_json::json!({
-                "name": r.name,
-                "success": r.success,
-                "added": r.added,
-                "removed": r.removed,
-                "captured_value": r.captured_value,
-            })).collect::<Vec<_>>(),
-            "state": state,
-            "values": values,
-        }),
-        LoopEvent::Planned { iteration, plan } => serde_json::json!({
-            "event": "planned",
-            "iteration": iteration,
-            "plan": plan.as_ref().map(|p| serde_json::json!({
-                "steps": p.steps,
-                "cost": p.cost,
-            })),
-        }),
-        LoopEvent::Executed { iteration, result } => serde_json::json!({
-            "event": "executed",
-            "iteration": iteration,
-            "result": {
-                "name": result.name,
-                "success": result.success,
-                "exit_code": result.exit_code,
-                "stderr": result.stderr,
-            },
-        }),
-    };
-    println!("{v}");
-}
-
-fn emit_loop_outcome(outcome: &LoopOutcome, pretty: bool) {
-    if pretty {
-        match outcome {
-            LoopOutcome::GoalSatisfied { iteration } => {
-                println!("[done]   goal satisfied after {iteration} iteration(s)");
-            }
-            LoopOutcome::NoPlan { iteration } => {
-                println!("[stop]   no plan exists at iteration {iteration}");
-            }
-            LoopOutcome::ActionFailed {
-                iteration,
+        RuntimeEvent::Complete { outcome } => match outcome {
+            RuntimeOutcome::GoalSatisfied => println!("[done]   goal satisfied"),
+            RuntimeOutcome::NoPlan => println!("[stop]   no plan exists"),
+            RuntimeOutcome::ActionFailed {
                 name,
                 exit_code,
                 stderr,
             } => {
                 println!(
-                    "[stop]   action `{name}` failed at iteration {iteration} (exit {})",
-                    exit_code
-                        .map(|c| c.to_string())
-                        .unwrap_or_else(|| "?".into()),
+                    "[stop]   action `{name}` failed (exit {})",
+                    exit_code.map_or_else(|| "?".into(), |c| c.to_string()),
                 );
                 if !stderr.is_empty() {
                     for line in stderr.lines().take(10) {
@@ -501,53 +473,89 @@ fn emit_loop_outcome(outcome: &LoopOutcome, pretty: bool) {
                     }
                 }
             }
-            LoopOutcome::Interrupted { iteration } => {
-                println!("[stop]   interrupted after {iteration} iteration(s)");
+            RuntimeOutcome::MaxActionsReached { max } => {
+                println!("[stop]   max actions reached ({max})");
             }
-            LoopOutcome::MaxIterationsReached { iteration, max } => {
-                println!("[stop]   max iterations reached ({iteration}/{max})");
-            }
-        }
-        return;
+            RuntimeOutcome::Interrupted => println!("[stop]   interrupted"),
+            RuntimeOutcome::Error { message } => println!("[error]  {message}"),
+        },
     }
+}
 
-    let v = match outcome {
-        LoopOutcome::GoalSatisfied { iteration } => serde_json::json!({
-            "event": "complete",
-            "outcome": "goal_satisfied",
-            "iterations": iteration,
-        }),
-        LoopOutcome::NoPlan { iteration } => serde_json::json!({
-            "event": "complete",
-            "outcome": "no_plan",
-            "iterations": iteration,
-        }),
-        LoopOutcome::ActionFailed {
-            iteration,
-            name,
-            exit_code,
-            stderr,
+fn runtime_event_json(event: &RuntimeEvent) -> serde_json::Value {
+    match event {
+        RuntimeEvent::Sensed {
+            sensor,
+            success,
+            added,
+            removed,
+            captured,
+            changed,
+            state,
+            values,
         } => serde_json::json!({
-            "event": "complete",
-            "outcome": "action_failed",
-            "iterations": iteration,
-            "action": name,
-            "exit_code": exit_code,
-            "stderr": stderr,
+            "event": "sensed",
+            "sensor": sensor,
+            "success": success,
+            "added": added,
+            "removed": removed,
+            "captured_value": captured,
+            "changed": changed,
+            "state": state,
+            "values": values,
         }),
-        LoopOutcome::Interrupted { iteration } => serde_json::json!({
-            "event": "complete",
-            "outcome": "interrupted",
-            "iterations": iteration,
+        RuntimeEvent::Planned { plan } => serde_json::json!({
+            "event": "planned",
+            "plan": plan.as_ref().map(|p| serde_json::json!({
+                "steps": p.steps,
+                "cost": p.cost,
+            })),
         }),
-        LoopOutcome::MaxIterationsReached { iteration, max } => serde_json::json!({
-            "event": "complete",
-            "outcome": "max_iterations_reached",
-            "iterations": iteration,
-            "max": max,
+        RuntimeEvent::Executed { result } => serde_json::json!({
+            "event": "executed",
+            "result": {
+                "name": result.name,
+                "success": result.success,
+                "exit_code": result.exit_code,
+                "stderr": result.stderr,
+            },
         }),
-    };
-    println!("{v}");
+        RuntimeEvent::Complete { outcome } => match outcome {
+            RuntimeOutcome::GoalSatisfied => serde_json::json!({
+                "event": "complete",
+                "outcome": "goal_satisfied",
+            }),
+            RuntimeOutcome::NoPlan => serde_json::json!({
+                "event": "complete",
+                "outcome": "no_plan",
+            }),
+            RuntimeOutcome::ActionFailed {
+                name,
+                exit_code,
+                stderr,
+            } => serde_json::json!({
+                "event": "complete",
+                "outcome": "action_failed",
+                "action": name,
+                "exit_code": exit_code,
+                "stderr": stderr,
+            }),
+            RuntimeOutcome::MaxActionsReached { max } => serde_json::json!({
+                "event": "complete",
+                "outcome": "max_actions_reached",
+                "max": max,
+            }),
+            RuntimeOutcome::Interrupted => serde_json::json!({
+                "event": "complete",
+                "outcome": "interrupted",
+            }),
+            RuntimeOutcome::Error { message } => serde_json::json!({
+                "event": "complete",
+                "outcome": "error",
+                "error": message,
+            }),
+        },
+    }
 }
 
 fn emit_error(err: &RunError, pretty: bool) {

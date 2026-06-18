@@ -62,7 +62,7 @@ pub struct StaticAnalysis {
 }
 
 impl StaticAnalysis {
-    pub fn is_clean(&self) -> bool {
+    pub const fn is_clean(&self) -> bool {
         self.orphan_actions.is_empty()
             && self.unreachable_goal_facts.is_empty()
             && self.dead_end_states.is_empty()
@@ -97,7 +97,7 @@ pub fn analyse(config: &Config, graph: &StateGraph) -> StaticAnalysis {
     let mut dead_end_states: Vec<usize> = (0..graph.states.len())
         .filter(|i| graph.is_dead_end(*i) && !goal_set.contains(i))
         .collect();
-    dead_end_states.sort();
+    dead_end_states.sort_unstable();
 
     StaticAnalysis {
         orphan_actions,
@@ -390,7 +390,9 @@ pub fn render_dot(
             "  // *** TRUNCATED — max_states reached; this is a partial graph ***"
         );
     }
-    if !analysis.is_clean() {
+    if analysis.is_clean() {
+        let _ = writeln!(out, "  // static analysis: clean");
+    } else {
         let _ = writeln!(out, "  // static-analysis findings:");
         for (action, fact) in &analysis.orphan_actions {
             let _ = writeln!(
@@ -411,8 +413,6 @@ pub fn render_dot(
                 format_facts(&graph.states[i].facts)
             );
         }
-    } else {
-        let _ = writeln!(out, "  // static analysis: clean");
     }
 
     let _ = writeln!(out, "}}");
@@ -517,7 +517,9 @@ pub fn render_mermaid(
             "%% *** TRUNCATED — max_states reached; this is a partial graph ***"
         );
     }
-    if !analysis.is_clean() {
+    if analysis.is_clean() {
+        let _ = writeln!(out, "%% static analysis: clean");
+    } else {
         let _ = writeln!(out, "%% static-analysis findings:");
         for (action, fact) in &analysis.orphan_actions {
             let _ = writeln!(
@@ -531,8 +533,6 @@ pub fn render_mermaid(
         for &i in &analysis.dead_end_states {
             let _ = writeln!(out, "%%   - dead-end state: S{i}");
         }
-    } else {
-        let _ = writeln!(out, "%% static analysis: clean");
     }
 
     out

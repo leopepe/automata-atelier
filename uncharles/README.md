@@ -6,14 +6,14 @@
 
 Sense → plan → act runtime that drives [`goap-planner`](../goap-planner/) from a YAML config. The first automaton built in the [Automata Atelier](../) workspace.
 
-`uncharles` reads a config that declares **sensors** (shell probes that read the world) and **actions** (shell commands with preconditions, effects, and a cost). On each cycle it runs the sensors to derive the current state, asks `goap-planner` for the cheapest plan to the goal, and either prints the plan or executes it step by step — re-sensing between steps so divergence triggers a replan rather than blind execution.
+`uncharles` reads a config that declares **sensors** (shell probes that read the world) and **actions** (shell commands with preconditions, effects, and a cost). Without `--execute` it does a single sense → plan and prints the cheapest plan to the goal. With `--execute` it runs as a **perpetual automaton** ([ADR 0005](../docs/adrs/0005-actor-based-reactive-runtime.md)) — a long-lived daemon that senses the environment continuously and in parallel, and when it detects a change it plans and acts toward the goal; once the goal is reached it returns to sensing, waiting for the world to diverge again. It runs until stopped (SIGINT/SIGTERM). Use `--once` to drive to the goal a single time and exit (CI/scripting).
 
 ## Features
 
 - **YAML-first** — describe the world in declarative `sensors` / `actions` / `goal` lists. No Rust required for new automatons.
-- **Sense → plan → act loop** — each cycle is independent; replanning on divergence is the default failure mode.
-- **Plan-only or execute** — `--pretty` prints the plan; `--execute` runs it. Same config, two modes.
-- **Graceful shutdown** — `Ctrl+C` interrupts between steps, never mid-action.
+- **Perpetual automaton (daemon)** — `--execute` runs a long-lived service ([`kameo`](https://docs.rs/kameo) actors on `tokio`): sensors poll continuously and in parallel, world-state changes edge-trigger replanning, the executor drives the freshest plan to the goal, then it returns to sensing. Drains gracefully on SIGINT/SIGTERM. See [ADR 0005](../docs/adrs/0005-actor-based-reactive-runtime.md).
+- **Plan-only, run, or one-shot** — without `--execute`, prints the plan (`--pretty` for human-readable); `--execute` runs the daemon; `--execute --once` drives to the goal a single time and exits (definitive exit code for CI/scripting).
+- **Graceful shutdown** — `Ctrl+C` drains the runtime cleanly between actions, never mid-action.
 
 ## Installation
 
@@ -71,11 +71,23 @@ Plan a sequence and print it:
 cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --pretty
 ```
 
-Execute the plan, re-sensing and replanning on divergence:
+Run as a daemon — sense continuously, act on divergence, return to sensing
+(pacing sensor polls to once a second). Stop with Ctrl+C / SIGTERM:
 
 ```sh
-cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --execute --pretty
+cargo run -p uncharles -- run --config uncharles/configs/podcast.yaml \
+  --execute --interval-ms 1000
 ```
+
+One-shot: drive to the goal a single time and exit (CI/scripting) — exits 0
+on goal-satisfied, 1 if the goal is unreachable:
+
+```sh
+cargo run -p uncharles -- run --config uncharles/configs/deploy.yaml --execute --once --pretty
+```
+
+Under `--execute`, `--interval-ms` is the per-sensor poll cadence and
+`--max-iterations` caps the number of actions executed.
 
 ### `inspect` — visualise the state-action graph
 
@@ -217,7 +229,7 @@ Real configs covering different domains — read them as a tour of what the runt
 ```
 ┌─────────────────────────────────────────────┐
 │  uncharles  (this crate)                    │
-│   YAML · sensors · actions · loop · I/O     │
+│   YAML · sensors · actions · actors · I/O   │
 └────────────────────┬────────────────────────┘
                      │  uses
 ┌────────────────────▼────────────────────────┐
@@ -232,6 +244,8 @@ Real configs covering different domains — read them as a tour of what the runt
 ```
 
 Side effects (shell exec, YAML parsing, signal handling) live here, not in the layers below. Cloud-specific adapters and any future I/O glue belong in `uncharles` (or a sibling runtime crate), never in `goap-planner`.
+
+Under `--execute`, the runtime is a small tree of [`kameo`](https://docs.rs/kameo) actors on `tokio` ([ADR 0005](../docs/adrs/0005-actor-based-reactive-runtime.md)): a sensor actor per `SensorSpec` (continuous, parallel), a world-state actor that owns the `State`/values and edge-triggers replans, a planner actor wrapping `goap-planner`, an executor actor, and a goal supervisor that arbitrates plans. `goap-planner`'s types are the messages — the actor layer wraps the planner, it never replaces it.
 
 ## Contributing
 

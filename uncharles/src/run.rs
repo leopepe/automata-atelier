@@ -1,8 +1,5 @@
 use std::collections::BTreeMap;
 use std::process::{Command, Stdio};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant};
 
 use goap_planner::{Action, Goal, Planner, State};
 
@@ -72,11 +69,17 @@ impl std::fmt::Display for RunError {
 
 impl std::error::Error for RunError {}
 
-pub fn run_sensor(
-    spec: &SensorSpec,
-    state: &mut State,
-    values: &mut Values,
-) -> Result<SensorReading, RunError> {
+/// Execute a sensor command and compute its [`SensorReading`] **without
+/// mutating any state**.
+///
+/// This is the pure-I/O half of sensing: it runs the command, captures
+/// stdout when the sensor opts into [`Capture::Stdout`], and resolves the
+/// effect lists (`added`/`removed`) via [`SensorSpec::effects_for`]. Applying
+/// those effects to a [`State`]/[`Values`] is the caller's job — see
+/// [`apply_reading`]. Splitting read from apply lets the actor runtime (ADR
+/// 0005) run the blocking command off-thread in one actor and apply the
+/// resulting reading in the world-state-owning actor.
+pub fn read_sensor(spec: &SensorSpec) -> Result<SensorReading, RunError> {
     let cmd_name = spec.cmd.first().cloned().unwrap_or_default();
     let mut command = Command::new(&cmd_name);
     command.args(spec.cmd.iter().skip(1)).stderr(Stdio::null());
@@ -117,17 +120,6 @@ pub fn run_sensor(
     };
 
     let effects = spec.effects_for(success);
-    for fact in &effects.add {
-        state.insert(fact.clone());
-    }
-    if let Some(ref v) = captured_value {
-        values.insert(spec.name.clone(), v.clone());
-    }
-    for fact in &effects.remove {
-        state.remove(fact);
-        values.remove(fact);
-    }
-
     Ok(SensorReading {
         name: spec.name.clone(),
         success,
@@ -135,6 +127,40 @@ pub fn run_sensor(
         removed: effects.remove,
         captured_value,
     })
+}
+
+/// Apply a [`SensorReading`]'s effects to `state` and `values`.
+///
+/// The pure-mutation half of sensing (see [`read_sensor`]). Adds every fact
+/// in `reading.added`, stores the captured value (if any) under the sensor's
+/// name, and removes every fact in `reading.removed` — dropping its value too,
+/// per ADR 0003's atomic-remove rule.
+pub fn apply_reading(reading: &SensorReading, state: &mut State, values: &mut Values) {
+    for fact in &reading.added {
+        state.insert(fact.clone());
+    }
+    if let Some(ref v) = reading.captured_value {
+        values.insert(reading.name.clone(), v.clone());
+    }
+    for fact in &reading.removed {
+        state.remove(fact);
+        values.remove(fact);
+    }
+}
+
+/// Run a sensor and apply its effects in one step.
+///
+/// Thin composition of [`read_sensor`] + [`apply_reading`], retained for the
+/// one-shot [`sense_and_plan`] path and as the unit under test for the sensor
+/// effect contract. The actor runtime calls the two halves separately.
+pub fn run_sensor(
+    spec: &SensorSpec,
+    state: &mut State,
+    values: &mut Values,
+) -> Result<SensorReading, RunError> {
+    let reading = read_sensor(spec)?;
+    apply_reading(&reading, state, values);
+    Ok(reading)
 }
 
 pub fn execute_action(spec: &ActionSpec, values: &Values) -> Result<ActionResult, RunError> {
@@ -182,7 +208,7 @@ pub fn execute_action(spec: &ActionSpec, values: &Values) -> Result<ActionResult
 /// fact names that collide here would clash in the child environment, but
 /// such names are exotic enough that the collision is acceptable
 /// (documented in ADR 0003).
-pub(crate) fn fact_env_var(fact: &str) -> String {
+pub fn fact_env_var(fact: &str) -> String {
     let mut s = String::with_capacity("UNCHARLES_FACT_".len() + fact.len());
     s.push_str("UNCHARLES_FACT_");
     for c in fact.chars() {
@@ -195,30 +221,14 @@ pub(crate) fn fact_env_var(fact: &str) -> String {
     s
 }
 
-/// Sleep for up to `total_ms` milliseconds, waking early if `interrupted`
-/// becomes true. The poll slice is short (50 ms) so SIGINT remains responsive
-/// even when the configured interval is long.
-fn interruptible_sleep(total_ms: u64, interrupted: &AtomicBool) {
-    if total_ms == 0 {
-        return;
-    }
-    let total = Duration::from_millis(total_ms);
-    let slice = Duration::from_millis(50);
-    let start = Instant::now();
-    loop {
-        if interrupted.load(Ordering::Relaxed) {
-            return;
-        }
-        let elapsed = start.elapsed();
-        if elapsed >= total {
-            return;
-        }
-        let remaining = total - elapsed;
-        std::thread::sleep(remaining.min(slice));
-    }
-}
-
-fn find_action_spec<'a>(specs: &'a [ActionSpec], name: &str) -> Result<&'a ActionSpec, RunError> {
+/// Find an [`ActionSpec`] by name, or return [`RunError::PlannerActionMismatch`].
+///
+/// Used by the executor actor (ADR 0005) to resolve a planner-named step back
+/// to its config spec before running its `cmd`.
+pub fn find_action_spec<'a>(
+    specs: &'a [ActionSpec],
+    name: &str,
+) -> Result<&'a ActionSpec, RunError> {
     specs
         .iter()
         .find(|a| a.name == name)
@@ -293,183 +303,6 @@ pub fn sense_and_plan(config: &Config, seed: Vec<String>) -> Result<Outcome, Run
     })
 }
 
-#[derive(Debug)]
-pub enum LoopEvent {
-    Sensed {
-        iteration: usize,
-        readings: Vec<SensorReading>,
-        state: Vec<String>,
-        values: Values,
-    },
-    Planned {
-        iteration: usize,
-        plan: Option<goap_planner::Plan>,
-    },
-    Executed {
-        iteration: usize,
-        result: ActionResult,
-    },
-}
-
-#[derive(Debug)]
-pub enum LoopOutcome {
-    GoalSatisfied {
-        iteration: usize,
-    },
-    NoPlan {
-        iteration: usize,
-    },
-    ActionFailed {
-        iteration: usize,
-        name: String,
-        exit_code: Option<i32>,
-        stderr: String,
-    },
-    Interrupted {
-        iteration: usize,
-    },
-    MaxIterationsReached {
-        iteration: usize,
-        max: usize,
-    },
-}
-
-/// Drive the sense → plan → execute loop until the goal is satisfied, the
-/// planner reports no path, an action fails without an `on_failure` clause,
-/// the iteration cap is hit, or `interrupted` flips to true (signal handler).
-///
-/// Replanning is automatic: each iteration re-runs every sensor and re-plans
-/// from the resulting [`State`]. If reality diverges from the planner's
-/// expectation (sensor for `image_built` reports false after `docker_build`
-/// "succeeded"), the next iteration's planner sees the new state and either
-/// finds a different path or returns [`LoopOutcome::NoPlan`].
-///
-/// When an action's `cmd` exits non-zero, behaviour depends on whether the
-/// action declares an `on_failure` clause:
-///
-/// - **Without `on_failure`**: the loop terminates with
-///   [`LoopOutcome::ActionFailed`]. This is the default; failure is fatal.
-/// - **With `on_failure`**: the listed adds/removes are applied to state,
-///   the loop sleeps for `interval_ms`, and the next iteration replans from
-///   the resulting state. The action's own `adds`/`removes` are *not*
-///   applied — those describe the success-path contract for the planner.
-///   If the planner can find an alternative, the loop continues; if not,
-///   the next iteration returns [`LoopOutcome::NoPlan`] cleanly.
-///
-/// `interval_ms` is the minimum delay (in milliseconds) between iterations
-/// after a successful action execution. `0` means run as fast as work allows
-/// — appropriate for "drive to goal" use cases. A non-zero value paces
-/// "watch the world" configs that would otherwise hammer external sensors in
-/// a tight goal-satisfied loop. The sleep is interruptible: SIGINT wakes it
-/// in at most ~50 ms regardless of the configured interval.
-///
-/// Returns [`RunError::PlannerActionMismatch`] if the planner ever names an
-/// action that is not present in `config.actions`. This is a programming-bug
-/// invariant under the current single-source-of-actions model, but is surfaced
-/// as a typed error so callers can report it cleanly rather than panic.
-pub fn run_loop(
-    config: &Config,
-    seed: Vec<String>,
-    max_iterations: usize,
-    interval_ms: u64,
-    interrupted: Arc<AtomicBool>,
-    mut on_event: impl FnMut(LoopEvent),
-) -> Result<LoopOutcome, RunError> {
-    let mut state = State::from_facts(seed);
-    let mut values = Values::new();
-    let actions = build_actions(&config.actions);
-    let goal = build_goal(&config.goal);
-    let planner = Planner::new(actions);
-
-    let mut iteration = 0;
-
-    loop {
-        if interrupted.load(Ordering::Relaxed) {
-            return Ok(LoopOutcome::Interrupted { iteration });
-        }
-        if iteration >= max_iterations {
-            return Ok(LoopOutcome::MaxIterationsReached {
-                iteration,
-                max: max_iterations,
-            });
-        }
-        iteration += 1;
-
-        let mut readings = Vec::with_capacity(config.sensors.len());
-        for sensor in &config.sensors {
-            readings.push(run_sensor(sensor, &mut state, &mut values)?);
-        }
-        let mut state_facts: Vec<String> = state.facts().map(String::from).collect();
-        state_facts.sort();
-        on_event(LoopEvent::Sensed {
-            iteration,
-            readings,
-            state: state_facts,
-            values: values.clone(),
-        });
-
-        let plan = planner.plan(&state, &goal).map_err(RunError::Planner)?;
-        on_event(LoopEvent::Planned {
-            iteration,
-            plan: plan.clone(),
-        });
-
-        match plan {
-            None => return Ok(LoopOutcome::NoPlan { iteration }),
-            Some(p) if p.steps.is_empty() => {
-                return Ok(LoopOutcome::GoalSatisfied { iteration });
-            }
-            Some(p) => {
-                let next = &p.steps[0];
-                let spec = find_action_spec(&config.actions, next)?;
-                let result = execute_action(spec, &values)?;
-                let result_for_event = result.clone();
-                on_event(LoopEvent::Executed {
-                    iteration,
-                    result: result_for_event,
-                });
-                if !result.success {
-                    let Some(failure_effects) = &spec.on_failure else {
-                        return Ok(LoopOutcome::ActionFailed {
-                            iteration,
-                            name: result.name,
-                            exit_code: result.exit_code,
-                            stderr: result.stderr,
-                        });
-                    };
-                    // Failure is recoverable: apply the on_failure effects
-                    // and let the next iteration replan. The action's own
-                    // adds/removes are skipped — those describe the
-                    // success-path contract, not the failure aftermath.
-                    for fact in &failure_effects.remove {
-                        state.remove(fact);
-                        values.remove(fact);
-                    }
-                    for fact in &failure_effects.add {
-                        state.insert(fact.clone());
-                    }
-                    interruptible_sleep(interval_ms, &interrupted);
-                    continue;
-                }
-                // Optimistically apply the action's declared effects so the
-                // next iteration plans from the expected post-state. Sensors
-                // run again at the top of the next iteration and will correct
-                // the state if reality disagrees — that's the replan trigger.
-                // Removing a fact also drops its captured value: ADR 0003
-                // commits to atomic fact-and-value lifetimes.
-                for fact in &spec.removes {
-                    state.remove(fact);
-                    values.remove(fact);
-                }
-                for fact in &spec.adds {
-                    state.insert(fact.clone());
-                }
-                interruptible_sleep(interval_ms, &interrupted);
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -478,7 +311,7 @@ mod tests {
     fn sensor(name: &str, cmd: &[&str]) -> SensorSpec {
         SensorSpec {
             name: name.into(),
-            cmd: cmd.iter().map(|s| s.to_string()).collect(),
+            cmd: cmd.iter().map(std::string::ToString::to_string).collect(),
             on_success: None,
             on_failure: None,
             capture: None,
@@ -489,11 +322,14 @@ mod tests {
         ActionSpec {
             name: name.into(),
             cost: 1.0,
-            requires: requires.iter().map(|s| s.to_string()).collect(),
+            requires: requires
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
             forbids: Vec::new(),
-            adds: adds.iter().map(|s| s.to_string()).collect(),
+            adds: adds.iter().map(std::string::ToString::to_string).collect(),
             removes: Vec::new(),
-            cmd: Some(cmd.iter().map(|s| s.to_string()).collect()),
+            cmd: Some(cmd.iter().map(std::string::ToString::to_string).collect()),
             on_failure: None,
         }
     }
@@ -817,63 +653,6 @@ mod tests {
         assert_eq!(spec.name, "b");
     }
 
-    // ---------------------------------------------------------------------
-    // interruptible_sleep — pacing primitive used by run_loop's --interval-ms
-    // ---------------------------------------------------------------------
-
-    #[test]
-    fn interruptible_sleep_zero_returns_immediately() {
-        let interrupted = AtomicBool::new(false);
-        let start = Instant::now();
-        interruptible_sleep(0, &interrupted);
-        assert!(
-            start.elapsed() < Duration::from_millis(20),
-            "zero interval must not sleep"
-        );
-    }
-
-    #[test]
-    fn interruptible_sleep_waits_at_least_the_configured_interval() {
-        let interrupted = AtomicBool::new(false);
-        let start = Instant::now();
-        interruptible_sleep(120, &interrupted);
-        let elapsed = start.elapsed();
-        assert!(
-            elapsed >= Duration::from_millis(120),
-            "expected ≥120 ms, got {elapsed:?}"
-        );
-        // Generous upper bound — we only care it doesn't run away.
-        assert!(
-            elapsed < Duration::from_millis(800),
-            "expected <800 ms, got {elapsed:?}"
-        );
-    }
-
-    #[test]
-    fn interruptible_sleep_wakes_early_when_interrupted_is_set_mid_wait() {
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let flag = Arc::clone(&interrupted);
-        std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(60));
-            flag.store(true, Ordering::Relaxed);
-        });
-        let start = Instant::now();
-        interruptible_sleep(5_000, &interrupted);
-        let elapsed = start.elapsed();
-        assert!(
-            elapsed < Duration::from_millis(500),
-            "expected interrupt to wake sleep promptly, got {elapsed:?}"
-        );
-    }
-
-    // ---------------------------------------------------------------------
-    // run_loop — termination conditions
-    // ---------------------------------------------------------------------
-
-    fn drain_events(events: &mut Vec<LoopEvent>) -> impl FnMut(LoopEvent) + '_ {
-        |e| events.push(e)
-    }
-
     fn three_step_config() -> Config {
         Config {
             sensors: vec![sensor("heartbeat", &["true"])],
@@ -887,286 +666,6 @@ mod tests {
                 forbids: Vec::new(),
             },
         }
-    }
-
-    #[test]
-    fn loop_terminates_at_goal_satisfied() {
-        let config = three_step_config();
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let mut events = Vec::new();
-        let outcome = run_loop(
-            &config,
-            Vec::new(),
-            100,
-            0,
-            Arc::clone(&interrupted),
-            drain_events(&mut events),
-        )
-        .unwrap();
-        match outcome {
-            LoopOutcome::GoalSatisfied { iteration } => assert_eq!(iteration, 4),
-            other => panic!("expected GoalSatisfied, got {other:?}"),
-        }
-        // 4 sense + 4 plan + 3 exec = 11 events.
-        assert_eq!(events.len(), 11);
-    }
-
-    #[test]
-    fn loop_returns_no_plan_when_goal_unreachable() {
-        let mut config = three_step_config();
-        config.goal.requires = vec!["never_set".into()];
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let outcome =
-            run_loop(&config, Vec::new(), 10, 0, Arc::clone(&interrupted), |_| {}).unwrap();
-        assert!(matches!(outcome, LoopOutcome::NoPlan { iteration: 1 }));
-    }
-
-    #[test]
-    fn loop_stops_on_action_failure_and_surfaces_stderr() {
-        let mut config = three_step_config();
-        config.actions[0] = action(
-            "do_a",
-            &["sh", "-c", "echo nope >&2; exit 3"],
-            &["heartbeat"],
-            &["a_done"],
-        );
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let outcome =
-            run_loop(&config, Vec::new(), 10, 0, Arc::clone(&interrupted), |_| {}).unwrap();
-        match outcome {
-            LoopOutcome::ActionFailed {
-                iteration,
-                name,
-                exit_code,
-                stderr,
-            } => {
-                assert_eq!(iteration, 1);
-                assert_eq!(name, "do_a");
-                assert_eq!(exit_code, Some(3));
-                assert_eq!(stderr, "nope");
-            }
-            other => panic!("expected ActionFailed, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn loop_respects_max_iterations_cap() {
-        // Sensor that adds heartbeat; action is a no-op that doesn't add the
-        // expected fact via sensor (no sensor for a_done), but optimistic
-        // effect application means do_a → a_done → goal in 2 iterations.
-        // To force the cap to bite, model a never-satisfiable scenario.
-        let config = Config {
-            sensors: vec![sensor("heartbeat", &["true"])],
-            actions: vec![
-                // Action with a precondition that never becomes true → no plan.
-                // But that returns NoPlan, not MaxIterations. Instead, build a
-                // config where each iteration makes no progress: action's
-                // effects are sensor-overridden every iteration.
-                ActionSpec {
-                    name: "loop_action".into(),
-                    cost: 1.0,
-                    requires: vec!["heartbeat".into()],
-                    forbids: Vec::new(),
-                    adds: vec!["progress".into()],
-                    removes: Vec::new(),
-                    cmd: Some(vec!["true".into()]),
-                    on_failure: None,
-                },
-            ],
-            goal: GoalSpec {
-                requires: vec!["unreachable_fact".into()],
-                forbids: Vec::new(),
-            },
-        };
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let outcome =
-            run_loop(&config, Vec::new(), 5, 0, Arc::clone(&interrupted), |_| {}).unwrap();
-        // Goal unreachable → NoPlan on first iteration, before max kicks in.
-        // This is correct behaviour: NoPlan is the natural terminator when
-        // the planner can't find a path, and is preferred over spinning.
-        assert!(matches!(outcome, LoopOutcome::NoPlan { iteration: 1 }));
-    }
-
-    #[test]
-    fn loop_returns_interrupted_when_flag_is_set_before_first_iteration() {
-        let config = three_step_config();
-        let interrupted = Arc::new(AtomicBool::new(true));
-        let outcome =
-            run_loop(&config, Vec::new(), 10, 0, Arc::clone(&interrupted), |_| {}).unwrap();
-        assert!(matches!(outcome, LoopOutcome::Interrupted { iteration: 0 }));
-    }
-
-    #[test]
-    fn loop_with_nonzero_interval_paces_iterations() {
-        // Three actions × ~60 ms inter-iteration sleep ≈ ≥120 ms (the sleep
-        // fires after each successful exec; the final iteration plans an
-        // empty plan and returns without sleeping).
-        let config = three_step_config();
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let start = Instant::now();
-        let outcome = run_loop(
-            &config,
-            Vec::new(),
-            100,
-            60,
-            Arc::clone(&interrupted),
-            |_| {},
-        )
-        .unwrap();
-        let elapsed = start.elapsed();
-        assert!(matches!(
-            outcome,
-            LoopOutcome::GoalSatisfied { iteration: 4 }
-        ));
-        assert!(
-            elapsed >= Duration::from_millis(180),
-            "expected ≥180 ms with --interval-ms=60 across 3 execs, got {elapsed:?}"
-        );
-    }
-
-    #[test]
-    fn loop_with_action_on_failure_replans_through_alternative_path() {
-        // `try_fast` fails (`cmd: false`) but its on_failure removes
-        // `fast_path_available` (its own precondition, locking it out)
-        // and adds `slow_path_unlocked` (the alternative's precondition).
-        // The loop must absorb the failure, replan, and reach the goal
-        // via `try_slow`.
-        let config = Config {
-            sensors: vec![sensor("heartbeat", &["true"])],
-            actions: vec![
-                ActionSpec {
-                    name: "try_fast".into(),
-                    cost: 1.0,
-                    requires: vec!["heartbeat".into(), "fast_path_available".into()],
-                    forbids: Vec::new(),
-                    adds: vec!["finished".into()],
-                    removes: Vec::new(),
-                    cmd: Some(vec!["false".into()]),
-                    on_failure: Some(Effects {
-                        add: vec!["slow_path_unlocked".into()],
-                        remove: vec!["fast_path_available".into()],
-                    }),
-                },
-                ActionSpec {
-                    name: "try_slow".into(),
-                    cost: 5.0,
-                    requires: vec!["slow_path_unlocked".into()],
-                    forbids: Vec::new(),
-                    adds: vec!["finished".into()],
-                    removes: Vec::new(),
-                    cmd: Some(vec!["true".into()]),
-                    on_failure: None,
-                },
-            ],
-            goal: GoalSpec {
-                requires: vec!["finished".into()],
-                forbids: Vec::new(),
-            },
-        };
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let mut events = Vec::new();
-        let outcome = run_loop(
-            &config,
-            vec!["fast_path_available".into()],
-            10,
-            0,
-            Arc::clone(&interrupted),
-            drain_events(&mut events),
-        )
-        .unwrap();
-        match outcome {
-            // Iteration 1: try_fast → fail → on_failure mutates state.
-            // Iteration 2: planner picks try_slow → succeeds.
-            // Iteration 3: empty plan → goal satisfied.
-            LoopOutcome::GoalSatisfied { iteration } => assert_eq!(iteration, 3),
-            other => panic!("expected GoalSatisfied, got {other:?}"),
-        }
-
-        let executed: Vec<(String, bool)> = events
-            .iter()
-            .filter_map(|e| match e {
-                LoopEvent::Executed { result, .. } => Some((result.name.clone(), result.success)),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(
-            executed,
-            vec![
-                ("try_fast".to_string(), false),
-                ("try_slow".to_string(), true),
-            ],
-            "expected try_fast to fail then try_slow to succeed",
-        );
-    }
-
-    #[test]
-    fn loop_with_action_on_failure_returns_no_plan_when_no_alternative_exists() {
-        // `only_path` is the only way to reach `done`; on failure it
-        // removes its own precondition and adds nothing useful. The next
-        // iteration's planner sees no path → NoPlan.
-        let config = Config {
-            sensors: vec![sensor("heartbeat", &["true"])],
-            actions: vec![ActionSpec {
-                name: "only_path".into(),
-                cost: 1.0,
-                requires: vec!["heartbeat".into(), "available".into()],
-                forbids: Vec::new(),
-                adds: vec!["done".into()],
-                removes: Vec::new(),
-                cmd: Some(vec!["false".into()]),
-                on_failure: Some(Effects {
-                    add: Vec::new(),
-                    remove: vec!["available".into()],
-                }),
-            }],
-            goal: GoalSpec {
-                requires: vec!["done".into()],
-                forbids: Vec::new(),
-            },
-        };
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let outcome = run_loop(
-            &config,
-            vec!["available".into()],
-            10,
-            0,
-            Arc::clone(&interrupted),
-            |_| {},
-        )
-        .unwrap();
-        // Iteration 1: only_path runs, fails, on_failure removes `available`.
-        // Iteration 2: planner has no path to `done` → NoPlan.
-        assert!(matches!(outcome, LoopOutcome::NoPlan { iteration: 2 }));
-    }
-
-    #[test]
-    fn loop_with_long_interval_wakes_promptly_on_interrupt() {
-        let config = three_step_config();
-        let interrupted = Arc::new(AtomicBool::new(false));
-        let flag = Arc::clone(&interrupted);
-        std::thread::spawn(move || {
-            std::thread::sleep(Duration::from_millis(100));
-            flag.store(true, Ordering::Relaxed);
-        });
-        let start = Instant::now();
-        let outcome = run_loop(
-            &config,
-            Vec::new(),
-            100,
-            10_000,
-            Arc::clone(&interrupted),
-            |_| {},
-        )
-        .unwrap();
-        let elapsed = start.elapsed();
-        assert!(
-            matches!(outcome, LoopOutcome::Interrupted { .. }),
-            "expected Interrupted, got {outcome:?}"
-        );
-        assert!(
-            elapsed < Duration::from_millis(1_000),
-            "10s interval must yield to interrupt within ~1s, got {elapsed:?}"
-        );
     }
 
     // ---------------------------------------------------------------------

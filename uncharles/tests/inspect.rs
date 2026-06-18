@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-fn binary() -> &'static str {
+const fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_uncharles")
 }
 
