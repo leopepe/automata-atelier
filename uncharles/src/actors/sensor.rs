@@ -40,7 +40,7 @@ impl Actor for SensorActor {
         // Drive the poll loop from a detached task that pings this actor. It
         // exits when the actor goes away (tell returns an error), so the loop
         // is bounded by the actor's lifetime.
-        let me = actor_ref.clone();
+        let me = actor_ref;
         let interval = Duration::from_millis(args.interval_ms);
         tokio::spawn(async move {
             loop {
@@ -63,12 +63,11 @@ impl Message<Tick> for SensorActor {
     async fn handle(&mut self, _msg: Tick, _ctx: &mut Context<Self, Self::Reply>) {
         let spec = Arc::clone(&self.spec);
         // Subprocess wait is variable-latency I/O → off the async worker.
-        let reading = match tokio::task::spawn_blocking(move || read_sensor(&spec)).await {
-            Ok(Ok(reading)) => reading,
-            // Command failed to spawn (e.g. missing binary). Skip this tick;
-            // the next one retries. A permanently-broken sensor leaves its
-            // fact unchanged rather than crashing the runtime.
-            Ok(Err(_)) | Err(_) => return,
+        // Command failed to spawn (e.g. missing binary) or the blocking task
+        // panicked → skip this tick; the next one retries. A permanently-broken
+        // sensor leaves its fact unchanged rather than crashing the runtime.
+        let Ok(Ok(reading)) = tokio::task::spawn_blocking(move || read_sensor(&spec)).await else {
+            return;
         };
         let _ = self.world.tell(ApplyReading(reading)).send().await;
     }

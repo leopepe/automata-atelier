@@ -141,7 +141,7 @@ fn main() -> ExitCode {
 
     match cli.command {
         Command::Run(args) => run_command(args),
-        Command::Inspect(args) => inspect_command(args),
+        Command::Inspect(args) => inspect_command(&args),
     }
 }
 
@@ -257,7 +257,7 @@ fn run_execute_mode(args: &RunArgs, config: &Config) -> ExitCode {
 // `inspect` subcommand — issue #22
 // ---------------------------------------------------------------------------
 
-fn inspect_command(args: InspectArgs) -> ExitCode {
+fn inspect_command(args: &InspectArgs) -> ExitCode {
     let raw = match fs::read_to_string(&args.config) {
         Ok(s) => s,
         Err(e) => {
@@ -459,9 +459,7 @@ fn emit_runtime_event_pretty(event: &RuntimeEvent) {
             } => {
                 println!(
                     "[stop]   action `{name}` failed (exit {})",
-                    exit_code
-                        .map(|c| c.to_string())
-                        .unwrap_or_else(|| "?".into()),
+                    exit_code.map_or_else(|| "?".into(), |c| c.to_string()),
                 );
                 if !stderr.is_empty() {
                     for line in stderr.lines().take(10) {

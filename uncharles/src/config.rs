@@ -500,7 +500,7 @@ mod tests {
 
     #[test]
     fn parses_action_without_cmd_for_pure_planning() {
-        let yaml = r#"
+        let yaml = r"
             sensors: []
             actions:
               - name: imaginary
@@ -509,7 +509,7 @@ mod tests {
                 adds: [b]
             goal:
               requires: [b]
-        "#;
+        ";
         let config: Config = serde_yaml::from_str(yaml).unwrap();
         let a = &config.actions[0];
         assert_eq!(a.name, "imaginary");
@@ -523,13 +523,13 @@ mod tests {
     #[test]
     fn rejects_unknown_top_level_field() {
         // deny_unknown_fields catches typos in the schema.
-        let yaml = r#"
+        let yaml = r"
             sensors: []
             actions: []
             goal:
               requires: [done]
             unrelated_field: 42
-        "#;
+        ";
         let err = serde_yaml::from_str::<Config>(yaml).unwrap_err();
         assert!(
             err.to_string().contains("unrelated_field"),
@@ -573,10 +573,10 @@ mod tests {
 
     #[test]
     fn requires_goal_section() {
-        let yaml = r#"
+        let yaml = r"
             sensors: []
             actions: []
-        "#;
+        ";
         let err = serde_yaml::from_str::<Config>(yaml).unwrap_err();
         assert!(err.to_string().to_lowercase().contains("goal"));
     }

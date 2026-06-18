@@ -164,9 +164,12 @@ mod tests {
         SensorReading {
             name: name.into(),
             success: true,
-            added: added.iter().map(|s| s.to_string()).collect(),
-            removed: removed.iter().map(|s| s.to_string()).collect(),
-            captured_value: captured.map(|s| s.to_string()),
+            added: added.iter().map(std::string::ToString::to_string).collect(),
+            removed: removed
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+            captured_value: captured.map(std::string::ToString::to_string),
         }
     }
 

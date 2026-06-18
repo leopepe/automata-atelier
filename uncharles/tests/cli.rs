@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-fn binary() -> &'static str {
+const fn binary() -> &'static str {
     env!("CARGO_BIN_EXE_uncharles")
 }
 
@@ -451,8 +451,7 @@ fn execute_loop_drives_podcast_pipeline_end_to_end() {
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0),
+            .map_or(0, |d| d.as_nanos()),
     ));
     let _ = fs::remove_dir_all(&work_dir);
     fs::create_dir_all(&work_dir).unwrap();
@@ -527,7 +526,7 @@ fn execute_loop_drives_podcast_pipeline_end_to_end() {
     );
 
     let pending = state.join("pending");
-    let pending_count = fs::read_dir(&pending).map(|d| d.count()).unwrap_or(0);
+    let pending_count = fs::read_dir(&pending).map_or(0, std::iter::Iterator::count);
     assert_eq!(
         pending_count, 0,
         "pending/ should be empty after commit — commit_cycle regression",

@@ -14,7 +14,7 @@
 //!
 //! - **Sensors** run continuously and in parallel, each on its own poll
 //!   cadence, shelling out off-thread and reporting readings.
-//! - **WorldState** is the sole owner of [`goap_planner::State`] and the
+//! - **`WorldState`** is the sole owner of [`goap_planner::State`] and the
 //!   ADR-0003 `Values` map. It edge-triggers a replan only when a reading
 //!   actually changes the world (action effects always trigger one — the
 //!   executor needs the next step).
@@ -23,7 +23,7 @@
 //!   into one in-flight plan.
 //! - **Executor** runs the freshest plan one action at a time, never aborting
 //!   mid-action, and feeds optimistic effects back to the world.
-//! - **GoalSupervisor** routes changes to planner(s) and arbitrates which plan
+//! - **`GoalSupervisor`** routes changes to planner(s) and arbitrates which plan
 //!   reaches the executor — the seat where multi-goal arbitration lands later.
 //!
 //! `goap-planner` is untouched: its `State`, `Goal`, `Action`, `Plan`, and
@@ -76,7 +76,7 @@ pub enum RuntimeEvent {
 }
 
 /// Why the reactive runtime stopped. Drives the process exit code.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuntimeOutcome {
     /// The goal is satisfied (planner returned an empty plan). Exit 0.
     GoalSatisfied,

@@ -208,7 +208,7 @@ pub fn execute_action(spec: &ActionSpec, values: &Values) -> Result<ActionResult
 /// fact names that collide here would clash in the child environment, but
 /// such names are exotic enough that the collision is acceptable
 /// (documented in ADR 0003).
-pub(crate) fn fact_env_var(fact: &str) -> String {
+pub fn fact_env_var(fact: &str) -> String {
     let mut s = String::with_capacity("UNCHARLES_FACT_".len() + fact.len());
     s.push_str("UNCHARLES_FACT_");
     for c in fact.chars() {
@@ -225,7 +225,7 @@ pub(crate) fn fact_env_var(fact: &str) -> String {
 ///
 /// Used by the executor actor (ADR 0005) to resolve a planner-named step back
 /// to its config spec before running its `cmd`.
-pub(crate) fn find_action_spec<'a>(
+pub fn find_action_spec<'a>(
     specs: &'a [ActionSpec],
     name: &str,
 ) -> Result<&'a ActionSpec, RunError> {
@@ -311,7 +311,7 @@ mod tests {
     fn sensor(name: &str, cmd: &[&str]) -> SensorSpec {
         SensorSpec {
             name: name.into(),
-            cmd: cmd.iter().map(|s| s.to_string()).collect(),
+            cmd: cmd.iter().map(std::string::ToString::to_string).collect(),
             on_success: None,
             on_failure: None,
             capture: None,
@@ -322,11 +322,14 @@ mod tests {
         ActionSpec {
             name: name.into(),
             cost: 1.0,
-            requires: requires.iter().map(|s| s.to_string()).collect(),
+            requires: requires
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
             forbids: Vec::new(),
-            adds: adds.iter().map(|s| s.to_string()).collect(),
+            adds: adds.iter().map(std::string::ToString::to_string).collect(),
             removes: Vec::new(),
-            cmd: Some(cmd.iter().map(|s| s.to_string()).collect()),
+            cmd: Some(cmd.iter().map(std::string::ToString::to_string).collect()),
             on_failure: None,
         }
     }

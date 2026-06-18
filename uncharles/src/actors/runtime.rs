@@ -180,11 +180,14 @@ mod tests {
         ActionSpec {
             name: name.into(),
             cost: 1.0,
-            requires: requires.iter().map(|s| s.to_string()).collect(),
+            requires: requires
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
             forbids: Vec::new(),
-            adds: adds.iter().map(|s| s.to_string()).collect(),
+            adds: adds.iter().map(std::string::ToString::to_string).collect(),
             removes: Vec::new(),
-            cmd: Some(cmd.iter().map(|s| s.to_string()).collect()),
+            cmd: Some(cmd.iter().map(std::string::ToString::to_string).collect()),
             on_failure: None,
         }
     }
