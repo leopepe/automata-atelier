@@ -218,6 +218,9 @@ mod tests {
         let small = Graph::new(&["a", "b"], &[("a", "b", 2.0)]).unwrap();
         let later = Graph::new(&["a", "b", "c", "d"], &[("a", "d", 9.0)]).unwrap();
         let mut workspace = SearchWorkspace::new();
+        // Seed retained slots in generation two: after wrap on the smaller
+        // graph, expansion reaches two again and must not observe that tail.
+        workspace.generation = 1;
         let initial = first
             .shortest_path_cost_with_workspace("a", "d", &mut workspace)
             .unwrap();
