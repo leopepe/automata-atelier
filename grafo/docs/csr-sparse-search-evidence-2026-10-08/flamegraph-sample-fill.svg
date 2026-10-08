@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="320" viewBox="0 0 1600 320">
+<rect width="100%" height="100%" fill="white"/>
+<text x="10" y="22" font-family="monospace" font-size="16">fill: native macOS sample, main-thread stacks (5104 samples)</text>
+<text x="10" y="44" font-family="monospace" font-size="12">Widths = inclusive sample counts. Idle Rayon threads excluded. Identical function names merged.</text>
+<g><title>main thread: 5104 samples (100.00% of main thread)</title><rect x="0.000" y="285" width="1600.000" height="20" fill="rgb(200,108,129)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="299" font-family="monospace" font-size="11">main thread</text>
+</g>
+<g><title>start: 5104 samples (100.00% of main thread)</title><rect x="0.000" y="263" width="1600.000" height="20" fill="rgb(239,157,100)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="277" font-family="monospace" font-size="11">start</text>
+</g>
+<g><title>main: 5104 samples (100.00% of main thread)</title><rect x="0.000" y="241" width="1600.000" height="20" fill="rgb(213,120,124)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="255" font-family="monospace" font-size="11">main</text>
+</g>
+<g><title>std::rt::lang_start_internal: 5104 samples (100.00% of main thread)</title><rect x="0.000" y="219" width="1600.000" height="20" fill="rgb(240,169,105)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="233" font-family="monospace" font-size="11">std::rt::lang_start_internal</text>
+</g>
+<g><title>std::rt::lang_start: 5104 samples (100.00% of main thread)</title><rect x="0.000" y="197" width="1600.000" height="20" fill="rgb(211,103,95)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="211" font-family="monospace" font-size="11">std::rt::lang_start</text>
+</g>
+<g><title>std::sys::backtrace: 5104 samples (100.00% of main thread)</title><rect x="0.000" y="175" width="1600.000" height="20" fill="rgb(212,152,85)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="189" font-family="monospace" font-size="11">std::sys::backtrace</text>
+</g>
+<g><title>profile::main: 5104 samples (100.00% of main thread)</title><rect x="0.000" y="153" width="1600.000" height="20" fill="rgb(221,155,96)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="167" font-family="monospace" font-size="11">profile::main</text>
+</g>
+<g><title>_RNvMNtCs1SSuMAdGM58_3std4timeNtB2_7Instant7elapsed: 1 samples (0.02% of main thread)</title><rect x="0.000" y="131" width="0.313" height="20" fill="rgb(217,113,75)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>_RNvMNtNtNtNtCs1SSuMAdGM58_3std3sys3pal4unix4timeNtB2_8Timespec3now: 1 samples (0.02% of main thread)</title><rect x="0.000" y="109" width="0.313" height="20" fill="rgb(244,117,98)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>clock_gettime: 1 samples (0.02% of main thread)</title><rect x="0.000" y="87" width="0.313" height="20" fill="rgb(207,106,121)" stroke="white" stroke-width="0.3"/>
+</g>
+</svg>

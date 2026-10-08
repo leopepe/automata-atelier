@@ -1,0 +1,17 @@
+{
+  "native": {
+    "samples": 5103,
+    "pattern16_samples": 4308,
+    "heap_pop_samples": 182
+  },
+  "epoch": {
+    "samples": 5097,
+    "pattern16_samples": 0,
+    "heap_pop_samples": 1706
+  },
+  "fill": {
+    "samples": 5104,
+    "pattern16_samples": 0,
+    "heap_pop_samples": 0
+  }
+}

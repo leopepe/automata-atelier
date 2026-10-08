@@ -1,0 +1,708 @@
+    Finished `bench` profile [optimized + debuginfo] target(s) in 0.08s
+     Running benches/investigation.rs (/tmp/grafo-csr-comparison.RbKoeY/target/release/deps/investigation-3cb92c46b186c84a)
+Gnuplot not found, using plotters backend
+Benchmarking variants/chain_10000/sparse_fx_single_use
+Benchmarking variants/chain_10000/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/sparse_fx_single_use: Collecting 50 samples in estimated 1.6258 s (15k iterations)
+Benchmarking variants/chain_10000/sparse_fx_single_use: Analyzing
+variants/chain_10000/sparse_fx_single_use
+                        time:   [106.84 µs 107.17 µs 107.49 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/chain_10000/reuse_epoch
+Benchmarking variants/chain_10000/reuse_epoch: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/reuse_epoch: Collecting 50 samples in estimated 1.5380 s (31k iterations)
+Benchmarking variants/chain_10000/reuse_epoch: Analyzing
+variants/chain_10000/reuse_epoch
+                        time:   [47.453 µs 47.524 µs 47.595 µs]
+Benchmarking variants/chain_10000/reuse_touched
+Benchmarking variants/chain_10000/reuse_touched: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/reuse_touched: Collecting 50 samples in estimated 1.5110 s (28k iterations)
+Benchmarking variants/chain_10000/reuse_touched: Analyzing
+variants/chain_10000/reuse_touched
+                        time:   [50.648 µs 50.725 µs 50.815 µs]
+Found 4 outliers among 50 measurements (8.00%)
+  4 (8.00%) high mild
+Benchmarking variants/chain_10000/reuse_dense_fill
+Benchmarking variants/chain_10000/reuse_dense_fill: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/reuse_dense_fill: Collecting 50 samples in estimated 1.5112 s (29k iterations)
+Benchmarking variants/chain_10000/reuse_dense_fill: Analyzing
+variants/chain_10000/reuse_dense_fill
+                        time:   [48.259 µs 48.318 µs 48.381 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  3 (6.00%) high mild
+Benchmarking variants/chain_10000/zero_sentinel
+Benchmarking variants/chain_10000/zero_sentinel: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/zero_sentinel: Collecting 50 samples in estimated 1.5010 s (24k iterations)
+Benchmarking variants/chain_10000/zero_sentinel: Analyzing
+variants/chain_10000/zero_sentinel
+                        time:   [56.770 µs 56.836 µs 56.907 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/chain_10000/reserve_heap512
+Benchmarking variants/chain_10000/reserve_heap512: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/reserve_heap512: Collecting 50 samples in estimated 1.5080 s (29k iterations)
+Benchmarking variants/chain_10000/reserve_heap512: Analyzing
+variants/chain_10000/reserve_heap512
+                        time:   [48.727 µs 48.790 µs 48.848 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/chain_10000/probe_native
+Benchmarking variants/chain_10000/probe_native: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/probe_native: Collecting 50 samples in estimated 1.5097 s (29k iterations)
+Benchmarking variants/chain_10000/probe_native: Analyzing
+variants/chain_10000/probe_native
+                        time:   [48.596 µs 48.657 µs 48.722 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/chain_10000/numeric_endpoint_control
+Benchmarking variants/chain_10000/numeric_endpoint_control: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/numeric_endpoint_control: Collecting 50 samples in estimated 1.5123 s (29k iterations)
+Benchmarking variants/chain_10000/numeric_endpoint_control: Analyzing
+variants/chain_10000/numeric_endpoint_control
+                        time:   [48.393 µs 48.462 µs 48.532 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/chain_10000/stock_petgraph
+Benchmarking variants/chain_10000/stock_petgraph: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/stock_petgraph: Collecting 50 samples in estimated 1.5536 s (10k iterations)
+Benchmarking variants/chain_10000/stock_petgraph: Analyzing
+variants/chain_10000/stock_petgraph
+                        time:   [138.49 µs 138.66 µs 138.85 µs]
+Benchmarking variants/chain_10000/production_grafo
+Benchmarking variants/chain_10000/production_grafo: Warming up for 500.00 ms
+Benchmarking variants/chain_10000/production_grafo: Collecting 50 samples in estimated 1.5037 s (28k iterations)
+Benchmarking variants/chain_10000/production_grafo: Analyzing
+variants/chain_10000/production_grafo
+                        time:   [50.379 µs 50.569 µs 50.770 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  3 (6.00%) low mild
+
+Benchmarking variants/chain_100000/sparse_fx_single_use
+Benchmarking variants/chain_100000/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/sparse_fx_single_use: Collecting 50 samples in estimated 2.2130 s (2550 iterations)
+Benchmarking variants/chain_100000/sparse_fx_single_use: Analyzing
+variants/chain_100000/sparse_fx_single_use
+                        time:   [828.87 µs 829.63 µs 830.39 µs]
+Found 5 outliers among 50 measurements (10.00%)
+  3 (6.00%) low mild
+  2 (4.00%) high mild
+Benchmarking variants/chain_100000/reuse_epoch
+Benchmarking variants/chain_100000/reuse_epoch: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/reuse_epoch: Collecting 50 samples in estimated 1.9822 s (3825 iterations)
+Benchmarking variants/chain_100000/reuse_epoch: Analyzing
+variants/chain_100000/reuse_epoch
+                        time:   [477.37 µs 477.97 µs 478.63 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/chain_100000/reuse_touched
+Benchmarking variants/chain_100000/reuse_touched: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/reuse_touched: Collecting 50 samples in estimated 2.1102 s (3825 iterations)
+Benchmarking variants/chain_100000/reuse_touched: Analyzing
+variants/chain_100000/reuse_touched
+                        time:   [506.10 µs 506.51 µs 506.94 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/chain_100000/reuse_dense_fill
+Benchmarking variants/chain_100000/reuse_dense_fill: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/reuse_dense_fill: Collecting 50 samples in estimated 2.0002 s (3825 iterations)
+Benchmarking variants/chain_100000/reuse_dense_fill: Analyzing
+variants/chain_100000/reuse_dense_fill
+                        time:   [480.95 µs 481.36 µs 481.79 µs]
+Found 4 outliers among 50 measurements (8.00%)
+  3 (6.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/chain_100000/zero_sentinel
+Benchmarking variants/chain_100000/zero_sentinel: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/zero_sentinel: Collecting 50 samples in estimated 1.5287 s (2550 iterations)
+Benchmarking variants/chain_100000/zero_sentinel: Analyzing
+variants/chain_100000/zero_sentinel
+                        time:   [561.16 µs 562.41 µs 564.05 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  1 (2.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/chain_100000/reserve_heap512
+Benchmarking variants/chain_100000/reserve_heap512: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/reserve_heap512: Collecting 50 samples in estimated 2.1084 s (3825 iterations)
+Benchmarking variants/chain_100000/reserve_heap512: Analyzing
+variants/chain_100000/reserve_heap512
+                        time:   [483.08 µs 484.27 µs 486.07 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  1 (2.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/chain_100000/probe_native
+Benchmarking variants/chain_100000/probe_native: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/probe_native: Collecting 50 samples in estimated 2.0118 s (3825 iterations)
+Benchmarking variants/chain_100000/probe_native: Analyzing
+variants/chain_100000/probe_native
+                        time:   [483.02 µs 483.63 µs 484.30 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/chain_100000/numeric_endpoint_control
+Benchmarking variants/chain_100000/numeric_endpoint_control: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/numeric_endpoint_control: Collecting 50 samples in estimated 1.9919 s (3825 iterations)
+Benchmarking variants/chain_100000/numeric_endpoint_control: Analyzing
+variants/chain_100000/numeric_endpoint_control
+                        time:   [478.60 µs 479.03 µs 479.43 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  2 (4.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/chain_100000/stock_petgraph
+Benchmarking variants/chain_100000/stock_petgraph: Warming up for 500.00 ms
+
+Warning: Unable to complete 50 samples in 1.5s. You may wish to increase target time to 1.8s, enable flat sampling, or reduce sample count to 30.
+Benchmarking variants/chain_100000/stock_petgraph: Collecting 50 samples in estimated 1.7528 s (1275 iterations)
+Benchmarking variants/chain_100000/stock_petgraph: Analyzing
+variants/chain_100000/stock_petgraph
+                        time:   [1.2503 ms 1.2529 ms 1.2557 ms]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/chain_100000/production_grafo
+Benchmarking variants/chain_100000/production_grafo: Warming up for 500.00 ms
+Benchmarking variants/chain_100000/production_grafo: Collecting 50 samples in estimated 2.0796 s (3825 iterations)
+Benchmarking variants/chain_100000/production_grafo: Analyzing
+variants/chain_100000/production_grafo
+                        time:   [501.72 µs 505.34 µs 509.61 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+
+Benchmarking variants/sparse_10000_fan4_plus_backbone/sparse_fx_single_use
+Benchmarking variants/sparse_10000_fan4_plus_backbone/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/sparse_fx_single_use: Collecting 50 samples in estimated 1.5029 s (551k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/sparse_fx_single_use: Analyzing
+variants/sparse_10000_fan4_plus_backbone/sparse_fx_single_use
+                        time:   [2.5758 µs 2.5800 µs 2.5850 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  3 (6.00%) high mild
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_epoch
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_epoch: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_epoch: Collecting 50 samples in estimated 1.5002 s (1.8M iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_epoch: Analyzing
+variants/sparse_10000_fan4_plus_backbone/reuse_epoch
+                        time:   [809.22 ns 811.57 ns 814.53 ns]
+Found 3 outliers among 50 measurements (6.00%)
+  3 (6.00%) high mild
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_touched
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_touched: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_touched: Collecting 50 samples in estimated 1.5008 s (1.5M iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_touched: Analyzing
+variants/sparse_10000_fan4_plus_backbone/reuse_touched
+                        time:   [921.34 ns 932.61 ns 944.56 ns]
+Found 6 outliers among 50 measurements (12.00%)
+  4 (8.00%) high mild
+  2 (4.00%) high severe
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_dense_fill
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_dense_fill: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_dense_fill: Collecting 50 samples in estimated 1.5002 s (941k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reuse_dense_fill: Analyzing
+variants/sparse_10000_fan4_plus_backbone/reuse_dense_fill
+                        time:   [1.4975 µs 1.5065 µs 1.5166 µs]
+Benchmarking variants/sparse_10000_fan4_plus_backbone/zero_sentinel
+Benchmarking variants/sparse_10000_fan4_plus_backbone/zero_sentinel: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/zero_sentinel: Collecting 50 samples in estimated 1.5023 s (748k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/zero_sentinel: Analyzing
+variants/sparse_10000_fan4_plus_backbone/zero_sentinel
+                        time:   [1.8395 µs 1.8515 µs 1.8673 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  2 (4.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reserve_heap512
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reserve_heap512: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reserve_heap512: Collecting 50 samples in estimated 1.5014 s (900k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/reserve_heap512: Analyzing
+variants/sparse_10000_fan4_plus_backbone/reserve_heap512
+                        time:   [1.5776 µs 1.5870 µs 1.5964 µs]
+Benchmarking variants/sparse_10000_fan4_plus_backbone/probe_native
+Benchmarking variants/sparse_10000_fan4_plus_backbone/probe_native: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/probe_native: Collecting 50 samples in estimated 1.5021 s (748k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/probe_native: Analyzing
+variants/sparse_10000_fan4_plus_backbone/probe_native
+                        time:   [1.8574 µs 1.8692 µs 1.8826 µs]
+Found 5 outliers among 50 measurements (10.00%)
+  4 (8.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/sparse_10000_fan4_plus_backbone/numeric_endpoint_control
+Benchmarking variants/sparse_10000_fan4_plus_backbone/numeric_endpoint_control: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/numeric_endpoint_control: Collecting 50 samples in estimated 1.5008 s (762k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/numeric_endpoint_control: Analyzing
+variants/sparse_10000_fan4_plus_backbone/numeric_endpoint_control
+                        time:   [1.7925 µs 1.7985 µs 1.8047 µs]
+Benchmarking variants/sparse_10000_fan4_plus_backbone/stock_petgraph
+Benchmarking variants/sparse_10000_fan4_plus_backbone/stock_petgraph: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/stock_petgraph: Collecting 50 samples in estimated 1.5029 s (451k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/stock_petgraph: Analyzing
+variants/sparse_10000_fan4_plus_backbone/stock_petgraph
+                        time:   [3.1362 µs 3.1411 µs 3.1461 µs]
+Found 6 outliers among 50 measurements (12.00%)
+  4 (8.00%) high mild
+  2 (4.00%) high severe
+Benchmarking variants/sparse_10000_fan4_plus_backbone/production_grafo
+Benchmarking variants/sparse_10000_fan4_plus_backbone/production_grafo: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan4_plus_backbone/production_grafo: Collecting 50 samples in estimated 1.5005 s (747k iterations)
+Benchmarking variants/sparse_10000_fan4_plus_backbone/production_grafo: Analyzing
+variants/sparse_10000_fan4_plus_backbone/production_grafo
+                        time:   [1.8303 µs 1.8360 µs 1.8422 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+
+Benchmarking variants/sparse_100000_fan4_plus_backbone/sparse_fx_single_use
+Benchmarking variants/sparse_100000_fan4_plus_backbone/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/sparse_fx_single_use: Collecting 50 samples in estimated 1.5032 s (301k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/sparse_fx_single_use: Analyzing
+variants/sparse_100000_fan4_plus_backbone/sparse_fx_single_use
+                        time:   [4.7176 µs 4.7244 µs 4.7309 µs]
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_epoch
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_epoch: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_epoch: Collecting 50 samples in estimated 1.5003 s (898k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_epoch: Analyzing
+variants/sparse_100000_fan4_plus_backbone/reuse_epoch
+                        time:   [1.5982 µs 1.6039 µs 1.6109 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  1 (2.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_touched
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_touched: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_touched: Collecting 50 samples in estimated 1.5021 s (761k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_touched: Analyzing
+variants/sparse_100000_fan4_plus_backbone/reuse_touched
+                        time:   [1.8041 µs 1.8071 µs 1.8102 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_dense_fill
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_dense_fill: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_dense_fill: Collecting 50 samples in estimated 1.5130 s (136k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reuse_dense_fill: Analyzing
+variants/sparse_100000_fan4_plus_backbone/reuse_dense_fill
+                        time:   [10.897 µs 10.954 µs 11.010 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/sparse_100000_fan4_plus_backbone/zero_sentinel
+Benchmarking variants/sparse_100000_fan4_plus_backbone/zero_sentinel: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/zero_sentinel: Collecting 50 samples in estimated 1.5008 s (203k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/zero_sentinel: Analyzing
+variants/sparse_100000_fan4_plus_backbone/zero_sentinel
+                        time:   [7.2079 µs 7.2314 µs 7.2566 µs]
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reserve_heap512
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reserve_heap512: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reserve_heap512: Collecting 50 samples in estimated 1.5100 s (140k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/reserve_heap512: Analyzing
+variants/sparse_100000_fan4_plus_backbone/reserve_heap512
+                        time:   [9.8567 µs 10.050 µs 10.261 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  1 (2.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/sparse_100000_fan4_plus_backbone/probe_native
+Benchmarking variants/sparse_100000_fan4_plus_backbone/probe_native: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/probe_native: Collecting 50 samples in estimated 1.5067 s (136k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/probe_native: Analyzing
+variants/sparse_100000_fan4_plus_backbone/probe_native
+                        time:   [10.965 µs 11.106 µs 11.234 µs]
+Benchmarking variants/sparse_100000_fan4_plus_backbone/numeric_endpoint_control
+Benchmarking variants/sparse_100000_fan4_plus_backbone/numeric_endpoint_control: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/numeric_endpoint_control: Collecting 50 samples in estimated 1.5017 s (130k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/numeric_endpoint_control: Analyzing
+variants/sparse_100000_fan4_plus_backbone/numeric_endpoint_control
+                        time:   [11.366 µs 11.438 µs 11.522 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  3 (6.00%) high mild
+Benchmarking variants/sparse_100000_fan4_plus_backbone/stock_petgraph
+Benchmarking variants/sparse_100000_fan4_plus_backbone/stock_petgraph: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/stock_petgraph: Collecting 50 samples in estimated 1.5074 s (235k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/stock_petgraph: Analyzing
+variants/sparse_100000_fan4_plus_backbone/stock_petgraph
+                        time:   [6.0039 µs 6.0137 µs 6.0241 µs]
+Benchmarking variants/sparse_100000_fan4_plus_backbone/production_grafo
+Benchmarking variants/sparse_100000_fan4_plus_backbone/production_grafo: Warming up for 500.00 ms
+Benchmarking variants/sparse_100000_fan4_plus_backbone/production_grafo: Collecting 50 samples in estimated 1.5044 s (129k iterations)
+Benchmarking variants/sparse_100000_fan4_plus_backbone/production_grafo: Analyzing
+variants/sparse_100000_fan4_plus_backbone/production_grafo
+                        time:   [11.440 µs 11.497 µs 11.556 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+
+Benchmarking variants/sparse_10000_fan16_plus_backbone/sparse_fx_single_use
+Benchmarking variants/sparse_10000_fan16_plus_backbone/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/sparse_fx_single_use: Collecting 50 samples in estimated 1.5047 s (153k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/sparse_fx_single_use: Analyzing
+variants/sparse_10000_fan16_plus_backbone/sparse_fx_single_use
+                        time:   [9.1691 µs 9.1788 µs 9.1891 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  3 (6.00%) high mild
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_epoch
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_epoch: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_epoch: Collecting 50 samples in estimated 1.5021 s (376k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_epoch: Analyzing
+variants/sparse_10000_fan16_plus_backbone/reuse_epoch
+                        time:   [3.6233 µs 3.6282 µs 3.6332 µs]
+Found 8 outliers among 50 measurements (16.00%)
+  3 (6.00%) high mild
+  5 (10.00%) high severe
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_touched
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_touched: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_touched: Collecting 50 samples in estimated 1.5021 s (360k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_touched: Analyzing
+variants/sparse_10000_fan16_plus_backbone/reuse_touched
+                        time:   [3.8971 µs 3.9477 µs 4.0028 µs]
+Found 5 outliers among 50 measurements (10.00%)
+  5 (10.00%) high severe
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_dense_fill
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_dense_fill: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_dense_fill: Collecting 50 samples in estimated 1.5037 s (333k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reuse_dense_fill: Analyzing
+variants/sparse_10000_fan16_plus_backbone/reuse_dense_fill
+                        time:   [4.1532 µs 4.1685 µs 4.1835 µs]
+Benchmarking variants/sparse_10000_fan16_plus_backbone/zero_sentinel
+Benchmarking variants/sparse_10000_fan16_plus_backbone/zero_sentinel: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/zero_sentinel: Collecting 50 samples in estimated 1.5026 s (287k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/zero_sentinel: Analyzing
+variants/sparse_10000_fan16_plus_backbone/zero_sentinel
+                        time:   [4.8048 µs 4.8161 µs 4.8283 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reserve_heap512
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reserve_heap512: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reserve_heap512: Collecting 50 samples in estimated 1.5018 s (315k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/reserve_heap512: Analyzing
+variants/sparse_10000_fan16_plus_backbone/reserve_heap512
+                        time:   [4.4269 µs 4.4360 µs 4.4463 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  1 (2.00%) low mild
+  1 (2.00%) high mild
+Benchmarking variants/sparse_10000_fan16_plus_backbone/probe_native
+Benchmarking variants/sparse_10000_fan16_plus_backbone/probe_native: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/probe_native: Collecting 50 samples in estimated 1.5062 s (291k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/probe_native: Analyzing
+variants/sparse_10000_fan16_plus_backbone/probe_native
+                        time:   [4.8866 µs 4.8996 µs 4.9120 µs]
+Benchmarking variants/sparse_10000_fan16_plus_backbone/numeric_endpoint_control
+Benchmarking variants/sparse_10000_fan16_plus_backbone/numeric_endpoint_control: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/numeric_endpoint_control: Collecting 50 samples in estimated 1.5018 s (292k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/numeric_endpoint_control: Analyzing
+variants/sparse_10000_fan16_plus_backbone/numeric_endpoint_control
+                        time:   [4.8814 µs 4.9300 µs 4.9853 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/sparse_10000_fan16_plus_backbone/stock_petgraph
+Benchmarking variants/sparse_10000_fan16_plus_backbone/stock_petgraph: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/stock_petgraph: Collecting 50 samples in estimated 1.5083 s (111k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/stock_petgraph: Analyzing
+variants/sparse_10000_fan16_plus_backbone/stock_petgraph
+                        time:   [12.956 µs 12.989 µs 13.022 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/sparse_10000_fan16_plus_backbone/production_grafo
+Benchmarking variants/sparse_10000_fan16_plus_backbone/production_grafo: Warming up for 500.00 ms
+Benchmarking variants/sparse_10000_fan16_plus_backbone/production_grafo: Collecting 50 samples in estimated 1.5043 s (291k iterations)
+Benchmarking variants/sparse_10000_fan16_plus_backbone/production_grafo: Analyzing
+variants/sparse_10000_fan16_plus_backbone/production_grafo
+                        time:   [4.8710 µs 4.9120 µs 4.9655 µs]
+Found 4 outliers among 50 measurements (8.00%)
+  1 (2.00%) low mild
+  1 (2.00%) high mild
+  2 (4.00%) high severe
+
+Benchmarking variants/layered_100x30/sparse_fx_single_use
+Benchmarking variants/layered_100x30/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/sparse_fx_single_use: Collecting 50 samples in estimated 1.7922 s (3825 iterations)
+Benchmarking variants/layered_100x30/sparse_fx_single_use: Analyzing
+variants/layered_100x30/sparse_fx_single_use
+                        time:   [406.64 µs 413.54 µs 421.47 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/layered_100x30/reuse_epoch
+Benchmarking variants/layered_100x30/reuse_epoch: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/reuse_epoch: Collecting 50 samples in estimated 1.6737 s (5100 iterations)
+Benchmarking variants/layered_100x30/reuse_epoch: Analyzing
+variants/layered_100x30/reuse_epoch
+                        time:   [282.19 µs 286.07 µs 289.86 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/layered_100x30/reuse_touched
+Benchmarking variants/layered_100x30/reuse_touched: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/reuse_touched: Collecting 50 samples in estimated 1.5992 s (5100 iterations)
+Benchmarking variants/layered_100x30/reuse_touched: Analyzing
+variants/layered_100x30/reuse_touched
+                        time:   [280.16 µs 284.94 µs 289.78 µs]
+Benchmarking variants/layered_100x30/reuse_dense_fill
+Benchmarking variants/layered_100x30/reuse_dense_fill: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/reuse_dense_fill: Collecting 50 samples in estimated 1.5194 s (5100 iterations)
+Benchmarking variants/layered_100x30/reuse_dense_fill: Analyzing
+variants/layered_100x30/reuse_dense_fill
+                        time:   [269.60 µs 273.88 µs 278.60 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking variants/layered_100x30/zero_sentinel
+Benchmarking variants/layered_100x30/zero_sentinel: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/zero_sentinel: Collecting 50 samples in estimated 1.7877 s (5100 iterations)
+Benchmarking variants/layered_100x30/zero_sentinel: Analyzing
+variants/layered_100x30/zero_sentinel
+                        time:   [320.60 µs 324.95 µs 329.55 µs]
+Benchmarking variants/layered_100x30/reserve_heap512
+Benchmarking variants/layered_100x30/reserve_heap512: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/reserve_heap512: Collecting 50 samples in estimated 1.5703 s (5100 iterations)
+Benchmarking variants/layered_100x30/reserve_heap512: Analyzing
+variants/layered_100x30/reserve_heap512
+                        time:   [266.85 µs 272.11 µs 277.74 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/layered_100x30/probe_native
+Benchmarking variants/layered_100x30/probe_native: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/probe_native: Collecting 50 samples in estimated 1.7099 s (5100 iterations)
+Benchmarking variants/layered_100x30/probe_native: Analyzing
+variants/layered_100x30/probe_native
+                        time:   [312.98 µs 321.15 µs 328.71 µs]
+Benchmarking variants/layered_100x30/numeric_endpoint_control
+Benchmarking variants/layered_100x30/numeric_endpoint_control: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/numeric_endpoint_control: Collecting 50 samples in estimated 1.5869 s (5100 iterations)
+Benchmarking variants/layered_100x30/numeric_endpoint_control: Analyzing
+variants/layered_100x30/numeric_endpoint_control
+                        time:   [283.76 µs 289.71 µs 295.55 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking variants/layered_100x30/stock_petgraph
+Benchmarking variants/layered_100x30/stock_petgraph: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/stock_petgraph: Collecting 50 samples in estimated 2.0091 s (2550 iterations)
+Benchmarking variants/layered_100x30/stock_petgraph: Analyzing
+variants/layered_100x30/stock_petgraph
+                        time:   [745.76 µs 751.19 µs 757.96 µs]
+Found 4 outliers among 50 measurements (8.00%)
+  3 (6.00%) high mild
+  1 (2.00%) high severe
+Benchmarking variants/layered_100x30/production_grafo
+Benchmarking variants/layered_100x30/production_grafo: Warming up for 500.00 ms
+Benchmarking variants/layered_100x30/production_grafo: Collecting 50 samples in estimated 1.7525 s (5100 iterations)
+Benchmarking variants/layered_100x30/production_grafo: Analyzing
+variants/layered_100x30/production_grafo
+                        time:   [282.82 µs 286.97 µs 290.55 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+
+Benchmarking components/fresh_infinity_1000
+Benchmarking components/fresh_infinity_1000: Warming up for 500.00 ms
+Benchmarking components/fresh_infinity_1000: Collecting 50 samples in estimated 1.5000 s (17M iterations)
+Benchmarking components/fresh_infinity_1000: Analyzing
+components/fresh_infinity_1000
+                        time:   [83.755 ns 86.009 ns 88.758 ns]
+Found 3 outliers among 50 measurements (6.00%)
+  2 (4.00%) high mild
+  1 (2.00%) high severe
+Benchmarking components/fresh_zero_1000
+Benchmarking components/fresh_zero_1000: Warming up for 500.00 ms
+Benchmarking components/fresh_zero_1000: Collecting 50 samples in estimated 1.5001 s (16M iterations)
+Benchmarking components/fresh_zero_1000: Analyzing
+components/fresh_zero_1000
+                        time:   [85.319 ns 87.727 ns 90.288 ns]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking components/allocate_only_1000
+Benchmarking components/allocate_only_1000: Warming up for 500.00 ms
+Benchmarking components/allocate_only_1000: Collecting 50 samples in estimated 1.5000 s (80M iterations)
+Benchmarking components/allocate_only_1000: Analyzing
+components/allocate_only_1000
+                        time:   [17.422 ns 17.698 ns 18.021 ns]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking components/retained_fill_infinity_1000
+Benchmarking components/retained_fill_infinity_1000: Warming up for 500.00 ms
+Benchmarking components/retained_fill_infinity_1000: Collecting 50 samples in estimated 1.5000 s (22M iterations)
+Benchmarking components/retained_fill_infinity_1000: Analyzing
+components/retained_fill_infinity_1000
+                        time:   [63.859 ns 64.246 ns 64.702 ns]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high severe
+Benchmarking components/fresh_infinity_10000
+Benchmarking components/fresh_infinity_10000: Warming up for 500.00 ms
+Benchmarking components/fresh_infinity_10000: Collecting 50 samples in estimated 1.5003 s (1.3M iterations)
+Benchmarking components/fresh_infinity_10000: Analyzing
+components/fresh_infinity_10000
+                        time:   [1.0906 µs 1.0967 µs 1.1040 µs]
+Benchmarking components/fresh_zero_10000
+Benchmarking components/fresh_zero_10000: Warming up for 500.00 ms
+Benchmarking components/fresh_zero_10000: Collecting 50 samples in estimated 1.5009 s (1.9M iterations)
+Benchmarking components/fresh_zero_10000: Analyzing
+components/fresh_zero_10000
+                        time:   [759.38 ns 762.44 ns 765.59 ns]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking components/allocate_only_10000
+Benchmarking components/allocate_only_10000: Warming up for 500.00 ms
+Benchmarking components/allocate_only_10000: Collecting 50 samples in estimated 1.5001 s (18M iterations)
+Benchmarking components/allocate_only_10000: Analyzing
+components/allocate_only_10000
+                        time:   [77.395 ns 77.832 ns 78.286 ns]
+Found 4 outliers among 50 measurements (8.00%)
+  2 (4.00%) high mild
+  2 (4.00%) high severe
+Benchmarking components/retained_fill_infinity_10000
+Benchmarking components/retained_fill_infinity_10000: Warming up for 500.00 ms
+Benchmarking components/retained_fill_infinity_10000: Collecting 50 samples in estimated 1.5001 s (2.2M iterations)
+Benchmarking components/retained_fill_infinity_10000: Analyzing
+components/retained_fill_infinity_10000
+                        time:   [624.41 ns 631.22 ns 638.08 ns]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high severe
+Benchmarking components/fresh_infinity_100000
+Benchmarking components/fresh_infinity_100000: Warming up for 500.00 ms
+Benchmarking components/fresh_infinity_100000: Collecting 50 samples in estimated 1.5073 s (153k iterations)
+Benchmarking components/fresh_infinity_100000: Analyzing
+components/fresh_infinity_100000
+                        time:   [9.8388 µs 9.8956 µs 9.9544 µs]
+Found 5 outliers among 50 measurements (10.00%)
+  3 (6.00%) high mild
+  2 (4.00%) high severe
+Benchmarking components/fresh_zero_100000
+Benchmarking components/fresh_zero_100000: Warming up for 500.00 ms
+Benchmarking components/fresh_zero_100000: Collecting 50 samples in estimated 1.5023 s (291k iterations)
+Benchmarking components/fresh_zero_100000: Analyzing
+components/fresh_zero_100000
+                        time:   [5.1663 µs 5.2135 µs 5.2742 µs]
+Found 4 outliers among 50 measurements (8.00%)
+  2 (4.00%) high mild
+  2 (4.00%) high severe
+Benchmarking components/allocate_only_100000
+Benchmarking components/allocate_only_100000: Warming up for 500.00 ms
+Benchmarking components/allocate_only_100000: Collecting 50 samples in estimated 1.5001 s (18M iterations)
+Benchmarking components/allocate_only_100000: Analyzing
+components/allocate_only_100000
+                        time:   [76.043 ns 76.277 ns 76.531 ns]
+Benchmarking components/retained_fill_infinity_100000
+Benchmarking components/retained_fill_infinity_100000: Warming up for 500.00 ms
+Benchmarking components/retained_fill_infinity_100000: Collecting 50 samples in estimated 1.5105 s (182k iterations)
+Benchmarking components/retained_fill_infinity_100000: Analyzing
+components/retained_fill_infinity_100000
+                        time:   [8.1457 µs 8.3885 µs 8.6062 µs]
+Benchmarking components/fresh_infinity_1000000
+Benchmarking components/fresh_infinity_1000000: Warming up for 500.00 ms
+Benchmarking components/fresh_infinity_1000000: Collecting 50 samples in estimated 1.6163 s (17k iterations)
+Benchmarking components/fresh_infinity_1000000: Analyzing
+components/fresh_infinity_1000000
+                        time:   [97.213 µs 97.737 µs 98.265 µs]
+Found 4 outliers among 50 measurements (8.00%)
+  3 (6.00%) high mild
+  1 (2.00%) high severe
+Benchmarking components/fresh_zero_1000000
+Benchmarking components/fresh_zero_1000000: Warming up for 500.00 ms
+Benchmarking components/fresh_zero_1000000: Collecting 50 samples in estimated 1.5599 s (32k iterations)
+Benchmarking components/fresh_zero_1000000: Analyzing
+components/fresh_zero_1000000
+                        time:   [48.667 µs 48.896 µs 49.148 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking components/allocate_only_1000000
+Benchmarking components/allocate_only_1000000: Warming up for 500.00 ms
+Benchmarking components/allocate_only_1000000: Collecting 50 samples in estimated 1.5000 s (13M iterations)
+Benchmarking components/allocate_only_1000000: Analyzing
+components/allocate_only_1000000
+                        time:   [107.34 ns 108.02 ns 108.73 ns]
+Benchmarking components/retained_fill_infinity_1000000
+Benchmarking components/retained_fill_infinity_1000000: Warming up for 500.00 ms
+Benchmarking components/retained_fill_infinity_1000000: Collecting 50 samples in estimated 1.6088 s (17k iterations)
+Benchmarking components/retained_fill_infinity_1000000: Analyzing
+components/retained_fill_infinity_1000000
+                        time:   [95.415 µs 95.897 µs 96.392 µs]
+Benchmarking components/label_resolution_100k
+Benchmarking components/label_resolution_100k: Warming up for 500.00 ms
+Benchmarking components/label_resolution_100k: Collecting 50 samples in estimated 1.5000 s (230M iterations)
+Benchmarking components/label_resolution_100k: Analyzing
+components/label_resolution_100k
+                        time:   [6.0385 ns 6.0979 ns 6.1582 ns]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+
+Benchmarking padding/same_search_vertices_250000/production_grafo
+Benchmarking padding/same_search_vertices_250000/production_grafo: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_250000/production_grafo: Collecting 50 samples in estimated 1.5288 s (59k iterations)
+Benchmarking padding/same_search_vertices_250000/production_grafo: Analyzing
+padding/same_search_vertices_250000/production_grafo
+                        time:   [25.904 µs 26.052 µs 26.204 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking padding/same_search_vertices_250000/stock_petgraph
+Benchmarking padding/same_search_vertices_250000/stock_petgraph: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_250000/stock_petgraph: Collecting 50 samples in estimated 1.5003 s (228k iterations)
+Benchmarking padding/same_search_vertices_250000/stock_petgraph: Analyzing
+padding/same_search_vertices_250000/stock_petgraph
+                        time:   [6.1684 µs 6.1898 µs 6.2158 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high severe
+Benchmarking padding/same_search_vertices_250000/reuse_touched
+Benchmarking padding/same_search_vertices_250000/reuse_touched: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_250000/reuse_touched: Collecting 50 samples in estimated 1.5006 s (755k iterations)
+Benchmarking padding/same_search_vertices_250000/reuse_touched: Analyzing
+padding/same_search_vertices_250000/reuse_touched
+                        time:   [1.8041 µs 1.8063 µs 1.8086 µs]
+Found 5 outliers among 50 measurements (10.00%)
+  5 (10.00%) high mild
+Benchmarking padding/same_search_vertices_250000/reuse_epoch
+Benchmarking padding/same_search_vertices_250000/reuse_epoch: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_250000/reuse_epoch: Collecting 50 samples in estimated 1.5015 s (900k iterations)
+Benchmarking padding/same_search_vertices_250000/reuse_epoch: Analyzing
+padding/same_search_vertices_250000/reuse_epoch
+                        time:   [1.5840 µs 1.5861 µs 1.5881 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking padding/same_search_vertices_250000/zero_sentinel
+Benchmarking padding/same_search_vertices_250000/zero_sentinel: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_250000/zero_sentinel: Collecting 50 samples in estimated 1.5143 s (102k iterations)
+Benchmarking padding/same_search_vertices_250000/zero_sentinel: Analyzing
+padding/same_search_vertices_250000/zero_sentinel
+                        time:   [14.625 µs 14.695 µs 14.772 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  1 (2.00%) high mild
+  2 (4.00%) high severe
+Benchmarking padding/same_search_vertices_250000/sparse_fx_single_use
+Benchmarking padding/same_search_vertices_250000/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_250000/sparse_fx_single_use: Collecting 50 samples in estimated 1.5005 s (297k iterations)
+Benchmarking padding/same_search_vertices_250000/sparse_fx_single_use: Analyzing
+padding/same_search_vertices_250000/sparse_fx_single_use
+                        time:   [4.7244 µs 4.7310 µs 4.7372 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+
+Benchmarking padding/same_search_vertices_1000000/production_grafo
+Benchmarking padding/same_search_vertices_1000000/production_grafo: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_1000000/production_grafo: Collecting 50 samples in estimated 1.5322 s (15k iterations)
+Benchmarking padding/same_search_vertices_1000000/production_grafo: Analyzing
+padding/same_search_vertices_1000000/production_grafo
+                        time:   [98.706 µs 99.190 µs 99.688 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking padding/same_search_vertices_1000000/stock_petgraph
+Benchmarking padding/same_search_vertices_1000000/stock_petgraph: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_1000000/stock_petgraph: Collecting 50 samples in estimated 1.5067 s (215k iterations)
+Benchmarking padding/same_search_vertices_1000000/stock_petgraph: Analyzing
+padding/same_search_vertices_1000000/stock_petgraph
+                        time:   [6.6584 µs 6.6834 µs 6.7078 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking padding/same_search_vertices_1000000/reuse_touched
+Benchmarking padding/same_search_vertices_1000000/reuse_touched: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_1000000/reuse_touched: Collecting 50 samples in estimated 1.5003 s (757k iterations)
+Benchmarking padding/same_search_vertices_1000000/reuse_touched: Analyzing
+padding/same_search_vertices_1000000/reuse_touched
+                        time:   [1.8205 µs 1.8225 µs 1.8245 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking padding/same_search_vertices_1000000/reuse_epoch
+Benchmarking padding/same_search_vertices_1000000/reuse_epoch: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_1000000/reuse_epoch: Collecting 50 samples in estimated 1.5018 s (885k iterations)
+Benchmarking padding/same_search_vertices_1000000/reuse_epoch: Analyzing
+padding/same_search_vertices_1000000/reuse_epoch
+                        time:   [1.5960 µs 1.6005 µs 1.6052 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  3 (6.00%) high mild
+Benchmarking padding/same_search_vertices_1000000/zero_sentinel
+Benchmarking padding/same_search_vertices_1000000/zero_sentinel: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_1000000/zero_sentinel: Collecting 50 samples in estimated 1.5062 s (29k iterations)
+Benchmarking padding/same_search_vertices_1000000/zero_sentinel: Analyzing
+padding/same_search_vertices_1000000/zero_sentinel
+                        time:   [50.856 µs 51.078 µs 51.298 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking padding/same_search_vertices_1000000/sparse_fx_single_use
+Benchmarking padding/same_search_vertices_1000000/sparse_fx_single_use: Warming up for 500.00 ms
+Benchmarking padding/same_search_vertices_1000000/sparse_fx_single_use: Collecting 50 samples in estimated 1.5056 s (300k iterations)
+Benchmarking padding/same_search_vertices_1000000/sparse_fx_single_use: Analyzing
+padding/same_search_vertices_1000000/sparse_fx_single_use
+                        time:   [4.7147 µs 4.7212 µs 4.7275 µs]
+

@@ -1,0 +1,203 @@
+    Finished `bench` profile [optimized + debuginfo] target(s) in 0.03s
+     Running benches/followup.rs (/tmp/grafo-csr-comparison.RbKoeY/target/release/deps/followup-1cc466f5632c7fe7)
+Gnuplot not found, using plotters backend
+Benchmarking first_call/production_1_queries
+Benchmarking first_call/production_1_queries: Warming up for 500.00 ms
+Benchmarking first_call/production_1_queries: Collecting 50 samples in estimated 1.5116 s (129k iterations)
+Benchmarking first_call/production_1_queries: Analyzing
+first_call/production_1_queries
+                        time:   [11.513 µs 11.627 µs 11.754 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking first_call/epoch_1_queries_with_setup
+Benchmarking first_call/epoch_1_queries_with_setup: Warming up for 500.00 ms
+Benchmarking first_call/epoch_1_queries_with_setup: Collecting 50 samples in estimated 1.5033 s (105k iterations)
+Benchmarking first_call/epoch_1_queries_with_setup: Analyzing
+first_call/epoch_1_queries_with_setup
+                        time:   [14.189 µs 14.251 µs 14.314 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking first_call/touched_1_queries_with_setup
+Benchmarking first_call/touched_1_queries_with_setup: Warming up for 500.00 ms
+Benchmarking first_call/touched_1_queries_with_setup: Collecting 50 samples in estimated 1.5136 s (125k iterations)
+Benchmarking first_call/touched_1_queries_with_setup: Analyzing
+first_call/touched_1_queries_with_setup
+                        time:   [11.838 µs 11.900 µs 11.962 µs]
+Benchmarking first_call/production_4_queries
+Benchmarking first_call/production_4_queries: Warming up for 500.00 ms
+Benchmarking first_call/production_4_queries: Collecting 50 samples in estimated 1.5499 s (33k iterations)
+Benchmarking first_call/production_4_queries: Analyzing
+first_call/production_4_queries
+                        time:   [46.044 µs 46.268 µs 46.499 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking first_call/epoch_4_queries_with_setup
+Benchmarking first_call/epoch_4_queries_with_setup: Warming up for 500.00 ms
+Benchmarking first_call/epoch_4_queries_with_setup: Collecting 50 samples in estimated 1.5233 s (76k iterations)
+Benchmarking first_call/epoch_4_queries_with_setup: Analyzing
+first_call/epoch_4_queries_with_setup
+                        time:   [19.072 µs 19.211 µs 19.391 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high severe
+Benchmarking first_call/touched_4_queries_with_setup
+Benchmarking first_call/touched_4_queries_with_setup: Warming up for 500.00 ms
+Benchmarking first_call/touched_4_queries_with_setup: Collecting 50 samples in estimated 1.5121 s (84k iterations)
+Benchmarking first_call/touched_4_queries_with_setup: Analyzing
+first_call/touched_4_queries_with_setup
+                        time:   [17.461 µs 17.555 µs 17.650 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+
+Benchmarking rotating_8_queries/production
+Benchmarking rotating_8_queries/production: Warming up for 500.00 ms
+Benchmarking rotating_8_queries/production: Collecting 50 samples in estimated 1.5689 s (550 iterations)
+Benchmarking rotating_8_queries/production: Analyzing
+rotating_8_queries/production
+                        time:   [2.6644 ms 2.6738 ms 2.6834 ms]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking rotating_8_queries/epoch_warm
+Benchmarking rotating_8_queries/epoch_warm: Warming up for 500.00 ms
+Benchmarking rotating_8_queries/epoch_warm: Collecting 50 samples in estimated 1.5609 s (550 iterations)
+Benchmarking rotating_8_queries/epoch_warm: Analyzing
+rotating_8_queries/epoch_warm
+                        time:   [2.6714 ms 2.6941 ms 2.7205 ms]
+Found 4 outliers among 50 measurements (8.00%)
+  3 (6.00%) high mild
+  1 (2.00%) high severe
+Benchmarking rotating_8_queries/touched_warm
+Benchmarking rotating_8_queries/touched_warm: Warming up for 500.00 ms
+Benchmarking rotating_8_queries/touched_warm: Collecting 50 samples in estimated 1.5784 s (550 iterations)
+Benchmarking rotating_8_queries/touched_warm: Analyzing
+rotating_8_queries/touched_warm
+                        time:   [2.6911 ms 2.7091 ms 2.7275 ms]
+Benchmarking rotating_8_queries/sparse_fx
+Benchmarking rotating_8_queries/sparse_fx: Warming up for 500.00 ms
+Benchmarking rotating_8_queries/sparse_fx: Collecting 50 samples in estimated 1.5343 s (450 iterations)
+Benchmarking rotating_8_queries/sparse_fx: Analyzing
+rotating_8_queries/sparse_fx
+                        time:   [3.2457 ms 3.2693 ms 3.2945 ms]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+
+SEED 1 result=Some(98.0) SearchStats { pops: 56, stale_pops: 1, expanded: 54, edges: 253, relaxations: 230, discovered: 219, pushes: 231, peak_heap: 176 }
+Benchmarking alternate_seed_1/production
+Benchmarking alternate_seed_1/production: Warming up for 500.00 ms
+Benchmarking alternate_seed_1/production: Collecting 50 samples in estimated 1.5076 s (139k iterations)
+Benchmarking alternate_seed_1/production: Analyzing
+alternate_seed_1/production
+                        time:   [10.698 µs 10.763 µs 10.842 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  2 (4.00%) high mild
+  1 (2.00%) high severe
+Benchmarking alternate_seed_1/petgraph
+Benchmarking alternate_seed_1/petgraph: Warming up for 500.00 ms
+Benchmarking alternate_seed_1/petgraph: Collecting 50 samples in estimated 1.5000 s (307k iterations)
+Benchmarking alternate_seed_1/petgraph: Analyzing
+alternate_seed_1/petgraph
+                        time:   [4.5807 µs 4.5883 µs 4.5963 µs]
+Found 5 outliers among 50 measurements (10.00%)
+  4 (8.00%) high mild
+  1 (2.00%) high severe
+Benchmarking alternate_seed_1/epoch_warm
+Benchmarking alternate_seed_1/epoch_warm: Warming up for 500.00 ms
+Benchmarking alternate_seed_1/epoch_warm: Collecting 50 samples in estimated 1.5002 s (1.6M iterations)
+Benchmarking alternate_seed_1/epoch_warm: Analyzing
+alternate_seed_1/epoch_warm
+                        time:   [864.76 ns 868.75 ns 872.28 ns]
+Found 4 outliers among 50 measurements (8.00%)
+  3 (6.00%) high mild
+  1 (2.00%) high severe
+Benchmarking alternate_seed_1/touched_warm
+Benchmarking alternate_seed_1/touched_warm: Warming up for 500.00 ms
+Benchmarking alternate_seed_1/touched_warm: Collecting 50 samples in estimated 1.5011 s (1.4M iterations)
+Benchmarking alternate_seed_1/touched_warm: Analyzing
+alternate_seed_1/touched_warm
+                        time:   [981.39 ns 982.73 ns 984.36 ns]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+Benchmarking alternate_seed_1/sparse_fx
+Benchmarking alternate_seed_1/sparse_fx: Warming up for 500.00 ms
+Benchmarking alternate_seed_1/sparse_fx: Collecting 50 samples in estimated 1.5015 s (533k iterations)
+Benchmarking alternate_seed_1/sparse_fx: Analyzing
+alternate_seed_1/sparse_fx
+                        time:   [2.6467 µs 2.6515 µs 2.6568 µs]
+
+SEED 42 result=Some(138.0) SearchStats { pops: 113, stale_pops: 0, expanded: 112, edges: 557, relaxations: 527, discovered: 513, pushes: 528, peak_heap: 416 }
+Benchmarking alternate_seed_42/production
+Benchmarking alternate_seed_42/production: Warming up for 500.00 ms
+Benchmarking alternate_seed_42/production: Collecting 50 samples in estimated 1.5108 s (125k iterations)
+Benchmarking alternate_seed_42/production: Analyzing
+alternate_seed_42/production
+                        time:   [11.931 µs 11.988 µs 12.048 µs]
+Benchmarking alternate_seed_42/petgraph
+Benchmarking alternate_seed_42/petgraph: Warming up for 500.00 ms
+Benchmarking alternate_seed_42/petgraph: Collecting 50 samples in estimated 1.5040 s (144k iterations)
+Benchmarking alternate_seed_42/petgraph: Analyzing
+alternate_seed_42/petgraph
+                        time:   [9.5689 µs 9.6099 µs 9.6547 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking alternate_seed_42/epoch_warm
+Benchmarking alternate_seed_42/epoch_warm: Warming up for 500.00 ms
+Benchmarking alternate_seed_42/epoch_warm: Collecting 50 samples in estimated 1.5005 s (663k iterations)
+Benchmarking alternate_seed_42/epoch_warm: Analyzing
+alternate_seed_42/epoch_warm
+                        time:   [2.0983 µs 2.1127 µs 2.1269 µs]
+Benchmarking alternate_seed_42/touched_warm
+Benchmarking alternate_seed_42/touched_warm: Warming up for 500.00 ms
+Benchmarking alternate_seed_42/touched_warm: Collecting 50 samples in estimated 1.5024 s (572k iterations)
+Benchmarking alternate_seed_42/touched_warm: Analyzing
+alternate_seed_42/touched_warm
+                        time:   [2.4461 µs 2.4555 µs 2.4663 µs]
+Found 6 outliers among 50 measurements (12.00%)
+  6 (12.00%) high mild
+Benchmarking alternate_seed_42/sparse_fx
+Benchmarking alternate_seed_42/sparse_fx: Warming up for 500.00 ms
+Benchmarking alternate_seed_42/sparse_fx: Collecting 50 samples in estimated 1.5072 s (187k iterations)
+Benchmarking alternate_seed_42/sparse_fx: Analyzing
+alternate_seed_42/sparse_fx
+                        time:   [7.2571 µs 7.2671 µs 7.2785 µs]
+Found 8 outliers among 50 measurements (16.00%)
+  1 (2.00%) high mild
+  7 (14.00%) high severe
+
+SEED 20261008 result=Some(114.0) SearchStats { pops: 84, stale_pops: 3, expanded: 80, edges: 391, relaxations: 347, discovered: 324, pushes: 348, peak_heap: 265 }
+Benchmarking alternate_seed_20261008/production
+Benchmarking alternate_seed_20261008/production: Warming up for 500.00 ms
+Benchmarking alternate_seed_20261008/production: Collecting 50 samples in estimated 1.5064 s (130k iterations)
+Benchmarking alternate_seed_20261008/production: Analyzing
+alternate_seed_20261008/production
+                        time:   [11.344 µs 11.400 µs 11.456 µs]
+Benchmarking alternate_seed_20261008/petgraph
+Benchmarking alternate_seed_20261008/petgraph: Warming up for 500.00 ms
+Benchmarking alternate_seed_20261008/petgraph: Collecting 50 samples in estimated 1.5053 s (256k iterations)
+Benchmarking alternate_seed_20261008/petgraph: Analyzing
+alternate_seed_20261008/petgraph
+                        time:   [5.5422 µs 5.5667 µs 5.5928 µs]
+Benchmarking alternate_seed_20261008/epoch_warm
+Benchmarking alternate_seed_20261008/epoch_warm: Warming up for 500.00 ms
+Benchmarking alternate_seed_20261008/epoch_warm: Collecting 50 samples in estimated 1.5005 s (997k iterations)
+Benchmarking alternate_seed_20261008/epoch_warm: Analyzing
+alternate_seed_20261008/epoch_warm
+                        time:   [1.4202 µs 1.4248 µs 1.4299 µs]
+Found 2 outliers among 50 measurements (4.00%)
+  2 (4.00%) high mild
+Benchmarking alternate_seed_20261008/touched_warm
+Benchmarking alternate_seed_20261008/touched_warm: Warming up for 500.00 ms
+Benchmarking alternate_seed_20261008/touched_warm: Collecting 50 samples in estimated 1.5020 s (863k iterations)
+Benchmarking alternate_seed_20261008/touched_warm: Analyzing
+alternate_seed_20261008/touched_warm
+                        time:   [1.6263 µs 1.6333 µs 1.6426 µs]
+Found 6 outliers among 50 measurements (12.00%)
+  2 (4.00%) high mild
+  4 (8.00%) high severe
+Benchmarking alternate_seed_20261008/sparse_fx
+Benchmarking alternate_seed_20261008/sparse_fx: Warming up for 500.00 ms
+Benchmarking alternate_seed_20261008/sparse_fx: Collecting 50 samples in estimated 1.5010 s (321k iterations)
+Benchmarking alternate_seed_20261008/sparse_fx: Analyzing
+alternate_seed_20261008/sparse_fx
+                        time:   [4.3567 µs 4.3613 µs 4.3659 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high severe
+

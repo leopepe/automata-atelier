@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="298" viewBox="0 0 1600 298">
+<rect width="100%" height="100%" fill="white"/>
+<text x="10" y="22" font-family="monospace" font-size="16">epoch: native macOS sample, main-thread stacks (5097 samples)</text>
+<text x="10" y="44" font-family="monospace" font-size="12">Widths = inclusive sample counts. Idle Rayon threads excluded. Identical function names merged.</text>
+<g><title>main thread: 5097 samples (100.00% of main thread)</title><rect x="0.000" y="263" width="1600.000" height="20" fill="rgb(200,108,129)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="277" font-family="monospace" font-size="11">main thread</text>
+</g>
+<g><title>start: 5097 samples (100.00% of main thread)</title><rect x="0.000" y="241" width="1600.000" height="20" fill="rgb(239,157,100)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="255" font-family="monospace" font-size="11">start</text>
+</g>
+<g><title>main: 5097 samples (100.00% of main thread)</title><rect x="0.000" y="219" width="1600.000" height="20" fill="rgb(213,120,124)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="233" font-family="monospace" font-size="11">main</text>
+</g>
+<g><title>std::rt::lang_start_internal: 5097 samples (100.00% of main thread)</title><rect x="0.000" y="197" width="1600.000" height="20" fill="rgb(240,169,105)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="211" font-family="monospace" font-size="11">std::rt::lang_start_internal</text>
+</g>
+<g><title>std::rt::lang_start: 5097 samples (100.00% of main thread)</title><rect x="0.000" y="175" width="1600.000" height="20" fill="rgb(211,103,95)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="189" font-family="monospace" font-size="11">std::rt::lang_start</text>
+</g>
+<g><title>std::sys::backtrace: 5097 samples (100.00% of main thread)</title><rect x="0.000" y="153" width="1600.000" height="20" fill="rgb(212,152,85)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="167" font-family="monospace" font-size="11">std::sys::backtrace</text>
+</g>
+<g><title>profile::main: 5096 samples (99.98% of main thread)</title><rect x="0.000" y="131" width="1599.686" height="20" fill="rgb(221,155,96)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="145" font-family="monospace" font-size="11">profile::main</text>
+</g>
+<g><title>probe::Graph::probe_search: 5093 samples (99.92% of main thread)</title><rect x="0.000" y="109" width="1598.744" height="20" fill="rgb(250,104,70)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="123" font-family="monospace" font-size="11">probe::Graph::probe_search</text>
+</g>
+<g><title>BinaryHeap::pop: 1706 samples (33.47% of main thread)</title><rect x="0.000" y="87" width="535.531" height="20" fill="rgb(215,115,107)" stroke="white" stroke-width="0.3"/>
+<text x="3.000" y="101" font-family="monospace" font-size="11">BinaryHeap::pop</text>
+</g>
+<g><title>BinaryHeap::push: 7 samples (0.14% of main thread)</title><rect x="535.531" y="87" width="2.197" height="20" fill="rgb(228,139,62)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>DYLD-STUB$$memcmp: 3 samples (0.06% of main thread)</title><rect x="537.728" y="87" width="0.942" height="20" fill="rgb(218,142,73)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>_platform_memcmp: 5 samples (0.10% of main thread)</title><rect x="538.670" y="87" width="1.570" height="20" fill="rgb(239,113,74)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>Scratch::prepare: 1 samples (0.02% of main thread)</title><rect x="540.239" y="87" width="0.314" height="20" fill="rgb(236,174,132)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>Scratch::prepare: 2 samples (0.04% of main thread)</title><rect x="1598.744" y="109" width="0.628" height="20" fill="rgb(236,174,132)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>BinaryHeap::push: 1 samples (0.02% of main thread)</title><rect x="1599.372" y="109" width="0.314" height="20" fill="rgb(228,139,62)" stroke="white" stroke-width="0.3"/>
+</g>
+<g><title>probe::Graph::probe_search: 1 samples (0.02% of main thread)</title><rect x="1599.686" y="131" width="0.314" height="20" fill="rgb(250,104,70)" stroke="white" stroke-width="0.3"/>
+</g>
+</svg>

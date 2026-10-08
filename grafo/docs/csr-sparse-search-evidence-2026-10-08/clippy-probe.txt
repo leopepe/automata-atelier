@@ -1,0 +1,4 @@
+    Checking either v1.19.0
+    Checking rayon v1.12.0
+    Checking grafo-probe v0.0.0 (/private/tmp/grafo-csr-investigation.WXEatI/grafo-probe)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.64s
