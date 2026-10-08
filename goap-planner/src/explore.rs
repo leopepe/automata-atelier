@@ -63,7 +63,7 @@ pub struct StateGraph {
 /// A single discovered state in a [`StateGraph`].
 ///
 /// `signature` is the canonical string returned by
-/// [`crate::State::signature`]; two `StateNode`s with the same signature
+/// the internal `State::signature` helper; two `StateNode`s with the same signature
 /// represent the same world state. `facts` is the same set of facts in
 /// sorted form, ready for stable display.
 #[derive(Debug, Clone, PartialEq, Eq)]
