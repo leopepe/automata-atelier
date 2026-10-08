@@ -1,4 +1,0 @@
-error: no such command: `flamegraph`
-
-help: view all installed commands with `cargo --list`
-help: find a package to install `flamegraph` with `cargo search cargo-flamegraph`

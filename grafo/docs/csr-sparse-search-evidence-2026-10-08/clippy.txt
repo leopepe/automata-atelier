@@ -1,2 +1,0 @@
-    Checking grafo-csr-investigation v0.0.0 (/private/tmp/grafo-csr-investigation.WXEatI)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s

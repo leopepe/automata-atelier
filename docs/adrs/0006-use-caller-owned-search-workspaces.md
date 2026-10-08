@@ -2,52 +2,42 @@
 status: proposed
 date: 2026-10-08
 decision-makers: [leopepe]
-consulted: []
-informed: []
 ---
 
 # Use caller-owned search workspaces
 
 ## Context and Problem Statement
 
-Repeated narrow-frontier cost searches initialize distances for every vertex, including vertices never visited. The investigation found this initialization dominating a sparse query, but cold setup and broad searches do not establish a universal improvement. Refs #60.
+The improvement started with a comparison of grafo's cost-only searches against petgraph's CSR Dijkstra. That investigation identified full-graph distance initialization as avoidable work when repeated queries visit only a small frontier; it did not establish that another algorithm is universally faster. Refs [#60](https://github.com/leopepe/automata-atelier/issues/60).
 
 ## Decision Drivers
 
-- Preserve immutable CSR graphs and concurrent readers without shared mutable caches.
-- Remove repeated graph-sized distance initialization for callers that reuse query state.
-- Preserve existing APIs, error ordering, filtering, numeric behavior and one-shot performance.
-- Make retained memory and first-call setup an explicit caller trade-off.
+- Avoid repeated distance initialization and heap allocation for reusable queries.
+- Preserve immutable graphs, independent concurrent readers and existing search behavior.
+- Keep memory retention and setup costs an explicit caller choice.
 
 ## Considered Options
 
-- Keep only the existing one-shot dense-distance search.
-- Add a caller-owned generation-stamped distance array and reusable heap.
-- Add a touched-node reset workspace.
-- Replace dense distances with a sparse map or a graph-held cache.
+- Keep only the existing one-shot searches.
+- Add caller-owned generation-stamped distances and a reusable heap.
+- Replace the default search with sparse state or introduce a graph-held cache.
 
 ## Decision Outcome
 
-Chosen option: **caller-owned generation-stamped distances and reusable heap**. Add `SearchWorkspace` with `new` and `Default`, and opt-in `Graph::shortest_path_cost_with_workspace` and `Graph::shortest_path_filtered_cost_with_workspace`. Leave existing cost and full-path methods and planner integration unchanged.
+Add an optional `SearchWorkspace` and filtered/unfiltered cost-only query methods taking `&mut SearchWorkspace`. Reuse distances through generation stamps, clear the heap for each nontrivial search, and invalidate all retained stamps on generation rollover. Each concurrent caller owns a separate workspace; `Graph`, existing one-shot/full-path searches and planner integration remain unchanged.
 
-Each nontrivial search clears the heap, advances its generation and grows buffers only when required. A stamp identifies distances belonging to that search, not to a particular graph. Reuse therefore works across graphs, node-ID reorderings, graph sizes and unwound filter panics. Generation wraparound clears all retained stamps before reusing generation one. Unseen distances compare as infinity; overflowing path costs remain unreachable, as in the existing kernel.
+## Consequences
 
-### Consequences
+- Good, because warm narrow searches avoid initializing distances for unvisited nodes.
+- Good, because callers can reuse state across graph sizes, graph instances and caught filter panics without a shared cache.
+- Bad, because buffers retain peak capacity until drop, and first use, growth and rollover require initialization.
+- Bad, because cold, broad or mixed workloads may not benefit; there is no universal speedup guarantee.
 
-- Good, because warm narrow searches avoid initializing unused vertices.
-- Good, because each simultaneous caller supplies its own mutable workspace while borrowing the graph immutably.
-- Good, because generation resets do not charge a small query for the preceding broad query's visited set.
-- Bad, because distance/stamp elements use 12 bytes per retained vertex slot; peak buffer lengths, spare vector/heap capacity and allocator overhead remain allocated until drop.
-- Bad, because first use/growth and rare generation rollover perform graph-sized initialization; broad or one-shot workloads may not benefit.
-- Bad, because the optional kernel must remain semantically consistent with the original kernel.
+## Confirmation
 
-### Confirmation
-
-Verify doctests, external-consumer tests, generation rollover, retained buffers, changing graphs and filters, panic recovery, numeric boundaries and independent concurrent workspaces. Preserve deterministic cold/warm/amortized, padding, broad, filtered and mixed benchmark controls and before/after release evidence. Missing profiling or CI evidence remains an explicit incomplete gate, not ratification.
+Exercise API parity, graph switches, filters, panic recovery, retained-tail generation rollover and independent workspaces in tests. Keep cold/warm and broad-query benchmark controls; CI checks remain unchanged.
 
 ## More Information
 
-- [Design discussion](https://github.com/leopepe/automata-atelier/issues/60).
-- [Workspace performance requirements](../performance-tests.md).
-- [Grafo workspace performance evidence](../../grafo/docs/perf-comparison-2026-10-08.md).
-- Keep this ADR proposed until PR review ratifies it.
+- [Implementation and review](https://github.com/leopepe/automata-atelier/pull/61).
+- [Performance requirements](../performance-tests.md).

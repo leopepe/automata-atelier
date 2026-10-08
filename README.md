@@ -138,17 +138,7 @@ The graph kernel governs what the planners and automatons above it can promise; 
 
 ### `grafo` — graph kernel
 
-Latest provisional measurement: 2026-10-08, Apple M5 / macOS 26.6.2 / Rust 1.99.0. Regression and profiling gates remain unresolved; these observations are not an accepted new floor.
-
-| Cost-query workload | One-shot | Warm caller-owned workspace |
-|---|---:|---:|
-| Fixed sparse frontier, 100k nodes | 15.151 µs | 1.918 µs |
-| Same frontier, 1m total nodes | 99.484 µs | 1.847 µs |
-| 100k-node chain | 552.579 µs | 498.075 µs |
-| Broad equal-cost layers | 98.527 µs | 150.884 µs |
-| Eight mixed queries | 2.920 ms | 3.268 ms |
-
-The workspace is optional and cost-only. Existing path APIs and planner integration are unchanged; no planner gain is claimed. See the [reproducible comparison](grafo/docs/perf-comparison-2026-10-08.md) for fresh-workspace costs, retained memory, raw samples and the losing shapes.
+An optional caller-owned `SearchWorkspace` reuses scratch state for repeated cost-only queries. Existing one-shot and full-path searches and planner integration remain unchanged. Warm narrow queries can benefit; cold or broad queries may not. [ADR 0006](docs/adrs/0006-use-caller-owned-search-workspaces.md) records the decision and its research origin.
 
 Canonical summary: [`grafo/docs/performance.md`](grafo/docs/performance.md).
 

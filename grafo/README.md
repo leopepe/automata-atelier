@@ -114,7 +114,7 @@ assert_eq!(graph.shortest_path_filtered_cost_with_workspace(
 
 The workspace reuses distances, generation stamps and heap capacity. It can be reused across different graphs and sizes, including after a filter panic unwinds. Allocate one workspace per simultaneous worker; the graph remains immutable. Distance/stamp elements use **12 bytes per retained vertex slot**. Buffers retain their peak size; spare vector/heap capacity and allocator overhead add to this storage. Drop the workspace to release its memory.
 
-First use and growth initialize buffers; a generation rollover clears retained stamps. Warm narrow searches can benefit, but cold, broad and mixed queries may not. Existing methods remain the default for one-shot searches, and full-path methods do not use a workspace. See [reproducible comparisons](docs/perf-comparison-2026-10-08.md) for benchmark commands and measured trade-offs.
+First use and growth initialize buffers; a generation rollover clears retained stamps. Warm narrow searches can benefit, but cold, broad and mixed queries may not. Existing methods remain the default for one-shot searches, and full-path methods do not use a workspace. See [ADR 0006](../docs/adrs/0006-use-caller-owned-search-workspaces.md) for the decision and its origin.
 
 ### Concurrent queries
 
@@ -148,17 +148,9 @@ cargo run --example goap_robot_delivery  # GOAP: warehouse delivery with robot c
 
 ## Performance highlights
 
-Latest provisional run: 2026-10-08, Apple M5 / macOS 26.6.2 / Rust 1.99.0, Criterion 0.5.1, 100 samples, release profile. Existing-control regression and profiling gates remain unresolved; these are observations, not an accepted new performance floor.
+The optional workspace trades retained memory and setup cost for less repeated initialization. Measure representative workloads before opting in; it is not universally faster.
 
-| Scenario | One-shot | Warm workspace |
-|---|---:|---:|
-| Fixed sparse frontier, 100k nodes | 15.151 µs | 1.918 µs |
-| Same frontier, 1m total nodes | 99.484 µs | 1.847 µs |
-| 100k-node chain | 552.579 µs | 498.075 µs |
-| Broad equal-cost layers | 98.527 µs | 150.884 µs |
-| Eight mixed queries | 2.920 ms | 3.268 ms |
-
-The workspace is not universally faster: this run's broad and mixed controls lost approximately 53% and 12%, respectively. Preserve the one-shot default. The complete comparison includes cold setup and raw evidence.
+Run workspace controls with `cargo bench -p grafo-dag --bench workspace`; the existing suite remains `cargo bench -p grafo-dag --bench performance`.
 
 Canonical summary with full tables and trade-offs: [`docs/performance.md`](docs/performance.md). Per-change deltas live in dated [`docs/perf-comparison-YYYY-MM-DD.md`](docs/perf-comparison-2026-05-01.md) snapshots; the first full sweep is in [`docs/benchmarks-2026-04-20.md`](docs/benchmarks-2026-04-20.md).
 
