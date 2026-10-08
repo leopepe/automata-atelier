@@ -1,0 +1,407 @@
+    Checking memchr v2.8.0
+    Checking either v1.15.0
+    Checking serde_core v1.0.228
+    Checking crossbeam-utils v0.8.21
+    Checking libc v0.2.186
+    Checking utf8parse v0.2.2
+    Checking colorchoice v1.0.5
+    Checking anstyle v1.0.14
+    Checking is_terminal_polyfill v1.70.2
+    Checking anstyle-query v1.1.5
+    Checking itoa v1.0.18
+    Checking once_cell v1.21.4
+    Checking anstyle-parse v1.0.0
+    Checking zmij v1.0.21
+    Checking strsim v0.11.1
+    Checking anstream v1.0.0
+    Checking clap_lex v1.1.0
+    Checking rustc-hash v2.1.2
+    Checking zerocopy v0.8.48
+    Checking cfg-if v1.0.4
+    Checking regex-syntax v0.8.10
+    Checking ciborium-io v0.2.2
+    Checking plotters-backend v0.3.7
+    Checking num-traits v0.2.19
+    Checking clap_builder v4.6.0
+    Checking crossbeam-epoch v0.9.18
+    Checking plotters-svg v0.3.7
+    Checking itertools v0.10.5
+    Checking same-file v1.0.6
+    Checking cast v0.3.0
+    Checking walkdir v2.5.0
+    Checking oorandom v11.1.5
+    Checking anes v0.1.6
+    Checking pin-project-lite v0.2.17
+    Checking futures-sink v0.3.32
+    Checking futures-core v0.3.32
+    Checking futures-channel v0.3.32
+    Checking crossbeam-deque v0.8.6
+    Checking slab v0.4.12
+    Checking is-terminal v0.4.17
+    Checking futures-io v0.3.32
+    Checking rayon-core v1.13.0
+    Checking futures-task v0.3.32
+    Checking errno v0.3.14
+    Checking mio v1.2.1
+    Checking signal-hook-registry v1.4.8
+    Checking futures-util v0.3.32
+    Checking tracing-core v0.1.36
+    Checking plotters v0.3.7
+    Checking rayon v1.12.0
+    Checking bytes v1.12.0
+    Checking regex-automata v0.4.14
+    Checking hashbrown v0.17.0
+    Checking equivalent v1.0.2
+    Checking tokio v1.52.3
+    Checking criterion-plot v0.5.0
+    Checking indexmap v2.14.0
+    Checking tracing v0.1.44
+    Checking dyn-clone v1.0.20
+    Checking ryu v1.0.23
+    Checking downcast-rs v2.0.2
+    Checking unsafe-libyaml v0.2.11
+    Checking serde v1.0.228
+    Checking serde_json v1.0.149
+    Checking clap v4.6.1
+    Checking regex v1.12.3
+    Checking serde_yaml v0.9.34+deprecated
+    Checking tinytemplate v1.2.1
+    Checking grafo-dag v0.1.0 (/Users/pepe/Workspace/rust/automata-atelier-search-20261008-185805-10446/grafo)
+    Checking goap-planner v0.1.0 (/Users/pepe/Workspace/rust/automata-atelier-search-20261008-185805-10446/goap-planner)
+    Checking futures-executor v0.3.32
+    Checking futures v0.3.32
+    Checking kameo v0.20.0
+    Checking half v2.7.1
+    Checking ciborium-ll v0.2.2
+    Checking ciborium v0.2.2
+    Checking criterion v0.5.1
+    Checking uncharles v0.2.0 (/Users/pepe/Workspace/rust/automata-atelier-search-20261008-185805-10446/uncharles)
+error: unused `async` for async trait impl function with no `.await` statements
+   --> uncharles/src/actors/executor.rs:101:5
+    |
+101 | /     async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+102 | |         Ok(Self {
+103 | |             actions: args.actions,
+104 | |             world: None,
+...   |
+111 | |         })
+112 | |     }
+    | |_____^
+    |
+    = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_async_trait_impl
+    = note: `-D clippy::unused-async-trait-impl` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unused_async_trait_impl)]`
+help: consider removing the `async` from this function and returning `impl Future<Output = Result<Self, Self::Error>>` instead
+    |
+101 ~     fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> impl Future<Output = Result<Self, Self::Error>> {
+102 ~         std::future::ready(Ok(Self {
+103 +             actions: args.actions,
+104 +             world: None,
+105 +             supervisor: None,
+106 +             events: args.events,
+107 +             latest: None,
+108 +             busy: false,
+109 +             executed: 0,
+110 +             max_actions: args.max_actions,
+111 +         }))
+    |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> uncharles/src/actors/goal_supervisor.rs:60:5
+   |
+60 | /     async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+61 | |         Ok(Self {
+62 | |             planners: Vec::new(),
+63 | |             executor: None,
+...  |
+68 | |         })
+69 | |     }
+   | |_____^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_async_trait_impl
+help: consider removing the `async` from this function and returning `impl Future<Output = Result<Self, Self::Error>>` instead
+   |
+60 ~     fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> impl Future<Output = Result<Self, Self::Error>> {
+61 ~         std::future::ready(Ok(Self {
+62 +             planners: Vec::new(),
+63 +             executor: None,
+64 +             events: args.events,
+65 +             completion: Some(args.completion),
+66 +             watch: args.watch,
+67 +             done: false,
+68 +         }))
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> uncharles/src/actors/planner.rs:64:5
+   |
+64 | /     async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+65 | |         Ok(Self {
+66 | |             planner: args.planner,
+67 | |             goal: args.goal,
+...  |
+71 | |         })
+72 | |     }
+   | |_____^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_async_trait_impl
+help: consider removing the `async` from this function and returning `impl Future<Output = Result<Self, Self::Error>>` instead
+   |
+64 ~     fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> impl Future<Output = Result<Self, Self::Error>> {
+65 ~         std::future::ready(Ok(Self {
+66 +             planner: args.planner,
+67 +             goal: args.goal,
+68 +             supervisor: None,
+69 +             busy: false,
+70 +             pending: None,
+71 +         }))
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> uncharles/src/actors/planner.rs:78:5
+   |
+78 | /     async fn handle(&mut self, msg: PlanRequest, ctx: &mut Context<Self, Self::Reply>) {
+79 | |         if self.busy {
+80 | |             // Coalesce: keep only the freshest snapshot.
+81 | |             self.pending = Some(msg.0);
+...  |
+86 | |     }
+   | |_____^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_async_trait_impl
+help: consider removing the `async` from this function and returning `impl Future<Output = >` instead
+   |
+78 ~     fn handle(&mut self, msg: PlanRequest, ctx: &mut Context<Self, Self::Reply>)impl Future<Output = > {
+79 ~         std::future::ready(if self.busy {
+80 +             // Coalesce: keep only the freshest snapshot.
+81 +             self.pending = Some(msg.0);
+82 +         } else {
+83 +             self.busy = true;
+84 +             self.spawn_plan(msg.0, ctx.actor_ref().clone());
+85 +         })
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> uncharles/src/actors/sensor.rs:39:5
+   |
+39 | /     async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+...  |
+56 | |         })
+57 | |     }
+   | |_____^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_async_trait_impl
+help: consider removing the `async` from this function and returning `impl Future<Output = Result<Self, Self::Error>>` instead
+   |
+39 ~     fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> impl Future<Output = Result<Self, Self::Error>> {
+40 |         // Drive the poll loop from a detached task that pings this actor. It
+...
+52 |         });
+53 ~         std::future::ready(Ok(Self {
+54 +             spec: args.spec,
+55 +             world: args.world,
+56 +         }))
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+  --> uncharles/src/actors/world_state.rs:65:5
+   |
+65 | /     async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+66 | |         Ok(Self {
+67 | |             state: State::from_facts(args.seed),
+68 | |             values: Values::new(),
+...  |
+71 | |         })
+72 | |     }
+   | |_____^
+   |
+   = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_async_trait_impl
+help: consider removing the `async` from this function and returning `impl Future<Output = Result<Self, Self::Error>>` instead
+   |
+65 ~     fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> impl Future<Output = Result<Self, Self::Error>> {
+66 ~         std::future::ready(Ok(Self {
+67 +             state: State::from_facts(args.seed),
+68 +             values: Values::new(),
+69 +             subscriber: None,
+70 +             events: args.events,
+71 +         }))
+   |
+
+error: unused `async` for async trait impl function with no `.await` statements
+   --> uncharles/src/actors/world_state.rs:135:5
+    |
+135 | /     async fn handle(
+136 | |         &mut self,
+137 | |         _msg: Snapshot,
+138 | |         _ctx: &mut Context<Self, Self::Reply>,
+139 | |     ) -> WorldSnapshot {
+140 | |         self.snapshot()
+141 | |     }
+    | |_____^
+    |
+    = note: `std::future::ready` creates a `Future` which returns the value immediately when `poll`ed
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unused_async_trait_impl
+help: consider removing the `async` from this function and returning `impl Future<Output = WorldSnapshot>` instead
+    |
+135 ~     fn handle(
+136 |         &mut self,
+137 |         _msg: Snapshot,
+138 |         _ctx: &mut Context<Self, Self::Reply>,
+139 ~     ) -> impl Future<Output = WorldSnapshot> {
+140 ~         std::future::ready(self.snapshot())
+    |
+
+error: could not compile `uncharles` (bin "uncharles") due to 7 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/config.rs:229:9
+    |
+229 |         assert!(config.actions[0].forbids.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+    = note: `-D clippy::assert-is-empty` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::assert_is_empty)]`
+help: use `assert_eq!` to show the value on failure
+    |
+229 -         assert!(config.actions[0].forbids.is_empty());
+229 +         assert_eq!(config.actions[0].forbids, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/config.rs:327:9
+    |
+327 |         assert!(effects.remove.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+327 -         assert!(effects.remove.is_empty());
+327 +         assert_eq!(effects.remove, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/config.rs:340:9
+    |
+340 |         assert!(effects.add.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+340 -         assert!(effects.add.is_empty());
+340 +         assert_eq!(effects.add, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/config.rs:382:9
+    |
+382 |         assert!(config.goal.forbids.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+382 -         assert!(config.goal.forbids.is_empty());
+382 +         assert_eq!(config.goal.forbids, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/config.rs:519:9
+    |
+519 |         assert!(a.removes.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+519 -         assert!(a.removes.is_empty());
+519 +         assert_eq!(a.removes, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/config.rs:570:9
+    |
+570 |         assert!(success.add.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+570 -         assert!(success.add.is_empty());
+570 +         assert_eq!(success.add, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/config.rs:571:9
+    |
+571 |         assert!(success.remove.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+571 -         assert!(success.remove.is_empty());
+571 +         assert_eq!(success.remove, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/inspect.rs:868:9
+    |
+868 |         assert!(analysis.orphan_actions.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+868 -         assert!(analysis.orphan_actions.is_empty());
+868 +         assert_eq!(analysis.orphan_actions, [] as [(std::string::String, std::string::String); 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/run.rs:348:9
+    |
+348 |         assert!(reading.removed.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+348 -         assert!(reading.removed.is_empty());
+348 +         assert_eq!(reading.removed, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/run.rs:361:9
+    |
+361 |         assert!(reading.added.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+361 -         assert!(reading.added.is_empty());
+361 +         assert_eq!(reading.added, [] as [std::string::String; 0]);
+    |
+
+error: used `assert!` to check that a value is empty
+   --> uncharles/src/run.rs:492:9
+    |
+492 |         assert!(result.stderr.is_empty());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#assert_is_empty
+help: use `assert_eq!` to show the value on failure
+    |
+492 -         assert!(result.stderr.is_empty());
+492 +         assert_eq!(result.stderr, "");
+    |
+
+error: could not compile `uncharles` (bin "uncharles" test) due to 18 previous errors

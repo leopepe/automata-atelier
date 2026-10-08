@@ -1,0 +1,35 @@
+{
+  "baseCommit": "0197ff51ca72e60dd0e1c7bf4e47d467b02802b9",
+  "date": "2026-10-08",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "cpu": "Apple M5",
+  "criterion": "0.5.1",
+  "profile": "release",
+  "samples": 100,
+  "warmupSeconds": 3,
+  "measurementSeconds": 5,
+  "legacyCases": 57,
+  "workspaceCases": 23,
+  "benchmarkExits": {
+    "before": 0,
+    "after": 0,
+    "workspace": 0
+  },
+  "regressionDetectorExit": 1,
+  "flaggedLegacyCases": 19,
+  "timingLimitations": [
+    "Background load and CPU/cache placement not controlled",
+    "Final source differs from benchmark source only in documentation clarification and test strengthening; search logic unchanged"
+  ],
+  "sha256": {
+    "grafo/src/graph.rs": "344222fb955959ba52ae789bd5ffc3bf28ebd77fce358f23d1b4c19995d2180d",
+    "grafo/src/graph/workspace.rs": "b9d32689a8457f54d7c6346070e3c65aae17fc4775b624427130d5147dcae16c",
+    "grafo/src/lib.rs": "bc021fedd5040cfb2837bcab8f39b113f3184041e1dc3929a21f7a7226ec21b7",
+    "grafo/benches/performance.rs": "d39028252f7bc5958960034cbb5e287da2901dfc2becb08f414331a52a687914",
+    "grafo/benches/workspace.rs": "5e21ef9a71c9930244a0f2605e8a7a5d475894e0de92bc855fe8dadfdd5f850f",
+    "grafo/Cargo.toml": "ba9c26670029031653c07ddba2898a0eeacc5a8e0c88eef6f38f3016f59f83d0",
+    "Cargo.lock": "b312ad08dddf0996945717c330a8a9dfcbee6aec8c95d700f39039a10245fd9d"
+  }
+}

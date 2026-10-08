@@ -1,3 +1,6 @@
+mod workspace;
+pub use workspace::SearchWorkspace;
+
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Reverse;

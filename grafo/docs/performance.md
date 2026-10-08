@@ -1,134 +1,78 @@
 # Performance
 
-Canonical "current state" summary for `grafo`. Refreshed after each benchmark
-session — link this from the README so the URL never rots. Per-change
-deltas live in [`perf-comparison-YYYY-MM-DD.md`](.) snapshots, never here.
+Canonical measurement summary for grafo. Refer to this file for current observations and use dated comparisons for immutable historical evidence. Do not interpret provisional measurements as an accepted performance floor.
 
-**Last measured:** 2026-05-01 (Criterion 0.5, 100 samples, 3 s warm-up,
-release profile)
-**Library version:** grafo 0.1.0
-**Platform:** macOS Darwin 25.3.0, Rust 1.94.1
-**Raw log:** [`bench-final.txt`](./bench-final.txt) ·
-**This release's deltas:** [`perf-comparison-2026-05-01.md`](./perf-comparison-2026-05-01.md)
+## Measurement status
 
----
+- Last measured: **2026-10-08**, Apple M5, macOS 26.6.2 / Darwin 25.6.0, Rust/Cargo 1.99.0, Criterion 0.5.1.
+- Profile: release, 100 samples, 3-second warm-up, 5-second measurement target.
+- Complete runs: 57 legacy cases before, 57 after, 23 separate workspace cases.
+- **Incomplete gates:** 19 legacy cases crossed the existing regression detector threshold; attribution remains unresolved. Standard paired flamegraphs are unavailable. Full-workspace Clippy fails on unchanged uncharles code under this toolchain.
+- Other sessions and background load were not controlled. No threshold or CI override was applied.
+- Full raw logs, confidence intervals, samples, saved baselines and reproduction commands: [dated comparison](./perf-comparison-2026-10-08.md).
 
 ## At a glance
 
-| Workload | Result |
-|---|---|
-| Selective filter on a 5k-node sparse DAG | **~10 ns** — search exits at the first failing node |
-| `shortest_path_cost` on a 10k-node fan=4 sparse DAG | **4.8 µs** |
-| `shortest_path_cost` on a 100k-node chain (worst-case path length) | **648 µs** |
-| `shortest_path_cost` vs full-path reconstruction at 100k hops | **1.25× faster** (519 µs vs 648 µs) |
-| Construction of a 1k-node sparse DAG | **89 µs** (~78% faster than the pre-optimization baseline) |
-| Construction of a 500k-node sparse DAG with Rayon | **43 ms** |
-| 512 parallel queries via Rayon over a shared `Arc<Graph>` | **914 µs** — scales with available cores |
-| Attribute count 1 → 20 per node (filter throughput) | **flat at ~10 ns** — O(1) `FxHashSet` lookup |
+| Workload | One-shot | Warm workspace |
+|---|---:|---:|
+| Fixed sparse frontier, 100k nodes | 15.151 µs | 1.918 µs |
+| Same frontier, 250k nodes | 26.023 µs | 1.841 µs |
+| Same frontier, 1m nodes | 99.484 µs | 1.847 µs |
+| 100k-node chain | 552.579 µs | 498.075 µs |
+| Broad equal-cost layers | 98.527 µs | 150.884 µs |
+| Eight mixed queries, whole batch | 2.920 ms | 3.268 ms |
 
----
+Warm narrow searches benefited, but the broad layered and mixed controls were approximately **53% and 12% slower**. Keep the workspace optional. Full-path and planner integration are unchanged; no planner speedup is established.
 
 ## Construction
 
-Includes label interning, edge resolution (sequential below 10k edges,
-Rayon-parallel above), parallel sort, and CSR offset build.
+Existing constructor code is unchanged. Observed after-run values are provisional because the legacy regression gate failed.
 
-| Graph shape         | Nodes   | Time         |
-|---------------------|---------|--------------|
-| chain               |   1 000 | 46.6 µs      |
-| sparse DAG (fan=4)  |   1 000 | 89.4 µs      |
-| chain               |  10 000 | 487 µs       |
-| sparse DAG (fan=4)  |  10 000 | 950 µs       |
-| chain               | 100 000 | 5.35 ms      |
-| sparse DAG (fan=4)  | 100 000 | 8.39 ms      |
+| Legacy benchmark | After-run estimate |
+|---|---:|
+| `construction/sparse_dag_fan4/1000` | 84.895 µs |
+| `construction/parallel_sort/sparse_dag_fan4/500000` | 44.241 ms |
 
-`construction/parallel_sort` (Rayon-backed): 953 µs at 10k → 8.14 ms at 100k →
-**43.3 ms at 500k** nodes.
+The [detector output](./workspace-search-evidence-2026-10-08/regression-check.log) lists every flagged construction/search/concurrency case. Do not dismiss it as noise without another attributable measurement.
 
-## Search — no filter
+## Search
 
-`shortest_path_cost` on cold caches.
+The existing `search/no_filter` benchmarks call **full-path** `shortest_path`, not the cost-only API. The legacy `search/path_reconstruction` group separately compares full paths and costs.
 
-| Shape              | Nodes   | Time     |
-|--------------------|---------|----------|
-| sparse DAG (fan=4) |   1 000 | 551 ns   |
-| sparse DAG (fan=4) |  10 000 | 4.78 µs  |
-| sparse DAG (fan=4) |  50 000 | 7.20 µs  |
-| sparse DAG (fan=16)|  10 000 | 5.86 µs  |
-| sparse DAG (fan=16)|  50 000 | 17.4 µs  |
-| layered (50×20)    |   1 000 | 37.5 µs  |
-| layered (100×30)   |   3 000 | 200 µs   |
-| chain              |  10 000 | 67.7 µs  |
-| chain              | 100 000 | 648 µs   |
+| Legacy benchmark | After-run estimate |
+|---|---:|
+| Full path on 10k-node fan-4 sparse DAG | 3.749 µs |
+| Full path on 100k-node chain | 639.367 µs |
+| Cost-only on 100k-node chain | 553.003 µs |
 
-## Search — filtered (`shortest_path_filtered_cost`)
+Fresh workspaces measured 10.256 µs at 100k, 20.854 µs at 250k and 75.364 µs at 1m on the fixed-frontier fixture. Four identical queries including one fresh workspace's setup/drop measured 15.523 µs versus 47.229 µs with four one-shot queries. These are per-run estimates, not a universal amortization threshold.
 
-5 000-node sparse DAG. Filter closure runs as a per-node precondition.
-
-| Variant                                | Time      |
-|----------------------------------------|-----------|
-| `shortest_path_cost` (no filter)       | 5.28 µs   |
-| pass-all closure (`\|_\| true`)         | 5.21 µs   |
-| simple one-attr filter                 | 10.4 ns   |
-| compound AND filter                    | 10.4 ns   |
-| strict rare-attr filter                | 10.3 ns   |
-
-The pass-all closure is indistinguishable from the unfiltered path — the
-compiler monomorphizes and inlines it away. Selective filters return in
-~10 ns because Dijkstra is short-circuited at the first node failing the
-predicate.
-
-## Search — path reconstruction (cost-only speedup)
-
-`shortest_path` (full `Vec<String>` path) vs `shortest_path_cost`
-(cost only) over a chain.
-
-| Path length | Full path | Cost-only | Speedup |
-|------------:|-----------|-----------|--------:|
-|          10 |   153 ns  |   70 ns   | **2.2×** |
-|         100 |   800 ns  |  535 ns   | **1.5×** |
-|       1 000 |  6.36 µs  | 4.98 µs   | **1.3×** |
-|      10 000 |  67.7 µs  | 51.8 µs   | **1.3×** |
-|     100 000 |   648 µs  |   520 µs  | **1.25×** |
+The selective waypoint-filter control measured 9.881 µs one-shot versus 34.138 ns warm. Its endpoints are accepted and its cheap intermediate route is rejected. The unreachable reverse query measured 9.869 µs versus 11.780 ns. Both are intentionally tiny frontiers, not application-level speed predictions.
 
 ## Concurrent queries
 
-All queries share a single `Arc<Graph>` over a 10k-node sparse DAG.
+| Workload | Estimate |
+|---|---:|
+| Legacy 512-query Rayon batch | 1.071 ms |
+| Four tasks × 16 narrow one-shot queries | 551.890 µs |
+| Four tasks × 16 narrow warm-workspace queries | 108.208 µs |
 
-| Mode                      | Queries | Time     |
-|---------------------------|--------:|----------|
-| Sequential                |      64 | 202 µs   |
-| Rayon `par_iter`          |       8 | 45.1 µs  |
-| Rayon `par_iter`          |      32 | 94.3 µs  |
-| Rayon `par_iter`          |      64 | 149 µs   |
-| Rayon `par_iter`          |     128 | 262 µs   |
-| Rayon `par_iter`          |     512 | 914 µs   |
+Rayon scheduling is included in both new variants. Each task owns one mutable workspace and shares an immutable graph. No global cache, lock or thread-local workspace is introduced.
 
-Rayon delivers ~1.36× wall-clock speedup at 64 queries; throughput scales
-near-linearly with available cores up to 512 queries.
+## Memory and applicability
 
----
-
-## Trade-offs we accept
-
-The current `dijkstra_*` implementations skip the `settled: Vec<bool>`
-array (one O(V) zeroed allocation per query is gone). Stale heap entries
-are filtered by comparing the popped cost against `dist[u]` instead.
-
-This is a clear win on dense / wide graphs where stale entries are real
-and the saved allocation matters (sparse DAG fan=4 at 50k: 7.2 µs vs the
-old 8.7 µs — −13%). It costs us on **chain shapes** (fan-out 1, no stale
-heap entries to skip) where the per-pop cost comparison is wasted work:
-search on a 100k chain went from ~497 µs to 648 µs (+30%) at the same
-time the filtered search wins arrived. We treat chains as a degenerate
-shape rarely used in practice; the trade-off is documented and revisitable.
-
-See [`perf-comparison-2026-05-01.md`](./perf-comparison-2026-05-01.md) for
-the full diff and the rationale per change.
+- Distance/stamp elements use 12 bytes per retained vertex slot.
+- Buffers retain their maximum logical length, and vector/heap capacity can exceed lengths; allocator overhead is additional. This is not a resident-memory measurement.
+- First use and growth initialize buffers. Generation rollover clears retained stamps; ordinary warm searches initialize discovered distances only.
+- Drop the workspace to release retained memory.
+- Prefer existing one-shot APIs when reuse or representative measurements do not justify retained state.
+- Keep historical performance trade-offs and these unresolved gates distinct. The optional workspace does not ratify regressions in unchanged APIs.
 
 ## History
 
-| Date       | Document                                                                   | What changed                                                            |
-|------------|----------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| 2026-05-01 | [`perf-comparison-2026-05-01.md`](./perf-comparison-2026-05-01.md)         | FxHashSet for `NodeAttrs`, dropped `settled` array, Rayon threshold, in-place CSR cursor |
-| 2026-04-20 | [`benchmarks-2026-04-20.md`](./benchmarks-2026-04-20.md)                   | First full benchmark sweep on grafo 0.1.0                               |
+| Date | Document | Change |
+|---|---|---|
+| 2026-10-08 | [Workspace comparison](./perf-comparison-2026-10-08.md) | Optional generation-stamped cost workspace; provisional timings and unresolved gates |
+| 2026-10-08 | [Sparse CSR investigation](./csr-sparse-search-investigation-2026-10-08.md) | Diagnosis and prototype comparisons against petgraph CSR, not shipped workspace results |
+| 2026-05-01 | [Earlier comparison](./perf-comparison-2026-05-01.md) | Attribute hashing, settled-array removal, construction threshold and CSR cursor |
+| 2026-04-20 | [First sweep](./benchmarks-2026-04-20.md) | Initial grafo baseline |
