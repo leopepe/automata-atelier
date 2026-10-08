@@ -1,0 +1,48 @@
+## Planning-only publication status
+
+All checkboxes below are unverified requirements for the published plan, not claims about the partial Conductor checkout or separate implementation draft #61. Historical baseline measurements were contaminated by concurrent workloads and are not accepted performance evidence. Establish an uncontended baseline and reconcile implementation, reviews, CI failures and worker ownership before continuing implementation or accepting any gate. Publishing this plan does not resume a worker or authorize new implementation execution.
+
+## 1. Baseline and guardrails
+
+- [ ] 1.1 Confirm target worktree/base hash, issue #60 triage and ADR 0006 proposed status; record clean staged index and target-only command context. Verify `git status --short`, `git diff --cached --quiet`, `gh issue view 60 --json labels,state`, and ADR front matter/index; no original checkout writes. One implementation writer owns the tightly coupled API/search/test/docs/bench seam. Each Apply/fix worker side-quest budget: 5 minutes wall / 50 external API calls; detach long loops at outset and poll cheap logs.
+  depends-on: none
+  touches: docs/adrs/0006-use-caller-owned-cost-search-workspace.md, docs/adrs/README.md, openspec/changes/add-grafo-search-workspace/
+- [ ] 1.2 BEFORE any production edit, run baseline `cargo test --workspace` and FULL existing grafo and goap-planner release benchmark suites sequentially: `cargo bench -p grafo-dag --bench performance -- --save-baseline grafo-workspace-before`, then `cargo bench -p goap-planner --bench performance -- --save-baseline grafo-workspace-before` (no CI subset/filter). Capture exact invocation, stdout/stderr, exit code and environment in immutable before logs; collect paired bounded native macOS `sample` profiles of representative same-suite workloads with release symbols, recording collection steps and limits. Verify complete case lists and log/profile pairing before moving to production; do not report the standard `cargo flamegraph` gate as passed (`cargo flamegraph --version` exited 101 per operator). No install/sudo/permission/CI changes.
+  depends-on: 1.1
+  touches: grafo/docs/bench-grafo-workspace-before.txt, grafo/docs/profile-native-grafo-workspace-before.svg, goap-planner/docs/bench-grafo-workspace-before.txt, goap-planner/docs/profile-native-grafo-workspace-before.svg
+
+## 2. Red/green core seam
+
+- [ ] 2.1 Add external-consumer RED tests for proposed `SearchWorkspace` and both cost entry points: reachable, unreachable, unknown source/destination, self/endpoint-filter rejection, changing filters, early-exit stale frontier, size-up/down and same-size graph switches with ID/attribute reassignment, panic during endpoint and neighbor filter then `catch_unwind` recovery, zero/-zero/fractional/finite-extreme and overflow, and concurrent independent workspaces. Compare against the existing cost APIs; assert default/full-path parity as regression controls. Verify `cargo test -p grafo-dag --test search_workspace` fails for missing new API (not broken fixtures); retain red log/exit status without committing generated artifacts.
+  depends-on: 1.2
+  touches: grafo/tests/search_workspace.rs, grafo/tests/common/
+- [ ] 2.2 Implement `SearchWorkspace` and the two explicit Graph workspace cost methods together in the single `grafo/src/graph.rs` writer seam, re-export from `grafo/src/lib.rs`; retain existing default/full-path algorithm bodies. Use exact-size metadata vectors with generation stamps, heap clear and generation advance before predicate calls, stamp clear at rollover, current bit heap ordering and numeric comparisons. Add forced-wrap internal test (construct a near-rollover private state; do not loop billions of times) and targeted panic/stale state tests. Verify `cargo test -p grafo-dag --test search_workspace` and `cargo test -p grafo-dag --lib` pass; inspect diff to confirm no constructor validation or planner source change.
+  depends-on: 2.1
+  touches: grafo/src/graph.rs, grafo/src/lib.rs, grafo/tests/search_workspace.rs
+- [ ] 2.3 Document every new public item/method with meaningful asserting doctests and exact ownership, allocation retention/drop, resize/switch and unwind semantics; describe no implicit graph cache and no universal speed claim. Add API usage to grafo README; inspect existing workspace README and concurrent example references and update only if their API guidance becomes misleading. Verify `cargo test -p grafo-dag --doc` and external integration tests; keep historical benchmark reports unchanged.
+  depends-on: 2.2
+  touches: grafo/src/graph.rs, grafo/src/lib.rs, grafo/README.md, README.md, grafo/examples/concurrent_queries.rs
+
+## 3. Measurement expansion and validation
+
+- [ ] 3.1 Extend the existing Criterion grafo harness with deterministic reachable-subgraph/isolated-padding control, warm and cold scratch, amortized batches, chain/layered/dense controls, broad/unreachable/mixed endpoints, filtered queries, full-path default control, graph switches and independent concurrent workspace queries. Keep legacy IDs, `ci_sample_sizes()` behavior and black-boxing; assert expected equivalent answers outside timed loops. Verify `cargo test -p grafo-dag --bench performance --no-run` and a filtered Criterion smoke/bench listing; do not claim new cases have pre-change native measurements (the API did not exist at baseline).
+  depends-on: 2.3
+  touches: grafo/benches/performance.rs
+- [ ] 3.2 Run `cargo fmt --all`, `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace` and explicit `cargo test -p grafo-dag --doc`; include graph numeric/panic/rollover/graph-switch cases, default/full-path regressions and planner tests. Verify all exit codes and test counts in logs; fix failures within the single writer seam, never weaken assertions or lint/CI policy. `cargo llvm-cov --version` exited 101 (unavailable): report coverage NOT RUN and the ≥90% line / ≥80% branch thresholds unverified; do not install tooling or claim coverage achieved.
+  depends-on: 3.1
+  touches: grafo/src/, grafo/tests/, grafo/benches/performance.rs, grafo/docs/
+- [ ] 3.3 Run FULL AFTER grafo and goap-planner release suites sequentially, with no CI subset/filter: `cargo bench -p grafo-dag --bench performance -- --baseline-lenient grafo-workspace-before` then `cargo bench -p goap-planner --bench performance -- --baseline grafo-workspace-before`; record exact case lists, logs/exit codes and independent full after native sample profiles paired by crate/representative workload. Criterion 0.5.1 strict baseline cannot run added grafo IDs absent from the pre-API baseline: lenient mode compares every legacy ID with its saved baseline and runs new IDs for absolute after data without inventing historical measurements. Verify legacy ID comparisons, new-case absolute data, cold/broad regressions and planner controls are visible. Name SVGs `profile-native-*`, not `flamegraph-*`; explicitly mark repository standard flamegraph requirement unmet under the operator-approved cycle-local exception. No installation, sudo, OS permission or CI changes.
+  depends-on: 3.2
+  touches: grafo/docs/bench-grafo-workspace-after.txt, grafo/docs/profile-native-grafo-workspace-after.svg, goap-planner/docs/bench-grafo-workspace-after.txt, goap-planner/docs/profile-native-grafo-workspace-after.svg
+- [ ] 3.4 Publish reproducible release-mode before/after methodology, complete grafo/planner comparison including setup/amortization and cold/broad tradeoffs, sampling bias and unmet standard flamegraph gate. Update grafo and planner canonical performance summaries if their headline values moved; write a dated planner regression-control comparison when its measured headline numbers move. Link dated comparison and native profiles, inspect existing README links for required changes. Verify every cited artifact exists and numbers match raw logs; do not commit raw private evidence, `target/` or sampling process dumps.
+  depends-on: 3.3
+  touches: grafo/docs/perf-comparison-2026-10-08.md, grafo/docs/performance.md, goap-planner/docs/perf-comparison-2026-10-08.md, goap-planner/docs/performance.md, grafo/README.md, goap-planner/README.md, README.md
+
+## 4. Review and publication boundary
+
+- [ ] 4.1 Review spec/design/ADR against code and report Rust KWB findings by severity/category with file:line evidence; rerun `openspec validate add-grafo-search-workspace --strict`, inspect OpenSpec status and staged scope, pin an implementation commit for independent review. Verify no blocker, correctness/perf evidence, and ADR still proposed; resolve findings with one writer, no concurrent edits. Do not treat the design issue or proposed ADR as ratified.
+  depends-on: 3.4
+  touches: openspec/changes/add-grafo-search-workspace/, docs/adrs/0006-use-caller-owned-cost-search-workspace.md, docs/adrs/README.md, grafo/
+### Coordinator handoff after Apply and independent Phase 5 review (not an Apply checkbox)
+
+After task 4.1 pins the implementation commit and separate Apply/review authorization is granted, follow scoped Conventional Commits and the PR template for a pushed branch and DRAFT PR against `main`, referencing issue #60 without closing it. Archive OpenSpec only after validation and review. Check exact-head CI and remediate failures within the same writer boundary. Before publication, verify no private `.plan/`, `.conductor/`, `.pi/`, `.agents/`, raw profiles or build outputs are staged. Do not merge, mark ready, release or claim ADR acceptance; keep ADR 0006 proposed and issue #60 open for triage.
