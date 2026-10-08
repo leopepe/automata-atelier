@@ -36,7 +36,10 @@ impl Actor for SensorActor {
     type Args = SensorArgs;
     type Error = Infallible;
 
-    async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+    fn on_start(
+        args: Self::Args,
+        actor_ref: ActorRef<Self>,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send {
         // Drive the poll loop from a detached task that pings this actor. It
         // exits when the actor goes away (tell returns an error), so the loop
         // is bounded by the actor's lifetime.
@@ -50,10 +53,10 @@ impl Actor for SensorActor {
                 tokio::time::sleep(interval).await;
             }
         });
-        Ok(Self {
+        std::future::ready(Ok(Self {
             spec: args.spec,
             world: args.world,
-        })
+        }))
     }
 }
 

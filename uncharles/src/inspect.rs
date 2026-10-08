@@ -865,7 +865,7 @@ mod tests {
         let graph = Planner::new(actions).explore_for_goal(&initial, &goal);
         let analysis = analyse(&c, &graph);
 
-        assert!(analysis.orphan_actions.is_empty());
+        assert_eq!(analysis.orphan_actions, Vec::<(String, String)>::new());
     }
 
     // -----------------------------------------------------------------------

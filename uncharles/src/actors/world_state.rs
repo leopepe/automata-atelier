@@ -62,13 +62,16 @@ impl Actor for WorldStateActor {
     type Args = WorldStateArgs;
     type Error = Infallible;
 
-    async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
-        Ok(Self {
+    fn on_start(
+        args: Self::Args,
+        _actor_ref: ActorRef<Self>,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send {
+        std::future::ready(Ok(Self {
             state: State::from_facts(args.seed),
             values: Values::new(),
             subscriber: None,
             events: args.events,
-        })
+        }))
     }
 }
 
@@ -132,12 +135,12 @@ impl Message<Bootstrap> for WorldStateActor {
 impl Message<Snapshot> for WorldStateActor {
     type Reply = WorldSnapshot;
 
-    async fn handle(
+    fn handle(
         &mut self,
         _msg: Snapshot,
         _ctx: &mut Context<Self, Self::Reply>,
-    ) -> WorldSnapshot {
-        self.snapshot()
+    ) -> impl std::future::Future<Output = WorldSnapshot> + Send {
+        std::future::ready(self.snapshot())
     }
 }
 

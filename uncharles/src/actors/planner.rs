@@ -61,21 +61,28 @@ impl Actor for PlannerActor {
     type Args = PlannerArgs;
     type Error = Infallible;
 
-    async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
-        Ok(Self {
+    fn on_start(
+        args: Self::Args,
+        _actor_ref: ActorRef<Self>,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send {
+        std::future::ready(Ok(Self {
             planner: args.planner,
             goal: args.goal,
             supervisor: None,
             busy: false,
             pending: None,
-        })
+        }))
     }
 }
 
 impl Message<PlanRequest> for PlannerActor {
     type Reply = ();
 
-    async fn handle(&mut self, msg: PlanRequest, ctx: &mut Context<Self, Self::Reply>) {
+    fn handle(
+        &mut self,
+        msg: PlanRequest,
+        ctx: &mut Context<Self, Self::Reply>,
+    ) -> impl std::future::Future<Output = ()> + Send {
         if self.busy {
             // Coalesce: keep only the freshest snapshot.
             self.pending = Some(msg.0);
@@ -83,6 +90,7 @@ impl Message<PlanRequest> for PlannerActor {
             self.busy = true;
             self.spawn_plan(msg.0, ctx.actor_ref().clone());
         }
+        std::future::ready(())
     }
 }
 

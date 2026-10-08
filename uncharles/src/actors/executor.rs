@@ -98,8 +98,11 @@ impl Actor for ExecutorActor {
     type Args = ExecutorArgs;
     type Error = Infallible;
 
-    async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
-        Ok(Self {
+    fn on_start(
+        args: Self::Args,
+        _actor_ref: ActorRef<Self>,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send {
+        std::future::ready(Ok(Self {
             actions: args.actions,
             world: None,
             supervisor: None,
@@ -108,7 +111,7 @@ impl Actor for ExecutorActor {
             busy: false,
             executed: 0,
             max_actions: args.max_actions,
-        })
+        }))
     }
 }
 
