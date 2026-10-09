@@ -91,7 +91,7 @@ pub struct ActionSpec {
     /// State mutation applied when the action's `cmd` exits non-zero.
     ///
     /// Default (omitted): non-zero exit terminates the loop with
-    /// [`crate::run::LoopOutcome::ActionFailed`]. With `on_failure` set:
+    /// [`crate::actors::RuntimeOutcome::ActionFailed`]. With `on_failure` set:
     /// the listed adds/removes are applied to state, the loop sleeps for
     /// `--interval-ms` and replans from the new state on the next
     /// iteration. The action's own `adds`/`removes` are *not* applied —
@@ -226,7 +226,7 @@ mod tests {
               requires: [done]
         "#;
         let config: Config = serde_yaml::from_str(yaml).unwrap();
-        assert!(config.actions[0].forbids.is_empty());
+        assert_eq!(config.actions[0].forbids, Vec::<String>::new());
     }
 
     #[test]
@@ -324,7 +324,7 @@ mod tests {
         };
         let effects = spec.effects_for(true);
         assert_eq!(effects.add, vec!["ready"]);
-        assert!(effects.remove.is_empty());
+        assert_eq!(effects.remove, Vec::<String>::new());
     }
 
     #[test]
@@ -337,7 +337,7 @@ mod tests {
             capture: None,
         };
         let effects = spec.effects_for(false);
-        assert!(effects.add.is_empty());
+        assert_eq!(effects.add, Vec::<String>::new());
         assert_eq!(effects.remove, vec!["ready"]);
     }
 
@@ -379,7 +379,7 @@ mod tests {
         assert_eq!(config.actions[0].name, "noop");
         assert_eq!(config.actions[0].cost, 1.0);
         assert_eq!(config.goal.requires, vec!["done"]);
-        assert!(config.goal.forbids.is_empty());
+        assert_eq!(config.goal.forbids, Vec::<String>::new());
     }
 
     #[test]
@@ -516,7 +516,7 @@ mod tests {
         assert_eq!(a.cost, 2.5);
         assert_eq!(a.requires, vec!["a"]);
         assert_eq!(a.adds, vec!["b"]);
-        assert!(a.removes.is_empty());
+        assert_eq!(a.removes, Vec::<String>::new());
         assert!(a.cmd.is_none());
     }
 
@@ -567,8 +567,8 @@ mod tests {
         "#;
         let config: Config = serde_yaml::from_str(yaml).unwrap();
         let success = config.sensors[0].on_success.as_ref().unwrap();
-        assert!(success.add.is_empty());
-        assert!(success.remove.is_empty());
+        assert_eq!(success.add, Vec::<String>::new());
+        assert_eq!(success.remove, Vec::<String>::new());
     }
 
     #[test]

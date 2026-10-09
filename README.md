@@ -138,17 +138,7 @@ The graph kernel governs what the planners and automatons above it can promise; 
 
 ### `grafo` — graph kernel
 
-Last measured 2026-05-01 on macOS / Rust 1.94.1.
-
-| Workload | Result |
-|---|---|
-| Selective filter on a 5k-node sparse DAG | **~10 ns** — Dijkstra exits at first failing node |
-| `shortest_path_cost` on a 10k-node fan=4 DAG | **4.78 µs** |
-| `shortest_path_cost` on a 100k-node chain (worst-case path length) | **648 µs** |
-| Construction, 1k-node sparse DAG | **89 µs** (~78% faster than the pre-optimization baseline) |
-| Construction, 500k-node sparse DAG with Rayon | **43 ms** |
-| 512 parallel queries via Rayon over a shared `Arc<Graph>` | **914 µs** — scales near-linearly with cores |
-| Attribute count 1 → 20 per node (filter throughput) | **flat at ~10 ns** — O(1) `FxHashSet` lookup |
+An optional caller-owned `SearchWorkspace` reuses scratch state for repeated cost-only queries. Existing one-shot and full-path searches and planner integration remain unchanged. Warm narrow queries can benefit; cold or broad queries may not. [ADR 0006](docs/adrs/0006-use-caller-owned-search-workspaces.md) records the decision and its research origin.
 
 Canonical summary: [`grafo/docs/performance.md`](grafo/docs/performance.md).
 

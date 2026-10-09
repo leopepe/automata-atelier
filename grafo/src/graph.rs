@@ -1,3 +1,6 @@
+mod workspace;
+pub use workspace::SearchWorkspace;
+
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Reverse;
@@ -6,7 +9,7 @@ use std::collections::BinaryHeap;
 /// The set of attributes attached to a node, passed to filter predicates in
 /// [`Graph::shortest_path_filtered`] and [`Graph::shortest_path_filtered_cost`].
 ///
-/// Backed by a [`HashSet`] so membership checks via [`NodeAttrs::contains`]
+/// Backed by an [`FxHashSet`] so membership checks via [`NodeAttrs::contains`]
 /// are **O(1)** regardless of how many attributes a node carries. Prefer
 /// `contains` over iterating manually.
 ///

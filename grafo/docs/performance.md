@@ -4,6 +4,10 @@ Canonical "current state" summary for `grafo`. Refreshed after each benchmark
 session — link this from the README so the URL never rots. Per-change
 deltas live in [`perf-comparison-YYYY-MM-DD.md`](.) snapshots, never here.
 
+The measurements below predate the optional search workspace and describe the
+existing one-shot APIs. [ADR 0006](../../docs/adrs/0006-use-caller-owned-search-workspaces.md)
+records the workspace decision; no new comparative measurements are claimed here.
+
 **Last measured:** 2026-05-01 (Criterion 0.5, 100 samples, 3 s warm-up,
 release profile)
 **Library version:** grafo 0.1.0

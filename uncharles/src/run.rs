@@ -345,7 +345,7 @@ mod tests {
         let reading = run_sensor(&sensor("ready", &["true"]), &mut state, &mut values).unwrap();
         assert!(reading.success);
         assert_eq!(reading.added, vec!["ready"]);
-        assert!(reading.removed.is_empty());
+        assert_eq!(reading.removed, Vec::<String>::new());
         assert!(reading.captured_value.is_none());
         assert!(state.contains("ready"));
         assert!(values.is_empty());
@@ -358,7 +358,7 @@ mod tests {
         let reading = run_sensor(&sensor("ready", &["false"]), &mut state, &mut values).unwrap();
         assert!(!reading.success);
         assert_eq!(reading.removed, vec!["ready"]);
-        assert!(reading.added.is_empty());
+        assert_eq!(reading.added, Vec::<String>::new());
         assert!(!state.contains("ready"));
     }
 
@@ -489,7 +489,7 @@ mod tests {
         let result = execute_action(&action("noop", &["true"], &[], &[]), &values).unwrap();
         assert!(result.success);
         assert_eq!(result.exit_code, Some(0));
-        assert!(result.stderr.is_empty());
+        assert_eq!(result.stderr, "");
     }
 
     #[test]

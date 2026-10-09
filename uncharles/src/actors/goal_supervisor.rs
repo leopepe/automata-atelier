@@ -57,15 +57,18 @@ impl Actor for GoalSupervisorActor {
     type Args = GoalSupervisorArgs;
     type Error = Infallible;
 
-    async fn on_start(args: Self::Args, _actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
-        Ok(Self {
+    fn on_start(
+        args: Self::Args,
+        _actor_ref: ActorRef<Self>,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send {
+        std::future::ready(Ok(Self {
             planners: Vec::new(),
             executor: None,
             events: args.events,
             completion: Some(args.completion),
             watch: args.watch,
             done: false,
-        })
+        }))
     }
 }
 

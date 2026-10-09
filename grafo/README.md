@@ -9,10 +9,10 @@ A fast directed acyclic graph (DAG) library for Rust with shortest-path search a
 ## Features
 
 - **CSR storage** — O(V + E) memory, cache-friendly edge traversal
-- **Dijkstra search** — settled-node heap keeps memory near O(V) even on dense graphs
+- **Dijkstra search** — binary heap with lazy stale-entry removal
 - **Node attributes** — attach string tags to nodes; O(1) membership checks via `HashSet`
 - **Filtered search** — predicate closure acts as a per-node precondition, pruning the frontier during search
-- **Cost-only variants** — skip path reconstruction for ~5× speedup on long paths
+- **Cost-only variants** — skip predecessor storage and path reconstruction
 - **Thread-safe** — `Graph` is `Send + Sync`; share across threads with `Arc`
 - **Parallel construction** — Rayon-backed edge resolution and sort; FxHashMap label interning
 
@@ -46,7 +46,7 @@ let graph = Graph::new(
 
 let result = graph.shortest_path("a", "d").unwrap().unwrap();
 assert_eq!(result.cost, 4.0);
-assert_eq!(result.path, vec!["a", "b", "c", "d"]);
+assert_eq!(result.resolve_labels(&graph), vec!["a", "b", "c", "d"]);
 ```
 
 ### Attribute-based filtering
@@ -82,7 +82,7 @@ let r = graph
     .unwrap()
     .unwrap();
 
-assert_eq!(r.path, vec!["London", "Birmingham", "Manchester"]);
+assert_eq!(r.resolve_labels(&graph), vec!["London", "Birmingham", "Manchester"]);
 assert_eq!(r.cost, 240.0);
 ```
 
@@ -96,6 +96,25 @@ let cost = graph.shortest_path_filtered_cost("London", "Manchester", |a: &NodeAt
     a.contains("taxi")
 }).unwrap();
 ```
+
+### Repeated cost queries
+
+Reuse a caller-owned workspace when searches repeatedly explore a small part of a large graph:
+
+```rust
+use grafo::{Graph, SearchWorkspace};
+
+let graph = Graph::new(&["a", "b", "c"], &[("a", "b", 1.0), ("b", "c", 2.0)]).unwrap();
+let mut workspace = SearchWorkspace::new();
+assert_eq!(graph.shortest_path_cost_with_workspace("a", "c", &mut workspace).unwrap(), Some(3.0));
+assert_eq!(graph.shortest_path_filtered_cost_with_workspace(
+    "a", "c", |_| true, &mut workspace,
+).unwrap(), Some(3.0));
+```
+
+The workspace reuses distances, generation stamps and heap capacity. It can be reused across different graphs and sizes, including after a filter panic unwinds. Allocate one workspace per simultaneous worker; the graph remains immutable. Distance/stamp elements use **12 bytes per retained vertex slot**. Buffers retain their peak size; spare vector/heap capacity and allocator overhead add to this storage. Drop the workspace to release its memory.
+
+First use and growth initialize buffers; a generation rollover clears retained stamps. Warm narrow searches can benefit, but cold, broad and mixed queries may not. Existing methods remain the default for one-shot searches, and full-path methods do not use a workspace. See [ADR 0006](../docs/adrs/0006-use-caller-owned-search-workspaces.md) for the decision and its origin.
 
 ### Concurrent queries
 
@@ -129,17 +148,9 @@ cargo run --example goap_robot_delivery  # GOAP: warehouse delivery with robot c
 
 ## Performance highlights
 
-All figures from `cargo bench` (Criterion 0.5, 100 samples, release profile, macOS/Rust 1.94.1, last measured 2026-05-01).
+The optional workspace trades retained memory and setup cost for less repeated initialization. Measure representative workloads before opting in; it is not universally faster.
 
-| Scenario | Result |
-|---|---|
-| Sparse DAG search (10k nodes, fan=4) | **4.78 µs** |
-| Selective filter (rare attribute) | **~10 ns** — Dijkstra exits at first failing node |
-| `shortest_path_cost` vs `shortest_path` on a 100k-hop path | **1.25× faster** (519 µs vs 648 µs) |
-| Attribute count scaling (1 → 20 attrs per node) | **flat at ~10 ns** — O(1) `FxHashSet` lookup |
-| Construction, 1k-node sparse DAG | **89 µs** (~78% faster than pre-optimization baseline) |
-| Construction, 500k-node sparse DAG | **43 ms** with Rayon + FxHashMap |
-| 512 parallel queries via Rayon | **914 µs** — scales with available cores |
+Run workspace controls with `cargo bench -p grafo-dag --bench workspace`; the existing suite remains `cargo bench -p grafo-dag --bench performance`.
 
 Canonical summary with full tables and trade-offs: [`docs/performance.md`](docs/performance.md). Per-change deltas live in dated [`docs/perf-comparison-YYYY-MM-DD.md`](docs/perf-comparison-2026-05-01.md) snapshots; the first full sweep is in [`docs/benchmarks-2026-04-20.md`](docs/benchmarks-2026-04-20.md).
 

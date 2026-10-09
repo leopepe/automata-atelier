@@ -4,7 +4,9 @@
 //!
 //! Graphs are stored in **Compressed Sparse Row (CSR)** format for minimal
 //! memory usage and cache-friendly edge traversal. Shortest-path queries use
-//! **Dijkstra's algorithm** with a binary min-heap.
+//! **Dijkstra's algorithm** with a binary min-heap. For repeated cost-only
+//! queries, an optional caller-owned [`SearchWorkspace`] reuses query buffers
+//! without mutating the graph; existing one-shot APIs remain unchanged.
 //!
 //! ## Quick start
 //!
@@ -30,7 +32,7 @@
 
 mod graph;
 
-pub use graph::{Graph, GraphError, NodeAttrs, PathResult};
+pub use graph::{Graph, GraphError, NodeAttrs, PathResult, SearchWorkspace};
 
 #[cfg(test)]
 mod tests {
