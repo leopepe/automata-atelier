@@ -1,6 +1,4 @@
-mod workspace;
-pub use workspace::SearchWorkspace;
-
+use crate::workspace::SearchWorkspace;
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::Reverse;
@@ -784,5 +782,142 @@ impl Graph {
         }
 
         Ok(self.dijkstra_cost(src, dst, &filter))
+    }
+}
+
+impl Graph {
+    /// Find a minimum path cost using caller-owned reusable search storage.
+    ///
+    /// This opt-in alternative to [`Graph::shortest_path_cost`] reuses buffers
+    /// and initializes only discovered distances after setup. Returns `Ok(None)`
+    /// when unreachable. See [`SearchWorkspace`] for memory and setup trade-offs.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GraphError::UnknownNode`] if either endpoint is absent, checking
+    /// the source first. A failed query does not prevent later workspace reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use grafo::{Graph, SearchWorkspace};
+    /// let graph = Graph::new(&["a", "b", "c"], &[("a", "b", 1.0), ("b", "c", 2.0)]).unwrap();
+    /// let mut workspace = SearchWorkspace::new();
+    /// assert_eq!(graph.shortest_path_cost_with_workspace("a", "c", &mut workspace).unwrap(), Some(3.0));
+    /// assert_eq!(graph.shortest_path_cost_with_workspace("a", "a", &mut workspace).unwrap(), Some(0.0));
+    /// ```
+    pub fn shortest_path_cost_with_workspace(
+        &self,
+        from: &str,
+        to: &str,
+        workspace: &mut SearchWorkspace,
+    ) -> Result<Option<f64>, GraphError> {
+        self.shortest_path_filtered_cost_with_workspace(from, to, |_| true, workspace)
+    }
+
+    /// Find a filtered minimum path cost using reusable search storage.
+    ///
+    /// Semantics match [`Graph::shortest_path_filtered_cost`]: resolve endpoints
+    /// first, apply the predicate to both endpoints, then consider waypoints.
+    /// Returns `Ok(None)` if an endpoint is rejected or the goal is unreachable.
+    /// Accepted self queries return zero without initializing buffers.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GraphError::UnknownNode`] for an absent endpoint, source first.
+    ///
+    /// # Panics
+    ///
+    /// Propagates a panic from `filter`. If the panic unwinds and the caller
+    /// catches it, the workspace can safely be reused for a later query.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use grafo::{Graph, SearchWorkspace};
+    /// let graph = Graph::new_with_attrs(
+    ///     &[("a", &["taxi"][..]), ("b", &["bus"][..]), ("c", &["taxi"][..])],
+    ///     &[("a", "b", 1.0), ("b", "c", 1.0), ("a", "c", 5.0)],
+    /// ).unwrap();
+    /// let mut workspace = SearchWorkspace::new();
+    /// assert_eq!(graph.shortest_path_filtered_cost_with_workspace(
+    ///     "a", "c", |attrs| attrs.contains("taxi"), &mut workspace,
+    /// ).unwrap(), Some(5.0));
+    /// ```
+    pub fn shortest_path_filtered_cost_with_workspace<F>(
+        &self,
+        from: &str,
+        to: &str,
+        filter: F,
+        workspace: &mut SearchWorkspace,
+    ) -> Result<Option<f64>, GraphError>
+    where
+        F: Fn(&NodeAttrs) -> bool,
+    {
+        let src = *self
+            .node_index
+            .get(from)
+            .ok_or_else(|| GraphError::UnknownNode(from.to_string()))?;
+        let dst = *self
+            .node_index
+            .get(to)
+            .ok_or_else(|| GraphError::UnknownNode(to.to_string()))?;
+        if !filter(&self.node_attrs[src as usize]) || !filter(&self.node_attrs[dst as usize]) {
+            return Ok(None);
+        }
+        if src == dst {
+            return Ok(Some(0.0));
+        }
+        Ok(self.dijkstra_cost_with_workspace(src, dst, &filter, workspace))
+    }
+
+    fn dijkstra_cost_with_workspace<F>(
+        &self,
+        src: u32,
+        dst: u32,
+        filter: &F,
+        workspace: &mut SearchWorkspace,
+    ) -> Option<f64>
+    where
+        F: Fn(&NodeAttrs) -> bool,
+    {
+        workspace.begin(self.node_ids.len());
+        let generation = workspace.generation;
+        workspace.distances[src as usize] = 0.0;
+        workspace.stamps[src as usize] = generation;
+        workspace.heap.push((Reverse(0_u64), src));
+        while let Some((Reverse(bits), node)) = workspace.heap.pop() {
+            let cost = f64::from_bits(bits);
+            // Every heap entry was stamped in this generation before insertion.
+            if cost > workspace.distances[node as usize] {
+                continue;
+            }
+            if node == dst {
+                return Some(cost);
+            }
+            let start = self.offsets[node as usize] as usize;
+            let end = self.offsets[node as usize + 1] as usize;
+            for edge in start..end {
+                let next = self.targets[edge];
+                let index = next as usize;
+                if !filter(&self.node_attrs[index]) {
+                    continue;
+                }
+                let previous = if workspace.stamps[index] == generation {
+                    workspace.distances[index]
+                } else {
+                    f64::INFINITY
+                };
+                let candidate = cost + self.weights[edge];
+                // Comparing against infinity (rather than accepting every unseen
+                // node) preserves the existing overflow/NaN rejection behavior.
+                if candidate < previous {
+                    workspace.distances[index] = candidate;
+                    workspace.stamps[index] = generation;
+                    workspace.heap.push((Reverse(candidate.to_bits()), next));
+                }
+            }
+        }
+        None
     }
 }
