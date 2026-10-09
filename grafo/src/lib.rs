@@ -31,8 +31,10 @@
 //! ```
 
 mod graph;
+mod workspace;
 
-pub use graph::{Graph, GraphError, NodeAttrs, PathResult, SearchWorkspace};
+pub use graph::{Graph, GraphError, NodeAttrs, PathResult};
+pub use workspace::SearchWorkspace;
 
 #[cfg(test)]
 mod tests {

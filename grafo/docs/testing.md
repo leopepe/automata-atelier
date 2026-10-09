@@ -10,13 +10,15 @@ Rules and templates for Claude Code to follow when writing tests, benchmarks, an
 grafo/
 ├── src/
 │   ├── lib.rs          ← #[cfg(test)] unit tests for public re-exports
-│   └── graph.rs        ← #[cfg(test)] unit tests co-located with the module
+│   ├── graph.rs        ← graph storage and search methods
+│   └── workspace.rs    ← reusable search storage and its #[cfg(test)] unit tests
 ├── tests/
 │   ├── common/mod.rs   ← shared fixtures and helpers
 │   ├── graph_construction.rs
 │   ├── shortest_path.rs
 │   ├── shortest_path_filtered.rs
-│   └── cost_only.rs
+│   ├── cost_only.rs
+│   └── search_workspace.rs
 └── benches/
     └── performance.rs  ← Criterion benchmarks
 ```
