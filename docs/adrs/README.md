@@ -18,7 +18,7 @@ next free number.
 | 0003 | [Value-carrying facts live in the uncharles runtime, not in goap-planner's State](./0003-value-carrying-facts-runtime-side.md) | accepted | 2026-05-03 |
 | 0004 | [Publish `uncharles` to nixpkgs](./0004-publish-uncharles-to-nixpkgs.md) | accepted | 2026-05-17 |
 | 0005 | [Actor-based reactive runtime for uncharles (kameo)](./0005-actor-based-reactive-runtime.md) | proposed | 2026-06-18 |
-| 0006 | [Use caller-owned search workspaces](./0006-use-caller-owned-search-workspaces.md) | proposed | 2026-10-08 |
+| 0006 | [Use caller-owned search workspaces](./0006-use-caller-owned-search-workspaces.md) | accepted | 2026-10-08 |
 
 ## Status legend
 
