@@ -66,7 +66,8 @@ def sense(name: str, settings: Settings) -> ProbeResult:
 
         expected = {entry.relative_path: entry.size for entry in session.files}
         observed = {photo.relative_path: photo.size for photo in photo_files(session.destination)}
-        return predicate(expected == observed and len(expected) == len(batch.files))
+        inventory = {photo.relative_path: photo.size for photo in batch.files}
+        return predicate(expected == observed == inventory)
     if name == "user_notified":
         return predicate(read_receipt(session) is not None)
     if name == "archive_verified":

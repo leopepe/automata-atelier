@@ -1,7 +1,13 @@
 """Version-one session records and read-only completion observations."""
 
+import fcntl
 import json
+import os
 import re
+import stat
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
@@ -242,3 +248,67 @@ def read_receipt(session: Session) -> Verification | None:
     if proof.manifest_sha256 != file_digest(session.destination / MANIFEST_NAME)[1]:
         raise ObservationError("notification receipt manifest mismatch")
     return proof
+
+
+# These helpers are called only by actions; readers never acquire/create locks.
+def ensure_directory(path: Path) -> None:
+    """Create an action-owned directory tree, rejecting symlink components."""
+    checked_path(path)
+    path.mkdir(parents=True, exist_ok=True)
+    checked_path(path)
+    if not path.is_dir():
+        raise ObservationError(f"not a directory: {path}")
+
+
+def sync_directory(path: Path) -> None:
+    """Flush publication/removal metadata after a durable file write."""
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def write_json_atomic(path: Path, record: dict[str, object], *, immutable: bool = False) -> None:
+    """Publish durable JSON; immutable records never replace existing bytes."""
+    checked_path(path)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temp = Path(temporary)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(compact(record) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        if immutable:
+            # Link/unlink is an atomic no-clobber rename equivalent on this
+            # filesystem; plain rename would overwrite an unrelated file.
+            os.link(temp, path, follow_symlinks=False)
+        else:
+            os.replace(temp, path)
+        sync_directory(path.parent)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def write_session_atomic(settings: Settings, session: Session) -> None:
+    """Persist active progress while the caller holds the action lock."""
+    validate_session(settings, session)
+    write_json_atomic(settings.state_dir / ACTIVE_NAME, session.record())
+
+
+@contextmanager
+def action_lock(settings: Settings) -> Iterator[None]:
+    """Serialize action writers; acquiring a lock is itself a mutation."""
+    ensure_directory(settings.state_dir)
+    path = checked_path(settings.state_dir / "action.lock")
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise ObservationError("action lock is not a regular file")
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(descriptor)
