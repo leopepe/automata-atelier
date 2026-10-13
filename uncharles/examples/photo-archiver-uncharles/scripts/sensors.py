@@ -6,16 +6,18 @@ import sys
 from dataclasses import dataclass
 
 from common import (
+    Batch,
     IntegrityError,
     ObservationError,
     Settings,
     batch_matches,
     compact,
     discover_card,
+    photo_files,
     scan_photos,
     verify_archive,
 )
-from session import read_manifest, read_receipt, read_session
+from session import Session, read_manifest, read_receipt, read_session
 
 SENSOR_NAMES = (
     "sd_card_present",
@@ -42,6 +44,48 @@ def predicate(value: bool, stdout: str = "") -> ProbeResult:
     return ProbeResult(0, stdout) if value else ProbeResult(1)
 
 
+def _sense_idle(
+    batch: Batch | None, session: Session | None, matching: bool
+) -> ProbeResult:
+    """Keep obsolete sessions pending before considering an empty card."""
+    if session is not None and not matching:
+        return predicate(False)
+    if batch is None or not batch.files:
+        return predicate(True)
+    return predicate(
+        session is not None
+        and matching
+        and (session.status == "failed" or read_receipt(session) is not None)
+    )
+
+
+def _sense_photos_copied(batch: Batch, session: Session) -> ProbeResult:
+    """Compare manifest, destination, and source photo inventories."""
+    manifest = read_manifest(session.destination)
+    if manifest != session.without_receipt():
+        raise ObservationError("copy manifest/session mismatch")
+    expected = {entry.relative_path: entry.size for entry in session.files}
+    observed = {
+        photo.relative_path: photo.size
+        for photo in photo_files(session.destination)
+    }
+    inventory = {photo.relative_path: photo.size for photo in batch.files}
+    return predicate(expected == observed == inventory)
+
+
+def _sense_archive_verified(batch: Batch, session: Session) -> ProbeResult:
+    """Reuse a receipt or verify the current archive without writing state."""
+    receipt = read_receipt(session)
+    if receipt is not None:
+        return predicate(True, compact(receipt.record()))
+    try:
+        proof = verify_archive(batch, session)
+    except (IntegrityError, FileNotFoundError) as error:
+        print(f"archive unverified: {error}", file=sys.stderr)
+        return predicate(False)
+    return predicate(True, compact(proof.record()))
+
+
 def sense(name: str, settings: Settings) -> ProbeResult:
     """Observe independently without consuming other sensors' captures."""
     card = discover_card(settings)
@@ -55,51 +99,38 @@ def sense(name: str, settings: Settings) -> ProbeResult:
         )
     session = read_session(settings)
     matching = (
-        session is not None and batch is not None and batch_matches(batch, session)
+        session is not None
+        and batch is not None
+        and batch_matches(batch, session)
     )
-    obsolete = session is not None and not matching
-    if name == "session_obsolete":
-        return predicate(obsolete, session.session_id if session is not None else "")
-    if name == "import_failed":
-        return predicate(matching and session.status == "failed")
-    if name == "idle":
-        if obsolete:
-            return predicate(False)
-        if batch is None or not batch.files:
-            return predicate(True)
-        if not matching:
-            return predicate(False)
-        return predicate(
-            session.status == "failed" or read_receipt(session) is not None
-        )
-    if not matching or session.status != "copied":
+    match name:
+        case "session_obsolete":
+            return predicate(
+                session is not None and not matching,
+                session.session_id if session is not None else "",
+            )
+        case "import_failed":
+            return predicate(
+                matching and session is not None and session.status == "failed"
+            )
+        case "idle":
+            return _sense_idle(batch, session, matching)
+    if (
+        session is None
+        or batch is None
+        or not matching
+        or session.status != "copied"
+    ):
         return predicate(False)
-    if name == "photos_copied":
-        manifest = read_manifest(session.destination)
-        if manifest != session.without_receipt():
-            raise ObservationError("copy manifest/session mismatch")
-        from common import photo_files
-
-        expected = {entry.relative_path: entry.size for entry in session.files}
-        observed = {
-            photo.relative_path: photo.size
-            for photo in photo_files(session.destination)
-        }
-        inventory = {photo.relative_path: photo.size for photo in batch.files}
-        return predicate(expected == observed == inventory)
-    if name == "user_notified":
-        return predicate(read_receipt(session) is not None)
-    if name == "archive_verified":
-        receipt = read_receipt(session)
-        if receipt is not None:
-            return predicate(True, compact(receipt.record()))
-        try:
-            proof = verify_archive(batch, session)
-        except (IntegrityError, FileNotFoundError) as error:
-            print(f"archive unverified: {error}", file=sys.stderr)
-            return predicate(False)
-        return predicate(True, compact(proof.record()))
-    raise ObservationError(f"unknown sensor: {name}")
+    match name:
+        case "photos_copied":
+            return _sense_photos_copied(batch, session)
+        case "user_notified":
+            return predicate(read_receipt(session) is not None)
+        case "archive_verified":
+            return _sense_archive_verified(batch, session)
+        case _:
+            raise ObservationError(f"unknown sensor: {name}")
 
 
 def main() -> int:

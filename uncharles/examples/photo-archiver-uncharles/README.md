@@ -248,3 +248,9 @@ approval with a dedicated test card and isolated output/state paths.
 If uncharles fails or lacks a feature, retain the command/exit/log/artifacts and
 report the limitation. Do not weaken verification, turn it into an action, or
 modify the runtime/core libraries to conceal it.
+
+## Code-quality ledger
+
+[LEDGER.md](LEDGER.md) records the user-authored sensor/action refactors,
+structural issues missed by Conductor, and their post-refactor validation
+boundaries. Private execution logs and telemetry are not published.
