@@ -14,7 +14,7 @@ Imported from `docs/superpowers/plans/2026-10-13-photo-archiver-uncharles.md`; r
 - [x] 4. Add the YAML automaton invoking helpers through uv run with no-sync/frozen/offline/no-download flags, exact identity/fact/failure/staged-idle contracts, and compiled-binary config-only Rust dry-run/inspection tests; run cargo test -p uncharles --test photo_archiver plus real CLI dry-run/inspect. Do not execute or add tests for Python scripts from the Rust test.
       depends-on: 3
       touches: uncharles/examples/photo-archiver-uncharles/config.yaml, uncharles/tests/photo_archiver.rs
-- [ ] 5. Document uv setup/run/preview/mock/recovery and all limitations in the example README, link it from uncharles README, run workspace format/clippy/test gates and the manual isolated daemon insertion/copy/verification/notification/no-repeat/eject-reinsert demo, and retain exact check/failure evidence for Conductor's final report. Report uncharles defects/missing features without fixes. Real SD-card acceptance is separately approved or explicitly unverified; it is not a hidden prerequisite or invented pass.
+- [x] 5. Document uv setup/run/preview/mock/recovery and all limitations in the example README, link it from uncharles README, run workspace format/clippy/test gates and the manual isolated daemon insertion/copy/verification/notification/no-repeat/eject-reinsert demo, and retain exact check/failure evidence for Conductor's final report. Report uncharles defects/missing features without fixes. Real SD-card acceptance is separately approved or explicitly unverified; it is not a hidden prerequisite or invented pass.
       depends-on: 4
       touches: uncharles/examples/photo-archiver-uncharles/README.md, uncharles/README.md
 

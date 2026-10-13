@@ -79,7 +79,7 @@ impl Drop for IsolatedPreview {
     }
 }
 
-fn successful_json(output: Output) -> Value {
+fn successful_json(output: &Output) -> Value {
     assert_eq!(
         output.status.code(),
         Some(0),
@@ -104,7 +104,7 @@ fn photo_archiver_dry_run_has_expected_schema() {
         ])
         .output()
         .unwrap();
-    let dry_run = successful_json(output);
+    let dry_run = successful_json(&output);
     fixture.assert_untouched();
     assert_eq!(dry_run["sensors"], json!(SENSORS));
     assert_eq!(dry_run["goal"]["requires"], json!(["idle"]));
@@ -238,7 +238,7 @@ fn photo_archiver_inspection_runs_without_commands() {
         ])
         .output()
         .unwrap();
-    let inspection = successful_json(output);
+    let inspection = successful_json(&output);
     fixture.assert_untouched();
     assert_eq!(inspection["goal"]["requires"], json!(["idle"]));
     assert_eq!(inspection["sensors"].as_array().unwrap().len(), 8);

@@ -1,5 +1,7 @@
 """Read-only settings, card discovery, inventory, and archive integrity."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -9,7 +11,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, BinaryIO
 
 if TYPE_CHECKING:
     from session import Session, Verification
@@ -74,13 +76,29 @@ class Settings:
             if root == Path(root.anchor):
                 raise ObservationError("test root cannot be a filesystem root")
             return cls(root / "Pictures", root / "state", None, root)
-        pictures = checked_path(Path(os.environ.get(
-            "PHOTO_ARCHIVER_PICTURES_DIR", str(Path.home() / "Pictures"),
-        )).expanduser().resolve())
-        state = checked_path(Path(os.environ.get(
-            "PHOTO_ARCHIVER_STATE_DIR",
-            str(Path.home() / "Library/Application Support/uncharles-photo-archiver"),
-        )).expanduser().resolve())
+        pictures = checked_path(
+            Path(
+                os.environ.get(
+                    "PHOTO_ARCHIVER_PICTURES_DIR",
+                    str(Path.home() / "Pictures"),
+                )
+            )
+            .expanduser()
+            .resolve()
+        )
+        state = checked_path(
+            Path(
+                os.environ.get(
+                    "PHOTO_ARCHIVER_STATE_DIR",
+                    str(
+                        Path.home()
+                        / "Library/Application Support/uncharles-photo-archiver"
+                    ),
+                )
+            )
+            .expanduser()
+            .resolve()
+        )
         if overlaps(pictures, state):
             raise ObservationError("Pictures and state trees must be separate")
         return cls(pictures, state, os.environ.get("PHOTO_ARCHIVER_VOLUME_UUID"), None)
@@ -91,7 +109,11 @@ def validate_boundaries(settings: Settings, source: Path) -> None:
     source = checked_path(source)
     pictures = checked_path(settings.pictures_dir)
     state = checked_path(settings.state_dir)
-    if overlaps(source, pictures) or overlaps(source, state) or overlaps(pictures, state):
+    if (
+        overlaps(source, pictures)
+        or overlaps(source, state)
+        or overlaps(pictures, state)
+    ):
         raise ObservationError("source, Pictures, and state trees must be separate")
     if settings.test_root is not None and source != settings.test_root / "card":
         raise ObservationError("synthetic source escaped test root")
@@ -138,7 +160,10 @@ class Batch:
 def diskutil(*args: str) -> dict[str, object]:
     """Read a diskutil plist with a bounded subprocess timeout."""
     result = subprocess.run(
-        ["diskutil", *args], capture_output=True, check=True, timeout=10,
+        ["diskutil", *args],
+        capture_output=True,
+        check=True,
+        timeout=10,
     )
     try:
         value = plistlib.loads(result.stdout)
@@ -168,7 +193,9 @@ def discover_card(settings: Settings) -> Card | None:
         raise ObservationError("physical disk list is missing")
     candidates: list[Card] = []
     for disk in disks:
-        if not isinstance(disk, dict) or not isinstance(disk.get("DeviceIdentifier"), str):
+        if not isinstance(disk, dict) or not isinstance(
+            disk.get("DeviceIdentifier"), str
+        ):
             raise ObservationError("physical disk identity is missing")
         parent = diskutil("info", "-plist", disk["DeviceIdentifier"])
         partitions = disk.get("Partitions", [])
@@ -188,7 +215,9 @@ def discover_card(settings: Settings) -> Card | None:
                 raise ObservationError("mount path is invalid")
             if mount_value == "/" or info.get("OSInternalMedia") is True:
                 continue
-            removable = parent.get("RemovableMedia") is True or parent.get("Ejectable") is True
+            removable = (
+                parent.get("RemovableMedia") is True or parent.get("Ejectable") is True
+            )
             if not removable:
                 continue
             protocol = parent.get("BusProtocol")
@@ -200,7 +229,9 @@ def discover_card(settings: Settings) -> Card | None:
                     raise ObservationError("selected media classification is unknown")
             elif protocol != "Secure Digital":
                 if protocol is None:
-                    raise ObservationError("removable media bus classification is missing")
+                    raise ObservationError(
+                        "removable media bus classification is missing"
+                    )
                 continue
             if not isinstance(uuid, str) or not uuid:
                 raise ObservationError("card volume UUID is missing")
@@ -232,12 +263,18 @@ def photo_files(root: Path) -> tuple[Photo, ...]:
                 path = Path(entry.path)
                 if entry.is_dir(follow_symlinks=False):
                     walk(path)
-                elif entry.is_file(follow_symlinks=False) and path.suffix.lower() in EXTENSIONS:
+                elif (
+                    entry.is_file(follow_symlinks=False)
+                    and path.suffix.lower() in EXTENSIONS
+                ):
                     metadata = entry.stat(follow_symlinks=False)
-                    photos.append(Photo(
-                        path.relative_to(root).as_posix(),
-                        metadata.st_size, metadata.st_mtime_ns,
-                    ))
+                    photos.append(
+                        Photo(
+                            path.relative_to(root).as_posix(),
+                            metadata.st_size,
+                            metadata.st_mtime_ns,
+                        )
+                    )
 
     walk(dcim)
     return tuple(sorted(photos, key=lambda photo: photo.relative_path))
@@ -254,14 +291,19 @@ def scan_photos(card: Card) -> Batch:
 def safe_relative(relative_path: str) -> Path:
     """Validate a canonical supported source-relative photo path."""
     path = Path(relative_path)
-    if (path.is_absolute() or ".." in path.parts or len(path.parts) < 2
-            or path.parts[0] != "DCIM" or path.as_posix() != relative_path
-            or path.suffix.lower() not in EXTENSIONS):
+    if (
+        path.is_absolute()
+        or ".." in path.parts
+        or len(path.parts) < 2
+        or path.parts[0] != "DCIM"
+        or path.as_posix() != relative_path
+        or path.suffix.lower() not in EXTENSIONS
+    ):
         raise ObservationError(f"invalid photo path: {relative_path!r}")
     return path
 
 
-def open_regular(path: Path):
+def open_regular(path: Path) -> BinaryIO:
     """Open a checked regular file without following its final symlink."""
     checked_path(path)
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
@@ -287,7 +329,11 @@ def file_digest(path: Path) -> tuple[int, str]:
 
 def batch_matches(batch: Batch, session: Session) -> bool:
     """Compare the complete source identity independently of captures."""
-    return (batch.card == session.card and batch.inventory_id == session.inventory_id)
+    return (
+        batch.card.volume_uuid == session.card.volume_uuid
+        and batch.card.mount_path == session.card.mount_path
+        and batch.inventory_id == session.inventory_id
+    )
 
 
 def verify_archive(batch: Batch, session: Session) -> Verification:
@@ -315,6 +361,9 @@ def verify_archive(batch: Batch, session: Session) -> Verification:
         raise IntegrityError("source inventory changed during verification")
     digest = file_digest(session.destination / MANIFEST_NAME)[1]
     return Verification(
-        session.session_id, session.inventory_id, session.destination,
-        digest, len(saved),
+        session.session_id,
+        session.inventory_id,
+        session.destination,
+        digest,
+        len(saved),
     )

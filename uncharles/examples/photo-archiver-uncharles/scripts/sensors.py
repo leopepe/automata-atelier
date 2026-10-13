@@ -6,14 +6,26 @@ import sys
 from dataclasses import dataclass
 
 from common import (
-    IntegrityError, ObservationError, Settings, batch_matches, compact,
-    discover_card, scan_photos, verify_archive,
+    IntegrityError,
+    ObservationError,
+    Settings,
+    batch_matches,
+    compact,
+    discover_card,
+    scan_photos,
+    verify_archive,
 )
 from session import read_manifest, read_receipt, read_session
 
 SENSOR_NAMES = (
-    "sd_card_present", "photo_batch", "photos_copied", "archive_verified",
-    "user_notified", "import_failed", "session_obsolete", "idle",
+    "sd_card_present",
+    "photo_batch",
+    "photos_copied",
+    "archive_verified",
+    "user_notified",
+    "import_failed",
+    "session_obsolete",
+    "idle",
 )
 
 
@@ -42,7 +54,9 @@ def sense(name: str, settings: Settings) -> ProbeResult:
             compact(batch.capture()) if batch is not None else "",
         )
     session = read_session(settings)
-    matching = session is not None and batch is not None and batch_matches(batch, session)
+    matching = (
+        session is not None and batch is not None and batch_matches(batch, session)
+    )
     obsolete = session is not None and not matching
     if name == "session_obsolete":
         return predicate(obsolete, session.session_id if session is not None else "")
@@ -55,7 +69,9 @@ def sense(name: str, settings: Settings) -> ProbeResult:
             return predicate(True)
         if not matching:
             return predicate(False)
-        return predicate(session.status == "failed" or read_receipt(session) is not None)
+        return predicate(
+            session.status == "failed" or read_receipt(session) is not None
+        )
     if not matching or session.status != "copied":
         return predicate(False)
     if name == "photos_copied":
@@ -65,7 +81,10 @@ def sense(name: str, settings: Settings) -> ProbeResult:
         from common import photo_files
 
         expected = {entry.relative_path: entry.size for entry in session.files}
-        observed = {photo.relative_path: photo.size for photo in photo_files(session.destination)}
+        observed = {
+            photo.relative_path: photo.size
+            for photo in photo_files(session.destination)
+        }
         inventory = {photo.relative_path: photo.size for photo in batch.files}
         return predicate(expected == observed == inventory)
     if name == "user_notified":

@@ -1,5 +1,7 @@
 """Version-one session records and read-only completion observations."""
 
+from __future__ import annotations
+
 import fcntl
 import json
 import os
@@ -13,8 +15,16 @@ from pathlib import Path
 from typing import Literal
 
 from common import (
-    MANIFEST_NAME, RECEIPT_NAME, Card, ObservationError, Settings,
-    checked_path, compact, open_regular, safe_relative, validate_boundaries,
+    MANIFEST_NAME,
+    RECEIPT_NAME,
+    Card,
+    ObservationError,
+    Settings,
+    checked_path,
+    compact,
+    open_regular,
+    safe_relative,
+    validate_boundaries,
 )
 
 SCHEMA_VERSION = 1
@@ -71,7 +81,11 @@ class ArchiveEntry:
 
     def record(self) -> dict[str, object]:
         """Serialize a per-file progress entry."""
-        return {"relative_path": self.relative_path, "size": self.size, "sha256": self.sha256}
+        return {
+            "relative_path": self.relative_path,
+            "size": self.size,
+            "sha256": self.sha256,
+        }
 
     @classmethod
     def from_record(cls, value: object) -> ArchiveEntry:
@@ -95,9 +109,11 @@ class Verification:
     def record(self) -> dict[str, object]:
         """Serialize the compact captured proof."""
         return {
-            "session_id": self.session_id, "inventory_id": self.inventory_id,
+            "session_id": self.session_id,
+            "inventory_id": self.inventory_id,
             "destination": str(self.destination),
-            "manifest_sha256": self.manifest_sha256, "count": self.count,
+            "manifest_sha256": self.manifest_sha256,
+            "count": self.count,
         }
 
     @classmethod
@@ -105,9 +121,11 @@ class Verification:
         """Validate a captured or receipted proof."""
         record = object_record(value)
         return cls(
-            text(record, "session_id"), digest_field(record, "inventory_id"),
+            text(record, "session_id"),
+            digest_field(record, "inventory_id"),
             checked_path(Path(text(record, "destination"))),
-            digest_field(record, "manifest_sha256"), number(record, "count"),
+            digest_field(record, "manifest_sha256"),
+            number(record, "count"),
         )
 
 
@@ -132,14 +150,17 @@ class Session:
     def record(self) -> dict[str, object]:
         """Serialize schema version one."""
         return {
-            "version": SCHEMA_VERSION, "session_id": self.session_id,
+            "version": SCHEMA_VERSION,
+            "session_id": self.session_id,
             "source": {
                 "volume_uuid": self.card.volume_uuid,
-                "mount_path": str(self.card.mount_path), "device_id": self.card.device_id,
+                "mount_path": str(self.card.mount_path),
+                "device_id": self.card.device_id,
             },
             "inventory_id": self.inventory_id,
             "extraction_timestamp": self.extraction_timestamp,
-            "destination": str(self.destination), "status": self.status,
+            "destination": str(self.destination),
+            "status": self.status,
             "files": [entry.record() for entry in self.files],
             "failure_detail": self.failure_detail,
             "notification_receipt": (
@@ -151,14 +172,18 @@ class Session:
     def from_record(cls, value: object) -> Session:
         """Validate saved schema, identity, paths, and progress fields."""
         record = object_record(value)
-        if type(record.get("version")) is not int or record["version"] != SCHEMA_VERSION:
+        if (
+            type(record.get("version")) is not int
+            or record["version"] != SCHEMA_VERSION
+        ):
             raise ObservationError("unsupported session schema version")
         session_id = text(record, "session_id")
         if re.fullmatch(r"[0-9a-f]{32}", session_id) is None:
             raise ObservationError("invalid session ID")
         source = object_record(record.get("source"))
         card = Card(
-            text(source, "volume_uuid"), checked_path(Path(text(source, "mount_path"))),
+            text(source, "volume_uuid"),
+            checked_path(Path(text(source, "mount_path"))),
             text(source, "device_id"),
         )
         timestamp = text(record, "extraction_timestamp")
@@ -191,8 +216,15 @@ class Session:
             if receipt != destination / RECEIPT_NAME or status != "copied":
                 raise ObservationError("receipt does not belong to copied session")
         return cls(
-            session_id, card, digest_field(record, "inventory_id"), timestamp,
-            destination, status, files, failure, receipt,
+            session_id,
+            card,
+            digest_field(record, "inventory_id"),
+            timestamp,
+            destination,
+            status,
+            files,
+            failure,
+            receipt,
         )
 
 
@@ -219,8 +251,11 @@ def read_session(settings: Settings) -> Session | None:
 def read_manifest(destination: Path) -> Session:
     """Read the immutable completed copy manifest."""
     session = Session.from_record(read_json(destination / MANIFEST_NAME))
-    if (session.destination != destination or session.status != "copied"
-            or session.notification_receipt is not None):
+    if (
+        session.destination != destination
+        or session.status != "copied"
+        or session.notification_receipt is not None
+    ):
         raise ObservationError("invalid completed copy manifest")
     return session
 
@@ -234,14 +269,19 @@ def read_receipt(session: Session) -> Verification | None:
         if session.notification_receipt is not None:
             raise ObservationError("referenced notification receipt is missing")
         return None
-    if (type(record.get("version")) is not int or record["version"] != SCHEMA_VERSION
-            or record.get("submitted") is not True):
+    if (
+        type(record.get("version")) is not int
+        or record["version"] != SCHEMA_VERSION
+        or record.get("submitted") is not True
+    ):
         raise ObservationError("invalid notification receipt schema")
     proof = Verification.from_record(record.get("proof"))
-    if (proof.session_id != session.session_id
-            or proof.inventory_id != session.inventory_id
-            or proof.destination != session.destination
-            or proof.count != len(session.files)):
+    if (
+        proof.session_id != session.session_id
+        or proof.inventory_id != session.inventory_id
+        or proof.destination != session.destination
+        or proof.count != len(session.files)
+    ):
         raise ObservationError("notification receipt identity mismatch")
     from common import file_digest
 
@@ -269,7 +309,9 @@ def sync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
-def write_json_atomic(path: Path, record: dict[str, object], *, immutable: bool = False) -> None:
+def write_json_atomic(
+    path: Path, record: dict[str, object], *, immutable: bool = False
+) -> None:
     """Publish durable JSON; immutable records never replace existing bytes."""
     checked_path(path)
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
