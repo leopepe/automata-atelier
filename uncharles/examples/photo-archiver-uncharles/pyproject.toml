@@ -1,0 +1,9 @@
+[project]
+name = "photo-archiver-uncharles"
+version = "0.1.0"
+description = "Dependency-free camera photo archiver example"
+requires-python = ">=3.14"
+dependencies = []
+
+[tool.uv]
+package = false
