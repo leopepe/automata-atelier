@@ -1,0 +1,52 @@
+# Workspace-root paths; prepare uv explicitly before polling.
+sensors:
+  - name: sd_card_present
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "sd_card_present"]
+  - name: photo_batch
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "photo_batch"]
+    capture: stdout
+    on_success: {add: [photo_batch, photos_present]}
+    on_failure: {remove: [photo_batch, photos_present]}
+  - name: photos_copied
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "photos_copied"]
+  - name: archive_verified
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "archive_verified"]
+    capture: stdout
+  - name: user_notified
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "user_notified"]
+  - name: import_failed
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "import_failed"]
+  - name: session_obsolete
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "session_obsolete"]
+    capture: stdout
+  - name: idle
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/sensors.py", "idle"]
+
+actions:
+  # Optimistic idle makes the copy stage reachable, not verified.
+  - name: copy_photos
+    cost: 2
+    requires: [sd_card_present, photo_batch, photos_present]
+    forbids: [photos_copied, import_failed, session_obsolete]
+    adds: [photos_copied, idle]
+    on_failure: {add: [import_failed], remove: [idle]}
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/actions.py", "copy"]
+
+  # archive_verified is only ever observed by its read-only sensor.
+  - name: notify_user
+    cost: 1
+    requires: [sd_card_present, photo_batch, photos_copied, archive_verified]
+    forbids: [user_notified, import_failed, session_obsolete]
+    adds: [user_notified, idle]
+    on_failure: {add: [import_failed], remove: [idle]}
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/actions.py", "notify"]
+
+  - name: reset_session
+    cost: 1
+    requires: [session_obsolete]
+    adds: [idle]
+    removes: [photo_batch, photos_present, photos_copied, archive_verified, user_notified, import_failed, session_obsolete]
+    cmd: ["uv", "run", "--project", "uncharles/examples/photo-archiver-uncharles", "--python", "3.14", "--no-sync", "--frozen", "--offline", "--no-python-downloads", "python", "-B", "uncharles/examples/photo-archiver-uncharles/scripts/actions.py", "reset-session"]
+
+goal:
+  requires: [idle]
