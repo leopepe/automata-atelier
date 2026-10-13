@@ -13,13 +13,14 @@ from datetime import datetime
 from pathlib import Path
 
 from common import (
-    CHUNK_SIZE, MANIFEST_NAME, Batch, ObservationError, Photo, Settings,
+    CHUNK_SIZE, MANIFEST_NAME, RECEIPT_NAME, Batch, ObservationError, Photo, Settings,
     batch_matches, checked_path, compact, discover_card, file_digest,
     open_regular, safe_relative, scan_photos, verify_archive,
 )
 from session import (
-    ArchiveEntry, Session, action_lock, ensure_directory, object_record,
-    read_manifest, read_session, sync_directory, write_json_atomic,
+    ACTIVE_NAME, SCHEMA_VERSION, ArchiveEntry, Session, Verification,
+    action_lock, ensure_directory, object_record, read_manifest,
+    read_receipt, read_session, sync_directory, write_json_atomic,
     write_session_atomic,
 )
 
@@ -169,6 +170,103 @@ def copy_batch(settings: Settings, captured_batch: dict[str, object]) -> Session
             raise
 
 
+NOTIFICATION_TITLE = "Photo import complete"
+NOTIFICATION_PROGRAM = """on run argv
+    display notification (item 2 of argv) with title (item 1 of argv)
+end run"""
+
+
+def submit_notification(settings: Settings, proof: Verification) -> None:
+    """Submit text as data; synthetic mode never invokes desktop APIs."""
+    body = f"Copied and verified {proof.count} photos to {proof.destination}"
+    if settings.test_root is not None:
+        sink = checked_path(settings.test_root / "notifications.jsonl")
+        descriptor = os.open(
+            sink, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK,
+            0o600,
+        )
+        try:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise ActionError("mock notification sink is not a regular file")
+            stream = os.fdopen(descriptor, "w", encoding="utf-8")
+        except (OSError, ActionError):
+            os.close(descriptor)
+            raise
+        with stream:
+            stream.write(compact({"title": NOTIFICATION_TITLE, "body": body}) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        return
+    if sys.platform != "darwin":
+        raise ActionError("desktop notification requires macOS")
+    subprocess.run(
+        ["osascript", "-e", NOTIFICATION_PROGRAM, NOTIFICATION_TITLE, body],
+        capture_output=True, check=True, timeout=10,
+    )
+
+
+def notify_verified(
+    settings: Settings, captured_batch: dict[str, object],
+    captured_verification: dict[str, object],
+) -> None:
+    """Revalidate sensor authorization before one notification submission."""
+    current_batch(settings, captured_batch)
+    with action_lock(settings):
+        batch = current_batch(settings, captured_batch)
+        session = read_session(settings)
+        if session is None or not batch_matches(batch, session):
+            raise ActionError("notification has no matching active session")
+        captured = Verification.from_record(captured_verification)
+        if (captured.session_id != session.session_id
+                or captured.inventory_id != session.inventory_id
+                or captured.destination != session.destination):
+            raise ActionError("stale notification belongs to another session")
+        if session.status != "copied":
+            raise ActionError("notification requires a completed, nonfailed session")
+        try:
+            receipt = read_receipt(session)
+            if receipt is not None:
+                if compact(captured_verification) != compact(receipt.record()):
+                    raise ActionError("captured proof differs from saved submission")
+                if session.notification_receipt is None:
+                    write_session_atomic(settings, replace(
+                        session, notification_receipt=session.destination / RECEIPT_NAME,
+                    ))
+                return
+            proof = verify_archive(batch, session)
+            if compact(captured_verification) != compact(proof.record()):
+                raise ActionError("captured verification proof is no longer valid")
+            current_batch(settings, captured_batch)
+            submit_notification(settings, proof)
+            receipt_path = session.destination / RECEIPT_NAME
+            write_json_atomic(receipt_path, {
+                "version": SCHEMA_VERSION, "submitted": True,
+                "proof": proof.record(), "title": NOTIFICATION_TITLE,
+                "body": f"Copied and verified {proof.count} photos to {proof.destination}",
+            }, immutable=True)
+            write_session_atomic(settings, replace(session, notification_receipt=receipt_path))
+        except (ActionError, ObservationError, OSError, subprocess.SubprocessError) as error:
+            mark_failed(settings, session, error)
+            raise
+
+
+def reset_session(settings: Settings, expected_session_id: str) -> None:
+    """Remove only the token-matching active record; retain every archive."""
+    if not expected_session_id:
+        raise ActionError("reset requires an expected session ID")
+    session = read_session(settings)
+    if session is None:
+        return
+    with action_lock(settings):
+        session = read_session(settings)
+        if session is None:
+            return
+        if session.session_id != expected_session_id:
+            raise ActionError("stale reset token; active bookkeeping preserved")
+        (settings.state_dir / ACTIVE_NAME).unlink()
+        sync_directory(settings.state_dir)
+
+
 def captured_env(name: str) -> dict[str, object]:
     """Parse required captured JSON without shell-expanded paths."""
     value = os.environ.get(name)
@@ -183,12 +281,21 @@ def captured_env(name: str) -> dict[str, object]:
 def main() -> int:
     """Run a guarded action; print failures to stderr and exit one."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("copy",))
+    parser.add_argument("action", choices=("copy", "notify", "reset-session"))
+    parser.add_argument("--session-id", help="expected active session token for manual reset")
     args = parser.parse_args()
     try:
         settings = Settings.from_env()
         if args.action == "copy":
             copy_batch(settings, captured_env("UNCHARLES_FACT_PHOTO_BATCH"))
+        elif args.action == "notify":
+            notify_verified(
+                settings, captured_env("UNCHARLES_FACT_PHOTO_BATCH"),
+                captured_env("UNCHARLES_FACT_ARCHIVE_VERIFIED"),
+            )
+        else:
+            expected = args.session_id or os.environ.get("UNCHARLES_FACT_SESSION_OBSOLETE", "")
+            reset_session(settings, expected)
         return 0
     except (ActionError, ObservationError, OSError, subprocess.SubprocessError) as error:
         print(f"action error: {error}", file=sys.stderr)

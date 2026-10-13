@@ -8,7 +8,7 @@ Imported from `docs/superpowers/plans/2026-10-13-photo-archiver-uncharles.md`; r
 - [x] 2. Implement action-only locking/atomic persistence, identity-bound resumable copy, dated allocation, per-file SHA-256/temporary completion, source-preserving failure/idempotence handling, and copy CLI; manually inspect paths/bytes/manifest and repeat-call destination stability in mock mode.
       depends-on: 1
       touches: uncharles/examples/photo-archiver-uncharles/scripts/session.py, uncharles/examples/photo-archiver-uncharles/scripts/actions.py
-- [ ] 3. Implement guarded notification, separate proof/receipt persistence, mock notification sink, failed/stale-proof handling, and token-bound reset that retains archives; manually check successful no-repeat submission and equal-count corruption/no receipt with isolated fixtures.
+- [x] 3. Implement guarded notification, separate proof/receipt persistence, mock notification sink, failed/stale-proof handling, and token-bound reset that retains archives; manually check successful no-repeat submission and equal-count corruption/no receipt with isolated fixtures.
       depends-on: 2
       touches: uncharles/examples/photo-archiver-uncharles/scripts/actions.py, uncharles/examples/photo-archiver-uncharles/scripts/sensors.py
 - [ ] 4. Add the YAML automaton invoking helpers through uv run with no-sync/frozen/offline/no-download flags, exact identity/fact/failure/staged-idle contracts, and compiled-binary config-only Rust dry-run/inspection tests; run cargo test -p uncharles --test photo_archiver plus real CLI dry-run/inspect. Do not execute or add tests for Python scripts from the Rust test.
