@@ -210,6 +210,12 @@ one invocation. Removing a fact (via `Action::removes` or sensor
 
 ## Example configs
 
+The [camera photo archiver example](examples/photo-archiver-uncharles/) combines
+read-only Python 3.14+/uv sensors, source-preserving copying, sensor-confirmed
+SHA-256 verification, and guarded notification. It includes explicit local uv
+setup, an isolated synthetic demo, and staged daemon/recovery limitations;
+`--once` is not a complete-import mode for this example.
+
 Real configs covering different domains — read them as a tour of what the runtime can express:
 
 | Config | What it does |

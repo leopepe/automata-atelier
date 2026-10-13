@@ -34,6 +34,7 @@ required, the MADR format used, and the workflow for ratifying one.
 | [`issues.md`](./issues.md) | How to file and triage GitHub issues: templates, labels, linking to PRs. |
 | [`adrs.md`](./adrs.md) | Architecture Decision Records: when to write one, MADR format, lifecycle. |
 | [`adrs/`](./adrs/) | The ADR records themselves, plus the template and index. |
+| [`superpowers/plans/2026-10-13-photo-archiver-uncharles.md`](./superpowers/plans/2026-10-13-photo-archiver-uncharles.md) | Implementation plan for the macOS SD-card photo archiver example; authorized for a Conductor-controlled cycle. |
 | `CLAUDE.md` | This index. |
 
 When new workspace-wide documentation is added, list it here so it is
