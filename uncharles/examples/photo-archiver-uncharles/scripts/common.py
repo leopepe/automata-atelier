@@ -215,10 +215,13 @@ def discover_card(settings: Settings) -> Card | None:
                 raise ObservationError("mount path is invalid")
             if mount_value == "/" or info.get("OSInternalMedia") is True:
                 continue
-            removable = (
-                parent.get("RemovableMedia") is True or parent.get("Ejectable") is True
-            )
-            if not removable:
+            removable = parent.get("RemovableMedia")
+            ejectable = parent.get("Ejectable")
+            if not isinstance(removable, bool) or not isinstance(ejectable, bool):
+                raise ObservationError(
+                    "media RemovableMedia/Ejectable classification is missing or invalid"
+                )
+            if not (removable or ejectable):
                 continue
             protocol = parent.get("BusProtocol")
             uuid = info.get("VolumeUUID")
