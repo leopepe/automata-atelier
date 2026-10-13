@@ -70,3 +70,10 @@ aws-credentials*
 *.local.yaml
 *.local.yml
 config.local.*
+
+# --- Private Conductor / Pi cycle state ----------------------------------
+# Planning/spec artifacts in openspec/ are shared; runtime evidence is not.
+.conductor/
+.plan/
+.pi/
+.agents/
