@@ -30,7 +30,7 @@ fn main() {
         Some(result) => {
             println!(
                 "Shortest path: {}",
-                result.resolve_labels(&graph).join(" → ")
+                result.resolve_labels(&graph).unwrap().join(" → ")
             );
             println!("Total cost:    {}", result.cost);
         }

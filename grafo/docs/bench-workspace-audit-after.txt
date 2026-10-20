@@ -1,0 +1,248 @@
+   Compiling grafo-dag v0.1.0 (/Users/pepe/Workspace/rust/automata-atelier/grafo)
+    Finished `bench` profile [optimized] target(s) in 1.37s
+     Running benches/workspace.rs (target/release/deps/workspace-29594e89120cdc96)
+Gnuplot not found, using plotters backend
+Benchmarking workspace/padding/100000/one_shot
+Benchmarking workspace/padding/100000/one_shot: Warming up for 3.0000 s
+Benchmarking workspace/padding/100000/one_shot: Collecting 100 samples in estimated 5.0237 s (384k iterations)
+Benchmarking workspace/padding/100000/one_shot: Analyzing
+workspace/padding/100000/one_shot
+                        time:   [11.924 µs 11.970 µs 12.026 µs]
+                        change: [+4.4244% +5.0602% +5.6954%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+Benchmarking workspace/padding/100000/warm
+Benchmarking workspace/padding/100000/warm: Warming up for 3.0000 s
+Benchmarking workspace/padding/100000/warm: Collecting 100 samples in estimated 5.0006 s (2.3M iterations)
+Benchmarking workspace/padding/100000/warm: Analyzing
+workspace/padding/100000/warm
+                        time:   [2.1336 µs 2.1508 µs 2.1717 µs]
+                        change: [+15.555% +16.821% +17.980%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+
+Benchmarking workspace/cold/padding/100000
+Benchmarking workspace/cold/padding/100000: Warming up for 3.0000 s
+Benchmarking workspace/cold/padding/100000: Collecting 100 samples in estimated 5.0099 s (480k iterations)
+Benchmarking workspace/cold/padding/100000: Analyzing
+workspace/cold/padding/100000
+                        time:   [10.435 µs 10.477 µs 10.520 µs]
+                        change: [+4.3649% +4.9449% +5.4554%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+Benchmarking workspace/padding/250000/one_shot
+Benchmarking workspace/padding/250000/one_shot: Warming up for 3.0000 s
+Benchmarking workspace/padding/250000/one_shot: Collecting 100 samples in estimated 5.0402 s (187k iterations)
+Benchmarking workspace/padding/250000/one_shot: Analyzing
+workspace/padding/250000/one_shot
+                        time:   [26.437 µs 26.500 µs 26.568 µs]
+                        change: [+0.6123% +0.9587% +1.2951%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking workspace/padding/250000/warm
+Benchmarking workspace/padding/250000/warm: Warming up for 3.0000 s
+Benchmarking workspace/padding/250000/warm: Collecting 100 samples in estimated 5.0068 s (2.3M iterations)
+Benchmarking workspace/padding/250000/warm: Analyzing
+workspace/padding/250000/warm
+                        time:   [2.1015 µs 2.1235 µs 2.1512 µs]
+                        change: [+16.958% +18.392% +19.851%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking workspace/cold/padding/250000
+Benchmarking workspace/cold/padding/250000: Warming up for 3.0000 s
+Benchmarking workspace/cold/padding/250000: Collecting 100 samples in estimated 5.0111 s (232k iterations)
+Benchmarking workspace/cold/padding/250000: Analyzing
+workspace/cold/padding/250000
+                        time:   [21.214 µs 21.248 µs 21.288 µs]
+                        change: [+1.2517% +1.5008% +1.7529%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking workspace/padding/1000000/one_shot
+Benchmarking workspace/padding/1000000/one_shot: Warming up for 3.0000 s
+Benchmarking workspace/padding/1000000/one_shot: Collecting 100 samples in estimated 5.0928 s (50k iterations)
+Benchmarking workspace/padding/1000000/one_shot: Analyzing
+workspace/padding/1000000/one_shot
+                        time:   [100.85 µs 101.32 µs 101.92 µs]
+                        change: [-2.5079% -1.3221% -0.2779%] (p = 0.02 < 0.05)
+                        Change within noise threshold.
+Found 14 outliers among 100 measurements (14.00%)
+  5 (5.00%) low mild
+  2 (2.00%) high mild
+  7 (7.00%) high severe
+Benchmarking workspace/padding/1000000/warm
+Benchmarking workspace/padding/1000000/warm: Warming up for 3.0000 s
+Benchmarking workspace/padding/1000000/warm: Collecting 100 samples in estimated 5.0003 s (2.4M iterations)
+Benchmarking workspace/padding/1000000/warm: Analyzing
+workspace/padding/1000000/warm
+                        time:   [2.0646 µs 2.0780 µs 2.0924 µs]
+                        change: [-22.845% -22.021% -21.210%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking workspace/cold/padding/1000000
+Benchmarking workspace/cold/padding/1000000: Warming up for 3.0000 s
+Benchmarking workspace/cold/padding/1000000: Collecting 100 samples in estimated 5.0397 s (66k iterations)
+Benchmarking workspace/cold/padding/1000000: Analyzing
+workspace/cold/padding/1000000
+                        time:   [76.657 µs 76.807 µs 76.990 µs]
+                        change: [-20.826% -17.665% -15.029%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 10 outliers among 100 measurements (10.00%)
+  2 (2.00%) high mild
+  8 (8.00%) high severe
+
+Benchmarking workspace/chain/one_shot
+Benchmarking workspace/chain/one_shot: Warming up for 3.0000 s
+Benchmarking workspace/chain/one_shot: Collecting 100 samples in estimated 5.3650 s (10k iterations)
+Benchmarking workspace/chain/one_shot: Analyzing
+workspace/chain/one_shot
+                        time:   [507.18 µs 508.64 µs 510.13 µs]
+                        change: [-31.246% -30.887% -30.497%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking workspace/chain/warm
+Benchmarking workspace/chain/warm: Warming up for 3.0000 s
+Benchmarking workspace/chain/warm: Collecting 100 samples in estimated 5.8288 s (10k iterations)
+Benchmarking workspace/chain/warm: Analyzing
+workspace/chain/warm    time:   [640.91 µs 656.73 µs 672.59 µs]
+                        change: [-15.143% -13.763% -12.306%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking workspace/layered/one_shot
+Benchmarking workspace/layered/one_shot: Warming up for 3.0000 s
+Benchmarking workspace/layered/one_shot: Collecting 100 samples in estimated 5.1456 s (45k iterations)
+Benchmarking workspace/layered/one_shot: Analyzing
+workspace/layered/one_shot
+                        time:   [104.65 µs 105.96 µs 107.65 µs]
+                        change: [+12.375% +15.306% +17.575%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking workspace/layered/warm
+Benchmarking workspace/layered/warm: Warming up for 3.0000 s
+Benchmarking workspace/layered/warm: Collecting 100 samples in estimated 5.1067 s (35k iterations)
+Benchmarking workspace/layered/warm: Analyzing
+workspace/layered/warm  time:   [127.17 µs 127.89 µs 128.63 µs]
+                        change: [+5.0948% +5.5662% +6.1017%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 11 outliers among 100 measurements (11.00%)
+  9 (9.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking workspace/unreachable/one_shot
+Benchmarking workspace/unreachable/one_shot: Warming up for 3.0000 s
+Benchmarking workspace/unreachable/one_shot: Collecting 100 samples in estimated 5.0106 s (485k iterations)
+Benchmarking workspace/unreachable/one_shot: Analyzing
+workspace/unreachable/one_shot
+                        time:   [10.148 µs 10.161 µs 10.175 µs]
+                        change: [+0.6630% +0.9371% +1.2002%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) low mild
+  4 (4.00%) high mild
+Benchmarking workspace/unreachable/warm
+Benchmarking workspace/unreachable/warm: Warming up for 3.0000 s
+Benchmarking workspace/unreachable/warm: Collecting 100 samples in estimated 5.0000 s (357M iterations)
+Benchmarking workspace/unreachable/warm: Analyzing
+workspace/unreachable/warm
+                        time:   [13.746 ns 13.786 ns 13.824 ns]
+                        change: [+12.887% +13.761% +14.675%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) low mild
+
+Benchmarking workspace/batches/mixed_one_shot_x8
+Benchmarking workspace/batches/mixed_one_shot_x8: Warming up for 3.0000 s
+Benchmarking workspace/batches/mixed_one_shot_x8: Collecting 100 samples in estimated 5.1677 s (1500 iterations)
+Benchmarking workspace/batches/mixed_one_shot_x8: Analyzing
+workspace/batches/mixed_one_shot_x8
+                        time:   [3.5478 ms 3.5796 ms 3.6142 ms]
+                        change: [+4.8061% +8.9735% +12.943%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 7 outliers among 100 measurements (7.00%)
+  5 (5.00%) high mild
+  2 (2.00%) high severe
+Benchmarking workspace/batches/mixed_warm_x8
+Benchmarking workspace/batches/mixed_warm_x8: Warming up for 3.0000 s
+Benchmarking workspace/batches/mixed_warm_x8: Collecting 100 samples in estimated 5.3428 s (1500 iterations)
+Benchmarking workspace/batches/mixed_warm_x8: Analyzing
+workspace/batches/mixed_warm_x8
+                        time:   [3.5851 ms 3.6104 ms 3.6373 ms]
+                        change: [+18.005% +18.983% +20.002%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+Benchmarking workspace/batches/amortized_one_shot_x4
+Benchmarking workspace/batches/amortized_one_shot_x4: Warming up for 3.0000 s
+Benchmarking workspace/batches/amortized_one_shot_x4: Collecting 100 samples in estimated 5.1517 s (101k iterations)
+Benchmarking workspace/batches/amortized_one_shot_x4: Analyzing
+workspace/batches/amortized_one_shot_x4
+                        time:   [65.351 µs 66.254 µs 67.228 µs]
+                        change: [+25.608% +29.624% +33.267%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Benchmarking workspace/batches/amortized_fresh_workspace_x4
+Benchmarking workspace/batches/amortized_fresh_workspace_x4: Warming up for 3.0000 s
+Benchmarking workspace/batches/amortized_fresh_workspace_x4: Collecting 100 samples in estimated 5.1131 s (202k iterations)
+Benchmarking workspace/batches/amortized_fresh_workspace_x4: Analyzing
+workspace/batches/amortized_fresh_workspace_x4
+                        time:   [25.129 µs 25.300 µs 25.520 µs]
+                        change: [+63.175% +65.142% +67.280%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking workspace/filtered/one_shot
+Benchmarking workspace/filtered/one_shot: Warming up for 3.0000 s
+Benchmarking workspace/filtered/one_shot: Collecting 100 samples in estimated 5.0254 s (404k iterations)
+Benchmarking workspace/filtered/one_shot: Analyzing
+workspace/filtered/one_shot
+                        time:   [12.060 µs 12.131 µs 12.215 µs]
+                        change: [+20.543% +21.850% +23.322%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 12 outliers among 100 measurements (12.00%)
+  3 (3.00%) low mild
+  4 (4.00%) high mild
+  5 (5.00%) high severe
+Benchmarking workspace/filtered/warm
+Benchmarking workspace/filtered/warm: Warming up for 3.0000 s
+Benchmarking workspace/filtered/warm: Collecting 100 samples in estimated 5.0002 s (85M iterations)
+Benchmarking workspace/filtered/warm: Analyzing
+workspace/filtered/warm time:   [57.907 ns 58.293 ns 58.720 ns]
+                        change: [+54.605% +56.584% +58.433%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 12 outliers among 100 measurements (12.00%)
+  6 (6.00%) low mild
+  6 (6.00%) high mild
+
+Benchmarking workspace/concurrent/one_shot_4_workers_x16
+Benchmarking workspace/concurrent/one_shot_4_workers_x16: Warming up for 3.0000 s
+Benchmarking workspace/concurrent/one_shot_4_workers_x16: Collecting 100 samples in estimated 8.0668 s (10k iterations)
+Benchmarking workspace/concurrent/one_shot_4_workers_x16: Analyzing
+workspace/concurrent/one_shot_4_workers_x16
+                        time:   [737.11 µs 747.13 µs 758.88 µs]
+                        change: [+43.675% +45.820% +48.032%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+Benchmarking workspace/concurrent/warm_4_workers_x16
+Benchmarking workspace/concurrent/warm_4_workers_x16: Warming up for 3.0000 s
+Benchmarking workspace/concurrent/warm_4_workers_x16: Collecting 100 samples in estimated 5.7008 s (25k iterations)
+Benchmarking workspace/concurrent/warm_4_workers_x16: Analyzing
+workspace/concurrent/warm_4_workers_x16
+                        time:   [172.81 µs 177.84 µs 184.01 µs]
+                        change: [+38.117% +41.644% +45.774%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+

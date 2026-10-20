@@ -1,0 +1,50 @@
+   Compiling grafo-dag v0.1.0 (/Users/pepe/Workspace/rust/automata-atelier/grafo)
+    Finished `bench` profile [optimized] target(s) in 1.28s
+     Running benches/performance.rs (target/release/deps/performance-510f4120a6bfac68)
+Gnuplot not found, using plotters backend
+Benchmarking search/attr_count_scaling/attrs_per_node/1
+Benchmarking search/attr_count_scaling/attrs_per_node/1: Warming up for 1.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/1: Collecting 50 samples in estimated 2.1305 s (6375 iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/1: Analyzing
+search/attr_count_scaling/attrs_per_node/1
+                        time:   [332.71 µs 335.53 µs 338.46 µs]
+Found 6 outliers among 50 measurements (12.00%)
+  5 (10.00%) high mild
+  1 (2.00%) high severe
+Benchmarking search/attr_count_scaling/attrs_per_node/5
+Benchmarking search/attr_count_scaling/attrs_per_node/5: Warming up for 1.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/5: Collecting 50 samples in estimated 2.2412 s (6375 iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/5: Analyzing
+search/attr_count_scaling/attrs_per_node/5
+                        time:   [344.60 µs 347.30 µs 349.93 µs]
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) low mild
+Benchmarking search/attr_count_scaling/attrs_per_node/10
+Benchmarking search/attr_count_scaling/attrs_per_node/10: Warming up for 1.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/10: Collecting 50 samples in estimated 2.2867 s (6375 iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/10: Analyzing
+search/attr_count_scaling/attrs_per_node/10
+                        time:   [350.59 µs 353.41 µs 356.05 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  1 (2.00%) low mild
+  1 (2.00%) high mild
+  1 (2.00%) high severe
+Benchmarking search/attr_count_scaling/attrs_per_node/20
+Benchmarking search/attr_count_scaling/attrs_per_node/20: Warming up for 1.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/20: Collecting 50 samples in estimated 2.3179 s (6375 iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/20: Analyzing
+search/attr_count_scaling/attrs_per_node/20
+                        time:   [355.21 µs 357.15 µs 359.30 µs]
+Found 3 outliers among 50 measurements (6.00%)
+  2 (4.00%) high mild
+  1 (2.00%) high severe
+Benchmarking search/attr_count_scaling/attrs_per_node/50
+Benchmarking search/attr_count_scaling/attrs_per_node/50: Warming up for 1.0000 s
+Benchmarking search/attr_count_scaling/attrs_per_node/50: Collecting 50 samples in estimated 2.3433 s (6375 iterations)
+Benchmarking search/attr_count_scaling/attrs_per_node/50: Analyzing
+search/attr_count_scaling/attrs_per_node/50
+                        time:   [359.66 µs 361.84 µs 364.48 µs]
+Found 5 outliers among 50 measurements (10.00%)
+  2 (4.00%) low mild
+  3 (6.00%) high mild
+

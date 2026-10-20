@@ -94,7 +94,7 @@ mod tests {
 
 **For `PathResult`:**
 - `cost` field is correct
-- `path` field contains the exact ordered sequence of node labels
+- `indices` field contains the exact ordered sequence of node indices; `resolve_labels(&graph)` returns the corresponding labels in `Ok`
 - `PartialEq` is exercised (equal results compare equal; different results compare unequal)
 
 ---
@@ -156,7 +156,7 @@ assert_eq!(err.to_string(), "duplicate node: 'x'");
 ```rust
 let r = graph.shortest_path("a", "d").unwrap().unwrap();
 assert_eq!(r.cost, 4.0);
-assert_eq!(r.path, vec!["a", "b", "c", "d"]);
+assert_eq!(r.resolve_labels(&graph).unwrap(), vec!["a", "b", "c", "d"]);
 ```
 
 **`None` results:**
@@ -211,7 +211,7 @@ fn shortest_path_selects_minimum_cost_route_over_competing_alternatives() {
     // Then — cheapest path and its exact cost are returned
     let r = result.expect("a path must exist between a and d");
     assert_eq!(r.cost, 4.0);
-    assert_eq!(r.path, vec!["a", "b", "c", "d"]);
+    assert_eq!(r.resolve_labels(&graph).unwrap(), vec!["a", "b", "c", "d"]);
 }
 ```
 

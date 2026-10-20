@@ -83,7 +83,11 @@ where
         .shortest_path_filtered(from, to, filter)
         .expect("search failed")
     {
-        Some(r) => println!("{} ({} min)", r.resolve_labels(graph).join(" → "), r.cost),
+        Some(r) => println!(
+            "{} ({} min)",
+            r.resolve_labels(graph).unwrap().join(" → "),
+            r.cost
+        ),
         None => println!("no route available"),
     }
 }

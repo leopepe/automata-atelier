@@ -6,7 +6,10 @@
 //! memory usage and cache-friendly edge traversal. Shortest-path queries use
 //! **Dijkstra's algorithm** with a binary min-heap. For repeated cost-only
 //! queries, an optional caller-owned [`SearchWorkspace`] reuses query buffers
-//! without mutating the graph; existing one-shot APIs remain unchanged.
+//! without mutating the graph. Constructors reject invalid weights and unsupported
+//! counts with [`GraphError`]. All six queries distinguish unreachable `Ok(None)`
+//! from reachable-but-overflowing [`GraphError::CostOverflow`]; finite alternatives
+//! win. Resolve [`PathResult`] labels fallibly using the originating graph.
 //!
 //! ## Quick start
 //!
@@ -27,7 +30,7 @@
 //!
 //! let result = graph.shortest_path("a", "d").unwrap().unwrap();
 //! assert_eq!(result.cost, 4.0);
-//! assert_eq!(result.resolve_labels(&graph), vec!["a", "b", "c", "d"]);
+//! assert_eq!(result.resolve_labels(&graph).unwrap(), vec!["a", "b", "c", "d"]);
 //! ```
 
 mod graph;
@@ -109,7 +112,7 @@ mod tests {
         let g = diamond();
         let r = g.shortest_path("a", "d").unwrap().unwrap();
         assert_eq!(r.cost, 4.0);
-        assert_eq!(r.resolve_labels(&g), vec!["a", "b", "c", "d"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["a", "b", "c", "d"]);
     }
 
     #[test]
@@ -117,7 +120,7 @@ mod tests {
         let g = diamond();
         let r = g.shortest_path("a", "b").unwrap().unwrap();
         assert_eq!(r.cost, 1.0);
-        assert_eq!(r.resolve_labels(&g), vec!["a", "b"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["a", "b"]);
     }
 
     #[test]
@@ -125,7 +128,7 @@ mod tests {
         let g = diamond();
         let r = g.shortest_path("b", "b").unwrap().unwrap();
         assert_eq!(r.cost, 0.0);
-        assert_eq!(r.resolve_labels(&g), vec!["b"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["b"]);
     }
 
     #[test]
@@ -133,7 +136,7 @@ mod tests {
         let g = Graph::new(&["x", "y"], &[("x", "y", 7.0)]).unwrap();
         let r = g.shortest_path("x", "y").unwrap().unwrap();
         assert_eq!(r.cost, 7.0);
-        assert_eq!(r.resolve_labels(&g), vec!["x", "y"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["x", "y"]);
     }
 
     #[test]
@@ -146,7 +149,7 @@ mod tests {
         .unwrap();
         let r = g.shortest_path("a", "c").unwrap().unwrap();
         assert_eq!(r.cost, 3.0);
-        assert_eq!(r.resolve_labels(&g), vec!["a", "b", "c"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["a", "b", "c"]);
     }
 
     #[test]
@@ -164,7 +167,7 @@ mod tests {
         .unwrap();
         let r = g.shortest_path("a", "e").unwrap().unwrap();
         assert_eq!(r.cost, 4.0);
-        assert_eq!(r.resolve_labels(&g), vec!["a", "b", "c", "d", "e"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["a", "b", "c", "d", "e"]);
     }
 
     #[test]
@@ -172,7 +175,7 @@ mod tests {
         let g = Graph::new(&["a", "b", "c"], &[("a", "b", 0.0), ("b", "c", 0.0)]).unwrap();
         let r = g.shortest_path("a", "c").unwrap().unwrap();
         assert_eq!(r.cost, 0.0);
-        assert_eq!(r.resolve_labels(&g), vec!["a", "b", "c"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["a", "b", "c"]);
     }
 
     // ---------------------------------------------------------------------------
@@ -274,7 +277,7 @@ mod tests {
         let taxi = |attrs: &NodeAttrs| attrs.contains("taxi");
         let r = g.shortest_path_filtered("A", "D", taxi).unwrap().unwrap();
         assert_eq!(r.cost, 5.0);
-        assert_eq!(r.resolve_labels(&g), vec!["A", "D"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["A", "D"]);
     }
 
     #[test]
@@ -284,7 +287,7 @@ mod tests {
         let bus = |attrs: &NodeAttrs| attrs.contains("bus");
         let r = g.shortest_path_filtered("A", "D", bus).unwrap().unwrap();
         assert_eq!(r.cost, 3.0);
-        assert_eq!(r.resolve_labels(&g), vec!["A", "B", "C", "D"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["A", "B", "C", "D"]);
     }
 
     // ---------------------------------------------------------------------------
@@ -326,7 +329,7 @@ mod tests {
         let taxi = |attrs: &NodeAttrs| attrs.contains("taxi");
         let r = g.shortest_path_filtered("A", "A", taxi).unwrap().unwrap();
         assert_eq!(r.cost, 0.0);
-        assert_eq!(r.resolve_labels(&g), vec!["A"]);
+        assert_eq!(r.resolve_labels(&g).unwrap(), vec!["A"]);
     }
 
     // ---------------------------------------------------------------------------
