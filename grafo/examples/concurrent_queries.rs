@@ -81,7 +81,7 @@ fn main() {
         match result {
             Some(r) => println!(
                 "  {from} → {to}: {} ({} min)",
-                r.resolve_labels(&graph).join(" → "),
+                r.resolve_labels(&graph).unwrap().join(" → "),
                 r.cost
             ),
             None => println!("  {from} → {to}: no route"),

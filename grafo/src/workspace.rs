@@ -18,7 +18,9 @@ use std::collections::BinaryHeap;
 ///
 /// A workspace is not tied to a graph: reuse across sizes, node-ID reorderings
 /// and different graphs is supported, including after a filter panic unwinds.
-/// Existing one-shot and full-path methods are unchanged.
+/// Query outcomes match one-shot methods, including
+/// [`GraphError::CostOverflow`](crate::GraphError::CostOverflow). Errors and early
+/// returns do not poison the next search; its setup clears pending heap entries.
 ///
 /// # Examples
 ///
@@ -146,5 +148,37 @@ mod tests {
         assert_eq!(workspace.distances.capacity(), 0);
         assert_eq!(workspace.stamps.capacity(), 0);
         assert_eq!(workspace.heap.capacity(), 0);
+    }
+    #[test]
+    fn workspace_overflow_rollover_clears_pending_heap_without_reallocating() {
+        let graph = Graph::new(
+            &["s", "b", "tail", "g"],
+            &[
+                ("s", "b", f64::MAX),
+                ("b", "g", f64::MAX),
+                ("b", "tail", f64::MAX),
+            ],
+        )
+        .unwrap();
+        let finite = Graph::new(&["s", "b", "tail", "g"], &[("s", "g", 3.0)]).unwrap();
+        let mut workspace = SearchWorkspace::new();
+        let error = graph
+            .shortest_path_cost_with_workspace("s", "g", &mut workspace)
+            .unwrap_err();
+        assert!(matches!(error, crate::GraphError::CostOverflow));
+        assert!(!workspace.heap.is_empty());
+        let distances = workspace.distances.as_ptr();
+        let stamps = workspace.stamps.as_ptr();
+        let heap_capacity = workspace.heap.capacity();
+        workspace.generation = u32::MAX;
+        let result = finite
+            .shortest_path_cost_with_workspace("s", "g", &mut workspace)
+            .unwrap();
+        assert_eq!(result, Some(3.0));
+        assert_eq!(workspace.generation, 1);
+        assert_eq!(workspace.distances.as_ptr(), distances);
+        assert_eq!(workspace.stamps.as_ptr(), stamps);
+        assert_eq!(workspace.heap.capacity(), heap_capacity);
+        assert!(workspace.heap.is_empty());
     }
 }

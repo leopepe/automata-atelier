@@ -20,7 +20,10 @@ Grafo uses Djikstra as search algorithm.
 ### Search Algorithm
 - **Dijkstra's algorithm** — binary min-heap with lazy deletion, O((V + E) log V)
 - Uses `std::collections::BinaryHeap` as the priority queue
-- Supports two variants: full path reconstruction (`Vec<String>`) and cost-only (avoids `String::clone` overhead)
+- Supports full path reconstruction (`PathResult` with `Vec<u32>` indices), cost-only, and reusable-workspace cost-only queries.
+- All six queries distinguish finite success, unreachable/rejected `Ok(None)`, and reachable-only-with-overflow `GraphError::CostOverflow`. Finite alternatives win; unrelated overflow does not cause errors.
+- Filtered queries resolve unknown endpoints source-first before predicate calls, then evaluate source and goal with short-circuiting before self-query success. Deterministic predicates define reachability; do not replay a fallback traversal.
+- `PathResult::resolve_labels` returns `Result<Vec<String>, GraphError>` with checked indices. Require the originating graph; bounds checks are not identity validation.
 
 ### Design Pattern
 - **Goal-Oriented Action Planning (GOAP)** — node attributes map to world states, directed weighted edges map to actions, and the `filter` closure passed to `shortest_path_filtered` acts as a per-node precondition; nodes failing the predicate are pruned from the search frontier
@@ -38,7 +41,13 @@ Grafo uses Djikstra as search algorithm.
 - Custom **`GraphError`** enum with `Display` + `std::error::Error` impls
   - `DuplicateNode(String)` — raised when a node label appears more than once during construction
   - `UnknownNode(String)` — raised when an edge or query references an unregistered label
-- All public API returns `Result<_, GraphError>`
+  - `InvalidWeight { from, to, weight }` — raised unconditionally for negative, NaN or infinite weights; accept finite nonnegative values including -0.0
+  - `InvalidNodeIndex(u32)` — first invalid index during label resolution
+  - `GraphTooLarge { nodes, edges }` — counts exceed u32::MAX or node count + 1 overflows usize; validate both constructors before allocations, including the plain-node adapter
+  - `CostOverflow` — accepted reachable goal has no finite-cost route
+- Constructors and queries return `Result<_, GraphError>`; label resolution is fallible. Attribute accessors and workspace creation remain infallible.
+- Construction checks counts, then duplicate nodes, then source/destination/weight per edge. Parallel failures across different edges need not be deterministic. Representation limits do not guarantee allocator memory.
+- Keep the numerical correction to [ADR 0006](../docs/adrs/0006-use-caller-owned-search-workspaces.md) documented in proposed [ADR 0007](../docs/adrs/0007-return-recoverable-graph-errors.md); preserve ADR 0006's accepted text.
 
 ### Benchmarking
 - **`criterion`** (v0.5, `html_reports` feature) — micro-benchmark harness with statistical analysis and HTML report generation under `target/criterion/`

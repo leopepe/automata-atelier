@@ -19,6 +19,7 @@ next free number.
 | 0004 | [Publish `uncharles` to nixpkgs](./0004-publish-uncharles-to-nixpkgs.md) | accepted | 2026-05-17 |
 | 0005 | [Actor-based reactive runtime for uncharles (kameo)](./0005-actor-based-reactive-runtime.md) | proposed | 2026-06-18 |
 | 0006 | [Use caller-owned search workspaces](./0006-use-caller-owned-search-workspaces.md) | accepted | 2026-10-08 |
+| 0007 | [Return recoverable graph errors](./0007-return-recoverable-graph-errors.md) | proposed | 2026-10-20 |
 
 ## Status legend
 

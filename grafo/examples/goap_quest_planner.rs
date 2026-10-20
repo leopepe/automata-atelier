@@ -106,7 +106,7 @@ where
     {
         Some(r) => println!(
             "  {} (cost {})",
-            r.resolve_labels(graph).join(" → "),
+            r.resolve_labels(graph).unwrap().join(" → "),
             r.cost,
         ),
         None => println!("  no valid path for this class"),

@@ -165,7 +165,7 @@ impl Planner {
             None => return Ok(None),
         };
 
-        let labels = path.resolve_labels(&graph);
+        let labels = path.resolve_labels(&graph)?;
         let steps: Vec<String> = labels
             .windows(2)
             .filter_map(|pair| {

@@ -241,11 +241,11 @@ fn workspace_numeric_boundaries_match_hand_computed_costs() {
         .unwrap();
     let infinite = overflow
         .shortest_path_cost_with_workspace("a", "c", &mut workspace)
-        .unwrap();
+        .unwrap_err();
     // Then
     assert_eq!(result, Some(0.75));
     assert_eq!(finite, Some(f64::MAX));
-    assert_eq!(infinite, None);
+    assert!(matches!(infinite, GraphError::CostOverflow));
 }
 
 #[test]
@@ -326,4 +326,51 @@ fn workspace_independent_workers_share_immutable_graph_safely() {
     });
     // Then
     assert_eq!(results, vec![vec![Some(3.0); 100]; 4]);
+}
+
+#[test]
+fn workspace_overflow_then_unknown_rejection_shrink_and_growth_allow_reuse() {
+    // Given — overflowing goal leaves another infinite heap entry pending.
+    let overflow = Graph::new(
+        &["s", "b", "tail", "g"],
+        &[
+            ("s", "b", f64::MAX),
+            ("b", "g", f64::MAX),
+            ("b", "tail", f64::MAX),
+        ],
+    )
+    .unwrap();
+    let small = Graph::new(&["s", "g"], &[("s", "g", 2.0)]).unwrap();
+    let larger = Graph::new(
+        &["tail", "g", "b", "s", "extra"],
+        &[("s", "extra", 1.0), ("extra", "g", 3.0)],
+    )
+    .unwrap();
+    let mut workspace = SearchWorkspace::new();
+    // When
+    let error = overflow
+        .shortest_path_cost_with_workspace("s", "g", &mut workspace)
+        .unwrap_err();
+    let unknown = small
+        .shortest_path_cost_with_workspace("missing", "g", &mut workspace)
+        .unwrap_err();
+    let rejected = small
+        .shortest_path_filtered_cost_with_workspace("s", "g", |_| false, &mut workspace)
+        .unwrap();
+    let finite = small
+        .shortest_path_cost_with_workspace("s", "g", &mut workspace)
+        .unwrap();
+    let grown = larger
+        .shortest_path_cost_with_workspace("s", "g", &mut workspace)
+        .unwrap();
+    let unreachable = overflow
+        .shortest_path_cost_with_workspace("g", "s", &mut workspace)
+        .unwrap();
+    // Then
+    assert!(matches!(error, GraphError::CostOverflow));
+    assert!(matches!(unknown, GraphError::UnknownNode(label) if label == "missing"));
+    assert_eq!(rejected, None);
+    assert_eq!(finite, Some(2.0));
+    assert_eq!(grown, Some(4.0));
+    assert_eq!(unreachable, None);
 }

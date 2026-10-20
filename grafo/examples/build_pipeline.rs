@@ -40,7 +40,11 @@ fn main() {
     for (from, to) in queries {
         print!("  {from} → {to}: ");
         match graph.shortest_path(from, to).expect("search failed") {
-            Some(r) => println!("{} ({}s)", r.resolve_labels(&graph).join(" → "), r.cost),
+            Some(r) => println!(
+                "{} ({}s)",
+                r.resolve_labels(&graph).unwrap().join(" → "),
+                r.cost
+            ),
             None => println!("no path"),
         }
     }

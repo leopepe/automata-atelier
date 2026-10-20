@@ -46,7 +46,7 @@ let graph = Graph::new(
 
 let result = graph.shortest_path("a", "d").unwrap().unwrap();
 assert_eq!(result.cost, 4.0);
-assert_eq!(result.resolve_labels(&graph), vec!["a", "b", "c", "d"]);
+assert_eq!(result.resolve_labels(&graph).unwrap(), vec!["a", "b", "c", "d"]);
 ```
 
 ### Attribute-based filtering
@@ -82,7 +82,7 @@ let r = graph
     .unwrap()
     .unwrap();
 
-assert_eq!(r.resolve_labels(&graph), vec!["London", "Birmingham", "Manchester"]);
+assert_eq!(r.resolve_labels(&graph).unwrap(), vec!["London", "Birmingham", "Manchester"]);
 assert_eq!(r.cost, 240.0);
 ```
 
@@ -115,6 +115,39 @@ assert_eq!(graph.shortest_path_filtered_cost_with_workspace(
 The workspace reuses distances, generation stamps and heap capacity. It can be reused across different graphs and sizes, including after a filter panic unwinds. Allocate one workspace per simultaneous worker; the graph remains immutable. Distance/stamp elements use **12 bytes per retained vertex slot**. Buffers retain their peak size; spare vector/heap capacity and allocator overhead add to this storage. Drop the workspace to release its memory.
 
 First use and growth initialize buffers; a generation rollover clears retained stamps. Warm narrow searches can benefit, but cold, broad and mixed queries may not. Existing methods remain the default for one-shot searches, and full-path methods do not use a workspace. See [ADR 0006](../docs/adrs/0006-use-caller-owned-search-workspaces.md) for the decision and its origin.
+
+### Errors and representation limits
+
+Both constructors return `Result<Graph, GraphError>`. They reject unsupported counts
+before internal allocation (`GraphTooLarge { nodes, edges }`): node and edge counts
+must not exceed `u32::MAX`, and node count + 1 must fit `usize`. The maximum u32
+index is reserved as a predecessor sentinel. Accepted counts do not guarantee
+available allocator memory.
+
+Duplicate labels return `DuplicateNode(String)` before edge resolution. Each edge
+resolves source then destination (`UnknownNode(String)`) before weight validation.
+Negative, NaN and infinite weights return `InvalidWeight { from, to, weight }` in
+all build profiles; finite nonnegative weights, including -0.0, are accepted.
+Parallel construction at >=10,000 edges does not guarantee which malformed edge
+wins when several edges fail.
+
+All six queries retain `Result<Option<_>, GraphError>`:
+
+- `Ok(Some(...))`: the minimum finite cost, with indices for full-path methods.
+- `Ok(None)`: no accepted route, including filter-rejected endpoints.
+- `Err(GraphError::CostOverflow)`: an accepted goal is reachable but no finite-cost
+  route exists. Finite alternatives win; unrelated overflowing branches are not errors.
+- `Err(GraphError::UnknownNode(label))`: unknown endpoint, checked source first
+  before calling the filter. Source then goal predicates short-circuit before a self
+  query can return zero. Deterministic predicates define filtered reachability;
+  overflow handling does not replay predicates in a fallback traversal.
+
+`PathResult::resolve_labels(&self, graph: &Graph) -> Result<Vec<String>, GraphError>`
+returns the first `InvalidNodeIndex(u32)` instead of indexing out of bounds. Supply
+**the originating graph**: checked indices cannot detect a same-sized foreign graph
+with different labels. Empty indices resolve to `Ok(Vec::new())`. Consumers must now
+handle the Result (for example with `?`); exhaustive GraphError matches must handle
+the added variants. See [ADR 0007](../docs/adrs/0007-return-recoverable-graph-errors.md).
 
 ### Concurrent queries
 

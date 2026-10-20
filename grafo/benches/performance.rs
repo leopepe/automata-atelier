@@ -12,6 +12,10 @@ use grafo::{Graph, NodeAttrs};
 use rayon::prelude::*;
 use std::sync::Arc;
 
+#[path = "support/attribute_scaling.rs"]
+mod attribute_scaling;
+use attribute_scaling::{attribute_scaling_dag, attributed_dag, validate_attribute_scaling};
+
 // ---------------------------------------------------------------------------
 // Deterministic pseudo-random number generator (LCG — no external dep needed)
 // ---------------------------------------------------------------------------
@@ -127,79 +131,6 @@ fn layered_dag(layers: usize, width: usize) -> (Graph, String, String) {
     let src_label = labels[0].clone();
     let dst_label = labels[n - 1].clone();
     (Graph::new(&nodes, &edges).unwrap(), src_label, dst_label)
-}
-
-/// Attributed sparse DAG: like `sparse_dag` but each node carries
-/// `attrs_per_node` string attributes chosen from a fixed pool.
-///
-/// Stresses: filter predicate evaluation cost as attribute count grows.
-fn attributed_dag(n: usize, fan_out: usize, attrs_per_node: usize) -> Graph {
-    // Fixed pool of realistic attribute names.
-    const POOL: &[&str] = &[
-        "taxi",
-        "bus",
-        "train",
-        "ferry",
-        "metro",
-        "airport",
-        "parking",
-        "hotel",
-        "hospital",
-        "university",
-        "mall",
-        "park",
-        "beach",
-        "museum",
-        "stadium",
-        "port",
-        "border",
-        "toll",
-        "rest_area",
-        "fuel",
-    ];
-
-    let labels: Vec<String> = (0..n).map(|i| i.to_string()).collect();
-    let mut rng: u64 = 0xbeef_cafe_u64;
-
-    let nodes_with_attrs: Vec<(&str, Vec<&str>)> = labels
-        .iter()
-        .map(|label| {
-            let attrs: Vec<&str> = (0..attrs_per_node)
-                .map(|_| POOL[lcg(&mut rng) as usize % POOL.len()])
-                .collect();
-            (label.as_str(), attrs)
-        })
-        .collect();
-
-    // Build nodes slice for new_with_attrs.
-    let nodes_ref: Vec<(&str, &[&str])> = nodes_with_attrs
-        .iter()
-        .map(|(id, attrs)| (*id, attrs.as_slice()))
-        .collect();
-
-    let mut seen = std::collections::HashSet::new();
-    let mut raw_edges: Vec<(usize, usize, f64)> = Vec::new();
-
-    for i in 0..n {
-        let remaining = n - i - 1;
-        if remaining == 0 {
-            break;
-        }
-        for _ in 0..fan_out.min(remaining) {
-            let j = i + 1 + (lcg(&mut rng) as usize % remaining);
-            if seen.insert((i, j)) {
-                let w = (lcg(&mut rng) % 100 + 1) as f64;
-                raw_edges.push((i, j, w));
-            }
-        }
-    }
-
-    let edges: Vec<(&str, &str, f64)> = raw_edges
-        .iter()
-        .map(|&(a, b, w)| (labels[a].as_str(), labels[b].as_str(), w))
-        .collect();
-
-    Graph::new_with_attrs(&nodes_ref, &edges).unwrap()
 }
 
 // ---------------------------------------------------------------------------
@@ -379,7 +310,9 @@ fn bench_attr_count_scaling(c: &mut Criterion) {
     const FAN: usize = 4;
 
     for &attrs in &ci_sample_sizes(&[1usize, 5, 10, 20, 50]) {
-        let g = attributed_dag(N, FAN, attrs);
+        let fixture = attribute_scaling_dag(N, FAN, attrs);
+        validate_attribute_scaling(&fixture, N, attrs);
+        let g = &fixture.graph;
         let dst = (N - 1).to_string();
         group.bench_with_input(BenchmarkId::new("attrs_per_node", attrs), &attrs, |b, _| {
             b.iter(|| {

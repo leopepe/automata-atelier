@@ -35,6 +35,7 @@ required, the MADR format used, and the workflow for ratifying one.
 | [`adrs.md`](./adrs.md) | Architecture Decision Records: when to write one, MADR format, lifecycle. |
 | [`adrs/`](./adrs/) | The ADR records themselves, plus the template and index. |
 | [`superpowers/plans/2026-10-13-photo-archiver-uncharles.md`](./superpowers/plans/2026-10-13-photo-archiver-uncharles.md) | Implementation plan for the macOS SD-card photo archiver example; authorized for a Conductor-controlled cycle. |
+| [`superpowers/plans/2026-10-20-grafo-audit-repairs.md`](./superpowers/plans/2026-10-20-grafo-audit-repairs.md) | Grafo audit repair plan pointer; exact contracts and implementation tasks live in OpenSpec. |
 | `CLAUDE.md` | This index. |
 
 When new workspace-wide documentation is added, list it here so it is

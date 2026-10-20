@@ -103,24 +103,84 @@ pub enum GraphError {
     /// assert!(matches!(err, GraphError::UnknownNode(_)));
     /// ```
     UnknownNode(String),
+
+    /// An edge weight is negative or not finite.
+    ///
+    /// ```
+    /// use grafo::{Graph, GraphError};
+    /// let error = Graph::new(&["a", "b"], &[("a", "b", -1.0)]).unwrap_err();
+    /// assert!(matches!(error, GraphError::InvalidWeight { weight: -1.0, .. }));
+    /// ```
+    InvalidWeight {
+        from: String,
+        to: String,
+        weight: f64,
+    },
+
+    /// Counts exceed CSR's u32 limits or the node offset length overflows usize.
+    /// Representation acceptance does not guarantee available allocator memory.
+    ///
+    /// ```
+    /// use grafo::GraphError;
+    /// let error = GraphError::GraphTooLarge { nodes: usize::MAX, edges: 0 };
+    /// assert!(error.to_string().starts_with("graph too large:"));
+    /// ```
+    GraphTooLarge { nodes: usize, edges: usize },
+
+    /// A caller-provided path index is outside the supplied graph.
+    ///
+    /// ```
+    /// use grafo::{Graph, GraphError, PathResult};
+    /// let graph = Graph::new(&[], &[]).unwrap();
+    /// let path = PathResult { cost: 0.0, indices: vec![0] };
+    /// assert!(matches!(path.resolve_labels(&graph), Err(GraphError::InvalidNodeIndex(0))));
+    /// ```
+    InvalidNodeIndex(u32),
+
+    /// An accepted goal is reachable, but no route has a finite f64 total cost.
+    ///
+    /// ```
+    /// use grafo::{Graph, GraphError};
+    /// let graph = Graph::new(&["a", "b", "c"], &[("a", "b", f64::MAX), ("b", "c", f64::MAX)]).unwrap();
+    /// assert!(matches!(graph.shortest_path_cost("a", "c"), Err(GraphError::CostOverflow)));
+    /// ```
+    CostOverflow,
 }
 
 impl std::fmt::Display for GraphError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GraphError::DuplicateNode(n) => write!(f, "duplicate node: '{n}'"),
+            GraphError::CostOverflow => write!(f, "path cost overflow"),
             GraphError::UnknownNode(n) => write!(f, "unknown node: '{n}'"),
+            GraphError::InvalidNodeIndex(index) => write!(f, "invalid node index: {index}"),
+            GraphError::GraphTooLarge { nodes, edges } => {
+                write!(f, "graph too large: {nodes} nodes, {edges} edges")
+            }
+            GraphError::InvalidWeight { from, to, weight } => write!(
+                f,
+                "invalid weight on edge '{from}' -> '{to}': {weight}; expected finite non-negative weight"
+            ),
         }
     }
 }
 
 impl std::error::Error for GraphError {}
 
+// u32::MAX is reserved for missing predecessors; CSR needs nodes + 1 offsets.
+fn validate_graph_size(nodes: usize, edges: usize) -> Result<(), GraphError> {
+    if nodes > u32::MAX as usize || edges > u32::MAX as usize || nodes.checked_add(1).is_none() {
+        return Err(GraphError::GraphTooLarge { nodes, edges });
+    }
+    Ok(())
+}
+
 /// The result of a successful [`Graph::shortest_path`] or
 /// [`Graph::shortest_path_filtered`] query.
 ///
-/// Contains the minimum total cost and the ordered sequence of node labels
-/// from source to destination. If you only need the cost, prefer
+/// Contains the minimum finite total cost and ordered node indices from source
+/// to destination. Use [`PathResult::resolve_labels`] with the originating graph
+/// to obtain owned labels. If you only need the cost, prefer
 /// [`Graph::shortest_path_cost`] or [`Graph::shortest_path_filtered_cost`]
 /// to avoid the overhead of path reconstruction.
 #[derive(Debug, PartialEq)]
@@ -132,11 +192,34 @@ pub struct PathResult {
 }
 
 impl PathResult {
-    /// Resolves the internal node indices back into their string labels.
-    pub fn resolve_labels(&self, graph: &Graph) -> Vec<String> {
+    /// Resolves node indices into owned string labels in path order.
+    ///
+    /// Supply the originating graph. Bounds checks cannot detect a different
+    /// graph with valid indices but different labels or ordering.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GraphError::InvalidNodeIndex`] for the first out-of-bounds index.
+    /// An empty index sequence returns an empty vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use grafo::Graph;
+    /// let graph = Graph::new(&["a", "b"], &[("a", "b", 2.0)]).unwrap();
+    /// let path = graph.shortest_path("a", "b").unwrap().unwrap();
+    /// assert_eq!(path.resolve_labels(&graph).unwrap(), ["a", "b"]);
+    /// ```
+    pub fn resolve_labels(&self, graph: &Graph) -> Result<Vec<String>, GraphError> {
         self.indices
             .iter()
-            .map(|&idx| graph.node_ids[idx as usize].clone())
+            .map(|&idx| {
+                graph
+                    .node_ids
+                    .get(idx as usize)
+                    .cloned() // The returned labels are owned independently of the graph.
+                    .ok_or(GraphError::InvalidNodeIndex(idx))
+            })
             .collect()
     }
 }
@@ -159,6 +242,13 @@ impl PathResult {
 ///
 /// Shortest-path queries use **Dijkstra's algorithm** with a binary min-heap
 /// and lazy deletion. Time complexity is O((V + E) log V).
+///
+/// All six query methods return a minimum finite cost on success, `Ok(None)`
+/// when no accepted route exists, or [`GraphError::CostOverflow`] when an
+/// accepted goal is reachable but every route overflows `f64`. Finite alternatives
+/// always win; an overflow on an unrelated branch is not an error. Filtered
+/// reachability assumes a deterministic predicate. Predicates can be evaluated
+/// repeatedly on incoming edges, but overflow handling never replays a traversal.
 ///
 /// # Thread safety
 ///
@@ -220,7 +310,7 @@ impl PathResult {
 ///
 /// let result = graph.shortest_path("a", "d").unwrap().unwrap();
 /// assert_eq!(result.cost, 4.0);
-/// assert_eq!(result.resolve_labels(&graph), vec!["a", "b", "c", "d"]);
+/// assert_eq!(result.resolve_labels(&graph).unwrap(), vec!["a", "b", "c", "d"]);
 /// ```
 ///
 /// **Graph with attributes and a node filter:**
@@ -271,13 +361,22 @@ impl Graph {
     ///
     /// * `nodes` — unique string labels for every node in the graph.
     /// * `edges` — `(source, destination, weight)` tuples. All node labels
-    ///   referenced here must appear in `nodes`. Weights should be ≥ 0 (as
-    ///   required by Dijkstra's algorithm).
+    ///   referenced here must appear in `nodes`. Weights must be finite and
+    ///   nonnegative; both positive and negative zero are accepted.
     ///
     /// # Errors
     ///
     /// * [`GraphError::DuplicateNode`] — a label appears more than once in `nodes`.
     /// * [`GraphError::UnknownNode`] — an edge references a label not in `nodes`.
+    /// * [`GraphError::InvalidWeight`] — a weight is negative, NaN or infinite.
+    /// * [`GraphError::GraphTooLarge`] — either count exceeds `u32::MAX`, or
+    ///   `nodes.len() + 1` is unrepresentable as `usize`. `u32::MAX` is reserved
+    ///   as a missing predecessor index. These bounds do not guarantee memory.
+    ///
+    /// Counts are checked before internal allocations, then duplicate labels.
+    /// Each edge resolves source then destination before validating its weight.
+    /// At 10,000 or more edges, parallel failures on different edges need not
+    /// select the same error on every call.
     ///
     /// # Example
     ///
@@ -291,6 +390,7 @@ impl Graph {
     /// .unwrap();
     /// ```
     pub fn new(nodes: &[&str], edges: &[(&str, &str, f64)]) -> Result<Self, GraphError> {
+        validate_graph_size(nodes.len(), edges.len())?;
         let nodes_with_attrs: Vec<(&str, &[&str])> =
             nodes.iter().map(|&id| (id, &[][..])).collect();
         Self::new_with_attrs(&nodes_with_attrs, edges)
@@ -308,12 +408,22 @@ impl Graph {
     ///
     /// * `nodes` — `(label, attributes)` pairs. Labels must be unique.
     ///   `attributes` may be empty.
-    /// * `edges` — `(source, destination, weight)` tuples. Weights should be ≥ 0.
+    /// * `edges` — `(source, destination, weight)` tuples. Weights must be finite
+    ///   and nonnegative, including either sign of zero.
     ///
     /// # Errors
     ///
     /// * [`GraphError::DuplicateNode`] — a label appears more than once.
     /// * [`GraphError::UnknownNode`] — an edge references a label not in `nodes`.
+    /// * [`GraphError::InvalidWeight`] — a weight is negative, NaN or infinite.
+    /// * [`GraphError::GraphTooLarge`] — either count exceeds `u32::MAX`, or
+    ///   `nodes.len() + 1` is unrepresentable as `usize`. `u32::MAX` is reserved
+    ///   as a missing predecessor index. These bounds do not guarantee memory.
+    ///
+    /// Counts are checked before internal allocations, then duplicate labels.
+    /// Each edge resolves source then destination before validating its weight.
+    /// At 10,000 or more edges, parallel failures on different edges need not
+    /// select the same error on every call.
     ///
     /// # Example
     ///
@@ -338,6 +448,7 @@ impl Graph {
         nodes: &[(&str, &[&str])],
         edges: &[(&str, &str, f64)],
     ) -> Result<Self, GraphError> {
+        validate_graph_size(nodes.len(), edges.len())?;
         let mut node_ids: Vec<String> = Vec::with_capacity(nodes.len());
         let mut node_attrs: Vec<NodeAttrs> = Vec::with_capacity(nodes.len());
         let mut node_index: FxHashMap<String, u32> =
@@ -365,10 +476,13 @@ impl Graph {
             let d = *node_index
                 .get(dst)
                 .ok_or_else(|| GraphError::UnknownNode(dst.to_string()))?;
-            debug_assert!(
-                w.is_finite() && w >= 0.0,
-                "edge weights must be finite and non-negative"
-            );
+            if !w.is_finite() || w < 0.0 {
+                return Err(GraphError::InvalidWeight {
+                    from: src.to_string(),
+                    to: dst.to_string(),
+                    weight: w,
+                });
+            }
             Ok((s, d, w))
         };
         let raw: Vec<(u32, u32, f64)> = if edges.len() >= PAR_THRESHOLD {
@@ -428,16 +542,17 @@ impl Graph {
     // -----------------------------------------------------------------------
 
     /// Runs Dijkstra and returns the minimum cost to reach `dst` from `src`,
-    /// or `None` if unreachable.
+    /// `None` if unreachable, or CostOverflow if only overflowing routes exist.
     ///
     /// Does **not** allocate a predecessor array — use this when only the cost
     /// is needed. Returns as soon as `dst` is popped from the heap.
-    fn dijkstra_cost<F>(&self, src: u32, dst: u32, filter: &F) -> Option<f64>
+    fn dijkstra_cost<F>(&self, src: u32, dst: u32, filter: &F) -> Result<Option<f64>, GraphError>
     where
         F: Fn(&NodeAttrs) -> bool,
     {
         let v = self.node_ids.len();
-        let mut dist = vec![f64::INFINITY; v];
+        // -1 marks unseen; infinity is a discovered overflowing route.
+        let mut dist = vec![-1.0; v];
         dist[src as usize] = 0.0;
 
         let mut heap: BinaryHeap<(Reverse<u64>, u32)> = BinaryHeap::new();
@@ -449,7 +564,11 @@ impl Graph {
                 continue; // stale entry — a shorter path was already found
             }
             if u == dst {
-                return Some(cost);
+                return if cost.is_infinite() {
+                    Err(GraphError::CostOverflow)
+                } else {
+                    Ok(Some(cost))
+                };
             }
 
             let start = self.offsets[u as usize] as usize;
@@ -460,27 +579,35 @@ impl Graph {
                 if !filter(&self.node_attrs[nb as usize]) {
                     continue;
                 }
+                // Starting at +0, adding validated nonnegative weights (even
+                // -0) cannot produce -0; nonnegative float bits remain ordered.
                 let new_cost = cost + self.weights[i];
-                if new_cost < dist[nb as usize] {
+                if dist[nb as usize] < 0.0 || new_cost < dist[nb as usize] {
                     dist[nb as usize] = new_cost;
                     heap.push((Reverse(new_cost.to_bits()), nb));
                 }
             }
         }
 
-        None
+        Ok(None)
     }
 
     /// Runs Dijkstra and returns `(cost, predecessor array)` when `dst` is
-    /// reachable, or `None` otherwise.
+    /// reachable with finite cost, `None` if unseen, or CostOverflow otherwise.
     ///
     /// The predecessor array is walked by the caller to reconstruct the path.
-    fn dijkstra_path<F>(&self, src: u32, dst: u32, filter: &F) -> Option<(f64, Vec<u32>)>
+    fn dijkstra_path<F>(
+        &self,
+        src: u32,
+        dst: u32,
+        filter: &F,
+    ) -> Result<Option<(f64, Vec<u32>)>, GraphError>
     where
         F: Fn(&NodeAttrs) -> bool,
     {
         let v = self.node_ids.len();
-        let mut dist = vec![f64::INFINITY; v];
+        // -1 marks unseen; infinity is a discovered overflowing route.
+        let mut dist = vec![-1.0; v];
         let mut prev = vec![u32::MAX; v];
         dist[src as usize] = 0.0;
 
@@ -505,7 +632,7 @@ impl Graph {
                     continue;
                 }
                 let new_cost = cost + self.weights[i];
-                if new_cost < dist[nb as usize] {
+                if dist[nb as usize] < 0.0 || new_cost < dist[nb as usize] {
                     dist[nb as usize] = new_cost;
                     prev[nb as usize] = u;
                     heap.push((Reverse(new_cost.to_bits()), nb));
@@ -513,10 +640,13 @@ impl Graph {
             }
         }
 
-        if dist[dst as usize].is_infinite() {
-            None
+        let cost = dist[dst as usize];
+        if cost < 0.0 {
+            Ok(None)
+        } else if cost.is_infinite() {
+            Err(GraphError::CostOverflow)
         } else {
-            Some((dist[dst as usize], prev))
+            Ok(Some((cost, prev)))
         }
     }
 
@@ -547,7 +677,9 @@ impl Graph {
     ///
     /// # Errors
     ///
-    /// Returns [`GraphError::UnknownNode`] if either label is not part of the graph.
+    /// Returns [`GraphError::UnknownNode`] if either label is absent, source first.
+    /// Returns [`GraphError::CostOverflow`] if the accepted goal is reachable
+    /// but no route has a finite total cost. Finite alternatives take precedence.
     ///
     /// # Examples
     ///
@@ -563,7 +695,7 @@ impl Graph {
     ///
     /// let r = g.shortest_path("a", "c").unwrap().unwrap();
     /// assert_eq!(r.cost, 3.0);
-    /// assert_eq!(r.resolve_labels(&g), vec!["a", "b", "c"]);
+    /// assert_eq!(r.resolve_labels(&g).unwrap(), vec!["a", "b", "c"]);
     /// ```
     ///
     /// **No path (unreachable destination):**
@@ -581,7 +713,7 @@ impl Graph {
     /// let g = Graph::new(&["a", "b"], &[("a", "b", 5.0)]).unwrap();
     /// let r = g.shortest_path("a", "a").unwrap().unwrap();
     /// assert_eq!(r.cost, 0.0);
-    /// assert_eq!(r.resolve_labels(&g), vec!["a"]);
+    /// assert_eq!(r.resolve_labels(&g).unwrap(), vec!["a"]);
     /// ```
     pub fn shortest_path(&self, from: &str, to: &str) -> Result<Option<PathResult>, GraphError> {
         self.shortest_path_filtered(from, to, |_| true)
@@ -599,7 +731,9 @@ impl Graph {
     ///
     /// # Errors
     ///
-    /// Returns [`GraphError::UnknownNode`] if either label is not part of the graph.
+    /// Returns [`GraphError::UnknownNode`] if either label is absent, source first.
+    /// Returns [`GraphError::CostOverflow`] if the accepted goal is reachable
+    /// but no route has a finite total cost. Finite alternatives take precedence.
     ///
     /// # Example
     ///
@@ -627,7 +761,11 @@ impl Graph {
     /// A node is only eligible to be visited — or used as a waypoint — if
     /// `filter` returns `true` for its attribute list. This applies to the
     /// source and destination nodes as well; if either fails the predicate the
-    /// method returns `Ok(None)` immediately.
+    /// method returns `Ok(None)` immediately. Unknown endpoints are resolved
+    /// before any predicate call, then source and goal predicates short-circuit
+    /// in that order, even for a self query. Unreachable goals return `Ok(None)`.
+    /// A deterministic predicate defines the accepted subgraph; overflow does
+    /// not trigger a second traversal or predicate replay.
     ///
     /// If you only need the cost, prefer [`Graph::shortest_path_filtered_cost`].
     ///
@@ -640,7 +778,9 @@ impl Graph {
     ///
     /// # Errors
     ///
-    /// Returns [`GraphError::UnknownNode`] if either label is not part of the graph.
+    /// Returns [`GraphError::UnknownNode`] if either label is absent, source first.
+    /// Returns [`GraphError::CostOverflow`] if the accepted goal is reachable
+    /// but no route has a finite total cost. Finite alternatives take precedence.
     ///
     /// # Examples
     ///
@@ -663,7 +803,7 @@ impl Graph {
     /// // B has no taxi stop, so A→B→C (cost 2) is blocked; A→C (cost 5) is used.
     /// let r = g.shortest_path_filtered("A", "C", taxi).unwrap().unwrap();
     /// assert_eq!(r.cost, 5.0);
-    /// assert_eq!(r.resolve_labels(&g), vec!["A", "C"]);
+    /// assert_eq!(r.resolve_labels(&g).unwrap(), vec!["A", "C"]);
     /// ```
     ///
     /// **Destination blocked by filter returns `None`.**
@@ -711,7 +851,7 @@ impl Graph {
         }
 
         Ok(self
-            .dijkstra_path(src, dst, &filter)
+            .dijkstra_path(src, dst, &filter)?
             .map(|(cost, prev)| PathResult {
                 cost,
                 indices: self.reconstruct_path(dst, &prev),
@@ -724,6 +864,8 @@ impl Graph {
     /// Combines the pruning power of [`Graph::shortest_path_filtered`] with the
     /// zero-reconstruction overhead of [`Graph::shortest_path_cost`]. Prefer
     /// this when filtering is needed but the actual path does not matter.
+    /// Endpoint checks and `Ok(None)` semantics match
+    /// [`Graph::shortest_path_filtered`].
     ///
     /// # Arguments
     ///
@@ -734,7 +876,9 @@ impl Graph {
     ///
     /// # Errors
     ///
-    /// Returns [`GraphError::UnknownNode`] if either label is not part of the graph.
+    /// Returns [`GraphError::UnknownNode`] if either label is absent, source first.
+    /// Returns [`GraphError::CostOverflow`] if the accepted goal is reachable
+    /// but no route has a finite total cost. Finite alternatives take precedence.
     ///
     /// # Example
     ///
@@ -781,7 +925,7 @@ impl Graph {
             return Ok(Some(0.0));
         }
 
-        Ok(self.dijkstra_cost(src, dst, &filter))
+        self.dijkstra_cost(src, dst, &filter)
     }
 }
 
@@ -795,7 +939,9 @@ impl Graph {
     /// # Errors
     ///
     /// Returns [`GraphError::UnknownNode`] if either endpoint is absent, checking
-    /// the source first. A failed query does not prevent later workspace reuse.
+    /// the source first. Returns [`GraphError::CostOverflow`] if the goal is
+    /// reachable but no route has a finite total cost; finite alternatives win.
+    /// A failed query does not prevent later workspace reuse.
     ///
     /// # Examples
     ///
@@ -825,6 +971,8 @@ impl Graph {
     /// # Errors
     ///
     /// Returns [`GraphError::UnknownNode`] for an absent endpoint, source first.
+    /// Returns [`GraphError::CostOverflow`] if the accepted goal is reachable
+    /// but no route has a finite total cost. Finite alternatives take precedence.
     ///
     /// # Panics
     ///
@@ -868,7 +1016,7 @@ impl Graph {
         if src == dst {
             return Ok(Some(0.0));
         }
-        Ok(self.dijkstra_cost_with_workspace(src, dst, &filter, workspace))
+        self.dijkstra_cost_with_workspace(src, dst, &filter, workspace)
     }
 
     fn dijkstra_cost_with_workspace<F>(
@@ -877,7 +1025,7 @@ impl Graph {
         dst: u32,
         filter: &F,
         workspace: &mut SearchWorkspace,
-    ) -> Option<f64>
+    ) -> Result<Option<f64>, GraphError>
     where
         F: Fn(&NodeAttrs) -> bool,
     {
@@ -893,7 +1041,11 @@ impl Graph {
                 continue;
             }
             if node == dst {
-                return Some(cost);
+                return if cost.is_infinite() {
+                    Err(GraphError::CostOverflow)
+                } else {
+                    Ok(Some(cost))
+                };
             }
             let start = self.offsets[node as usize] as usize;
             let end = self.offsets[node as usize + 1] as usize;
@@ -903,21 +1055,49 @@ impl Graph {
                 if !filter(&self.node_attrs[index]) {
                     continue;
                 }
-                let previous = if workspace.stamps[index] == generation {
-                    workspace.distances[index]
-                } else {
-                    f64::INFINITY
-                };
                 let candidate = cost + self.weights[edge];
-                // Comparing against infinity (rather than accepting every unseen
-                // node) preserves the existing overflow/NaN rejection behavior.
-                if candidate < previous {
+                // Queue infinity on first discovery, not again on an equal cost.
+                if workspace.stamps[index] != generation || candidate < workspace.distances[index] {
                     workspace.distances[index] = candidate;
                     workspace.stamps[index] = generation;
                     workspace.heap.push((Reverse(candidate.to_bits()), next));
                 }
             }
         }
-        None
+        Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn graph_size_boundaries_preserve_csr_and_predecessor_sentinels() {
+        let limit = u32::MAX as usize;
+        for (nodes, edges) in [(0, 0), (0, limit), (limit - 1, limit), (limit, 0)] {
+            let result = validate_graph_size(nodes, edges);
+            if nodes.checked_add(1).is_some() {
+                result.unwrap();
+            } else {
+                assert!(
+                    matches!(result, Err(GraphError::GraphTooLarge { nodes: n, edges: e }) if n == nodes && e == edges)
+                );
+            }
+        }
+        let mut rejected = vec![(usize::MAX, 0), (usize::MAX, usize::MAX)];
+        if let Some(over_limit) = limit.checked_add(1) {
+            rejected.extend([(over_limit, 0), (0, over_limit), (limit, over_limit)]);
+        }
+        for (nodes, edges) in rejected {
+            let error = validate_graph_size(nodes, edges).unwrap_err();
+            assert_eq!(
+                error.to_string(),
+                format!("graph too large: {nodes} nodes, {edges} edges")
+            );
+            assert!(
+                matches!(error, GraphError::GraphTooLarge { nodes: n, edges: e } if n == nodes && e == edges)
+            );
+        }
     }
 }
